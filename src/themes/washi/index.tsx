@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react';
 import type { BandProps, BoardGeometry, ClueLayerProps, ThemeDef } from '../types';
 import { ClueSvg } from '../shared/clues';
+import { MetaLine } from '../shared/MetaLine';
 import { r1, rng } from '../shared/util';
 import '../shared/common.css';
 import './theme.css';
@@ -45,7 +46,7 @@ function Band({ title, subtitle, puzzle }: BandProps): ReactNode {
       </svg>
       <h2 className="wa-title">{title}</h2>
       <span className="wa-date">{subtitle}</span>
-      <span className="wa-meta">{`${puzzle.name ?? 'Puzzle'} · ${season.name}`}</span>
+      <MetaLine className="wa-meta" sepClass="wa-sep" items={[puzzle.name ?? 'Puzzle', season.name]} />
     </div>
   );
 }

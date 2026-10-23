@@ -71,9 +71,11 @@ Then open the address Vite prints. `npm run build` makes a production build in `
 - `npm run preview` serves the production build.
 - `npm test` runs the unit tests once, and `npm run test:watch` keeps them running.
 - `npm run typecheck` checks the types.
-- `npm run e2e` runs the browser tests. They start a dev server and a production preview on their own, and they use the installed Microsoft Edge unless `PW_CHANNEL=chromium` is set.
+- `npm run e2e` runs the browser tests in Edge, in WebKit (the engine of Safari) as an iPhone and an iPad, and in Firefox. They start a dev server and a production preview on their own. Run `npx playwright install webkit firefox` once first. Edge is the installed Microsoft Edge unless `PW_CHANNEL=chromium` is set.
+- `npm run e2e:edge` runs the Edge projects only, which is the quick check.
 - `npm run gen:daily` regenerates the stored Daily puzzles. Pass a range of months to choose them, for example `npm run gen:daily -- 2028-01 2028-12`.
 - `npm run gen:practice` regenerates the Learn practice puzzles.
+- `python scripts/lining-digits.py` rebuilds the small lining-digit fonts of the Star atlas look from the installed Cormorant Garamond (it needs `pip install fonttools`).
 
 ## How it is built
 

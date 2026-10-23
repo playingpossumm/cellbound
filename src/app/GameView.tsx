@@ -37,21 +37,41 @@ export interface GameViewProps {
   shareUrl?: string;
 }
 
-const LAPTOP = 900;
+/** The two-column layout: a wide window, or a phone held sideways. Keep in step with base.css. */
+const WIDE = '(min-width: 900px), (min-width: 700px) and (max-height: 520px)';
 const NO_NOTES = 'Notes are off for this board.';
+/** Smallest cell, in CSS pixels, that the stacked layout shrinks the board to when that avoids scrolling. */
+const MIN_CELL: Record<number, number> = { 4: 56, 6: 52, 9: 40 };
 
 /**
- * Board edge in CSS pixels: as large as fits. Phones use the column width;
- * from 900 px the board also fits the window height under the top bar and band.
+ * The smallest height the window takes, with a phone browser's toolbars showing. The board is
+ * sized to it, so it keeps its size while the toolbars slide away and back as the page scrolls.
+ * Falls back to the window height where the unit is unknown.
+ */
+function smallViewportHeight(): number {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100svh;visibility:hidden;pointer-events:none';
+  document.body.appendChild(probe);
+  const h = probe.offsetHeight;
+  probe.remove();
+  return h || window.innerHeight;
+}
+
+/**
+ * Board edge in CSS pixels: as large as fits. From 900 px the board fits the window height
+ * under the top bar and band. Below that it uses the column width, and when the whole page
+ * would then be a little too tall for the window (a tablet held upright), it gives up a few
+ * pixels instead, as long as the cells stay playable. A window too short for that scrolls.
  */
 function useBoardSide(
   playRef: React.RefObject<HTMLDivElement | null>,
   bandRef: React.RefObject<HTMLDivElement | null>,
   topRef: React.RefObject<HTMLElement | null>,
+  size: number,
 ) {
   const [side, setSide] = useState(358);
   useLayoutEffect(() => {
-    const wide = window.matchMedia?.(`(min-width: ${LAPTOP}px)`);
+    const wide = window.matchMedia?.(WIDE);
     const measure = () => {
       const play = playRef.current;
       if (!play) return;
@@ -61,11 +81,25 @@ function useBoardSide(
       if (wide?.matches) {
         const band = bandRef.current?.offsetHeight ?? 0;
         const top = topRef.current?.offsetHeight ?? 0;
-        const availH = window.innerHeight - top - band - 36;
+        const availH = smallViewportHeight() - top - band - 36;
         const availW = inner - 380 - 48;
         next = Math.max(280, Math.min(availH, availW, 680));
       } else {
-        next = Math.max(240, Math.min(inner, 560));
+        const cap = Math.max(240, Math.min(inner, 560));
+        next = cap;
+        const wrap = play.querySelector<HTMLElement>('.cb-board-wrap');
+        const app = play.closest<HTMLElement>('.cb-app');
+        if (wrap && app) {
+          const as = getComputedStyle(app);
+          // A long hint or notice must not resize the board, so the rule line counts at its usual height.
+          const line = play.querySelector<HTMLElement>('.cb-rtext');
+          const extra = line ? Math.max(0, line.offsetHeight - (parseFloat(getComputedStyle(line).minHeight) || 0)) : 0;
+          const rest =
+            (topRef.current?.offsetHeight ?? 0) + play.offsetHeight - wrap.offsetHeight - extra + (parseFloat(as.paddingTop) || 0) + (parseFloat(as.paddingBottom) || 0);
+          const room = smallViewportHeight() - rest;
+          const floor = Math.min(cap, size * (MIN_CELL[size] ?? 52));
+          if (room >= floor && room < cap) next = room;
+        }
       }
       next = Math.floor(next);
       setSide((s) => (s === next ? s : next));
@@ -83,7 +117,7 @@ function useBoardSide(
       wide?.removeEventListener('change', measure);
       ro?.disconnect();
     };
-  }, [playRef, bandRef, topRef]);
+  }, [playRef, bandRef, topRef, size]);
   return side;
 }
 
@@ -98,9 +132,9 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
   const bandRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLElement>(null);
   const playRef = useRef<HTMLDivElement>(null);
-  const side = useBoardSide(playRef, bandRef, topRef);
   const p = game.puzzle;
   const n = p.size;
+  const side = useBoardSide(playRef, bandRef, topRef, n);
 
   useEffect(() => startClock(), []);
   useEffect(() => {
@@ -530,7 +564,7 @@ function ResultCard({ game, title, subtitle, next, shareUrl }: { game: GameState
       ? `${APP_NAME} ${title}, ${subtitle}: solved in ${time} with ${plural(game.mistakes, 'mistake', 'mistakes')} and ${plural(game.hintsUsed, 'hint', 'hints')}.${streak ? ` Streak ${streak}.` : ''}`
       : `${APP_NAME} ${title}, ${subtitle}: ${reason.toLowerCase()} after ${time}.`;
     const r = await shareResult(text, shareUrl ?? appUrl());
-    setShared(r === 'copied' ? 'Copied to the clipboard.' : r === 'shared' ? 'Shared.' : 'Sharing is not available here.');
+    setShared(r === 'copied' ? 'Copied to the clipboard.' : r === 'shared' ? 'Shared.' : r === 'cancelled' ? null : 'Sharing is not available here.');
   };
 
   return (

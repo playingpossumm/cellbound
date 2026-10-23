@@ -98,7 +98,7 @@ test('each menu screen opens', async ({ page }) => {
 });
 
 test('board and pad fit a laptop window without scrolling', async ({ page }, info) => {
-  test.skip(info.project.name !== 'laptop');
+  test.skip(info.project.metadata.form !== 'laptop');
   await page.setViewportSize({ width: 1366, height: 660 });
   await openFresh(page);
   const fits = await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1);
@@ -111,7 +111,7 @@ for (const [w, h] of [
   [800, 1000],
 ]) {
   test(`no sideways scroll at ${w}x${h}`, async ({ page }, info) => {
-    test.skip(info.project.name !== 'phone');
+    test.skip(info.project.metadata.form !== 'phone');
     await page.setViewportSize({ width: w, height: h });
     await openFresh(page);
     const sideways = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);

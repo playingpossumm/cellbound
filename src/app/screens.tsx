@@ -1,5 +1,5 @@
 // Screens: Daily, Fog, Free play, Stats, Settings and About.
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { dailyPuzzle, fogFor } from '../engine';
 import { generateAsync } from '../engine/client';
 import type { ClueKind, Difficulty, Size } from '../engine/types';
@@ -22,11 +22,16 @@ function randomSeed(): string {
   return `${a[0].toString(36)}${a[1].toString(36)}`.slice(0, 10);
 }
 
-/** Frame for screens that are not a board: top bar with the menu and a title. */
-export function Page({ title, children }: { title: string; children: ReactNode }) {
+/**
+ * Frame for screens that are not a board: top bar with the menu and a title. With `back` it also
+ * has a back arrow, as the Run and Learn pages do: it returns to the screen the player came from.
+ */
+export function Page({ title, children, back }: { title: string; children: ReactNode; back?: boolean }) {
+  const shell = useShell();
+  const onBack = back ? () => (history.state?.cbRoute && history.length > 1 ? history.back() : shell.go('daily')) : undefined;
   return (
     <div className="cb-page">
-      <TopBar title={title} />
+      <TopBar title={title} onBack={onBack} />
       <main className="cb-page-body">
         <h1 className="cb-page-title">{title}</h1>
         {children}
@@ -81,17 +86,22 @@ export function FogScreen() {
   const game = useGame();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Only the newest request may start a board, so a request that was asked for twice
+  // (React's development double run of the effect below) never swaps the board under the player.
+  const latest = useRef(0);
 
   const newBoard = useCallback(async (s: Size) => {
+    const mine = ++latest.current;
     setBusy(true);
     setError(null);
     try {
       const puzzle = await generateAsync({ size: s, seed: randomSeed(), rules: FOG_RULES, difficulty: s === 9 ? 3 : 2, fog: true });
+      if (mine !== latest.current) return;
       startGame({ key: `fog:${puzzle.seed}:${s}`, mode: 'fog', puzzle, fog: puzzle.fog ?? fogFor(puzzle), resume: false });
     } catch {
-      setError('The board could not be made. Try again.');
+      if (mine === latest.current) setError('The board could not be made. Try again.');
     } finally {
-      setBusy(false);
+      if (mine === latest.current) setBusy(false);
     }
   }, []);
 
@@ -198,7 +208,7 @@ export function FreeScreen({ code }: { code?: string | null }) {
     const toggle = (k: ClueKind) =>
       setSetup((s) => ({ ...s, rules: s.rules.includes(k) ? s.rules.filter((x) => x !== k) : [...s.rules, k] }));
     return (
-      <Page title="Free play">
+      <Page title="Free play" back>
         <form
           className="cb-form"
           onSubmit={(e) => {
@@ -289,7 +299,7 @@ export function StatsScreen() {
   const timeRows = Object.entries(stats.times).sort(([a], [b]) => a.localeCompare(b));
   const history = Object.entries(stats.daily).sort(([a], [b]) => b.localeCompare(a)).slice(0, 30);
   return (
-    <Page title="Stats">
+    <Page title="Stats" back>
       <section className="cb-card">
         <h2>Daily streak</h2>
         <dl className="cb-figures">
@@ -393,7 +403,7 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 export function SettingsScreen() {
   const s = useSettings();
   return (
-    <Page title="Settings">
+    <Page title="Settings" back>
       <form className="cb-form" onSubmit={(e) => e.preventDefault()}>
         <fieldset>
           <legend>Theme</legend>
@@ -440,7 +450,7 @@ export function SettingsScreen() {
               if (v && getGame()?.status === 'playing') actions.fillNotes();
             }}
           />
-          <Toggle label="Highlight peers and equal digits" checked={s.highlights} onChange={(v) => s.update({ highlights: v })} />
+          <Toggle label="Highlight the selected cell's row, column and box, and equal digits" checked={s.highlights} onChange={(v) => s.update({ highlights: v })} />
           <Toggle label="Hide the timer" checked={s.hideTimer} onChange={(v) => s.update({ hideTimer: v })} />
         </fieldset>
         <Choice<MotionSetting>
@@ -460,7 +470,7 @@ export function SettingsScreen() {
 
 export function AboutScreen() {
   return (
-    <Page title="About">
+    <Page title="About" back>
       <section className="cb-card cb-prose">
         <p>
           {APP_NAME} is variant sudoku for short daily sessions. It has a shared Daily, roguelite runs, fog boards, free play and a short

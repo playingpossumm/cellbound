@@ -3,6 +3,7 @@ import { EM_DASH } from '../test/copy';
 import { rootVars, themeCss } from '../test/cssvars';
 import { DEFAULT_THEME, getTheme, themes } from './index';
 import { buildItems, project } from './letters/cube';
+import { mastheadFor } from './paper';
 import { cellsLoops, cellsOutline, simplify, wavePath } from './shared/util';
 
 const ids = ['atlas', 'paper', 'washi', 'swiss', 'prism', 'letters'] as const;
@@ -45,6 +46,20 @@ describe('theme stylesheets', () => {
     }
   }
 
+});
+
+describe('paper masthead', () => {
+  it('names every mode in the voice of a newspaper', () => {
+    expect(mastheadFor('Daily')).toBe('The Daily Puzzle');
+    expect(mastheadFor('Run')).toBe('The Run Gazette');
+    expect(mastheadFor('Learn')).toBe('The Learning Column');
+    expect(mastheadFor('Fog')).toBe('The Fog Report');
+    expect(mastheadFor('Free play')).toBe('The Free Play Edition');
+  });
+
+  it('falls back to "The Title Puzzle" for a title it does not know', () => {
+    expect(mastheadFor('night owl')).toBe('The Night Owl Puzzle');
+  });
 });
 
 describe('shape helpers', () => {

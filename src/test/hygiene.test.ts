@@ -37,8 +37,43 @@ function files(): string[] {
   return out;
 }
 
+/** Selectors that style :hover outside a (hover: hover) media query, which would stick on touch screens. */
+export function hoverOutsideMedia(css: string): string[] {
+  const text = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const stack: string[] = [];
+  const bad: string[] = [];
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '{') {
+      const prelude = text.slice(start, i).trim();
+      if (/:hover/.test(prelude) && !stack.some((s) => /^@media[^{]*\(hover:\s*hover\)/.test(s))) bad.push(prelude);
+      stack.push(prelude);
+      start = i + 1;
+    } else if (c === '}') {
+      stack.pop();
+      start = i + 1;
+    } else if (c === ';') {
+      start = i + 1;
+    }
+  }
+  return bad;
+}
+
 describe('repository hygiene', () => {
   const list = files();
+
+  it('styles :hover only where a pointer can hover', () => {
+    for (const f of list.filter((p) => p.endsWith('.css'))) {
+      expect(hoverOutsideMedia(readFileSync(f, 'utf8')), relative(root, f)).toEqual([]);
+    }
+  });
+
+  it('finds an unguarded :hover rule', () => {
+    expect(hoverOutsideMedia('.a:hover { color: red; }')).toEqual(['.a:hover']);
+    expect(hoverOutsideMedia('@media (hover: hover) { .a:hover { color: red; } }')).toEqual([]);
+    expect(hoverOutsideMedia('@media (min-width: 900px) { .a:hover { color: red; } }')).toEqual(['.a:hover']);
+  });
 
   it('finds the source files', () => {
     expect(list.length).toBeGreaterThan(100);

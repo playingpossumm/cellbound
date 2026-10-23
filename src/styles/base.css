@@ -94,6 +94,35 @@ button:disabled {
   cursor: default;
 }
 
+/* Touch screens. A quick second tap on a key must not zoom the page, a tap must not
+   flash the browser's grey highlight, and holding a key must not select its text.
+   Pressing is shown by the :active styles instead. */
+html {
+  touch-action: manipulation;
+  /* No pull-to-refresh or rubber band in the middle of a board. */
+  overscroll-behavior-y: none;
+}
+
+button,
+summary,
+label {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.cb-ib:active:not(:disabled),
+.cb-tool:active:not(:disabled),
+.cb-chip:active,
+.cb-menu-item:active {
+  background: var(--cb-sel);
+}
+
 :focus-visible {
   outline: 2px solid var(--cb-accent);
   outline-offset: 2px;
@@ -186,8 +215,10 @@ button:disabled {
   color: var(--cb-text);
 }
 
-.cb-ib:hover {
-  background: var(--cb-peer);
+@media (hover: hover) {
+  .cb-ib:hover {
+    background: var(--cb-peer);
+  }
 }
 
 .cb-ib:disabled {
@@ -264,7 +295,9 @@ button:disabled {
   width: 100%;
 }
 
-@media (min-width: 900px) {
+/* Two columns from 900 px wide, and on a phone held sideways (700 px wide and at most 520 px
+   tall), where one stacked column would be three screens high. */
+@media (min-width: 900px), (min-width: 700px) and (max-height: 520px) {
   .cb-play {
     max-width: 1280px;
     grid-template-columns: var(--cb-side, 480px) minmax(300px, 380px);
@@ -334,8 +367,8 @@ button:disabled {
 
 /* Room above the chips for the New marks' touch area, so it never reaches a control above. */
 .cb-chips:has(.cb-chip-new) {
-  padding-top: 12px;
-  row-gap: 20px;
+  padding-top: 20px;
+  row-gap: 28px;
 }
 
 .cb-chip-wrap {
@@ -382,11 +415,12 @@ button:disabled {
   text-transform: uppercase;
 }
 
-/* A 44 by 44 touch area around the small mark: mostly upward, into the room above the chips. */
+/* A 44 by 44 touch area around the small mark, reaching up into the room above the chips and
+   stopping short of the middle of the chip, so a tap on a narrow chip still lights its rule. */
 .cb-chip-new::after {
   content: '';
   position: absolute;
-  inset: -12px -3px -8px;
+  inset: -20px -5px -2px;
 }
 
 .cb-rtext {
@@ -828,7 +862,7 @@ button:disabled {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-@media (min-width: 900px) {
+@media (min-width: 900px), (min-width: 700px) and (max-height: 520px) {
   .cb-pad,
   .cb-pad[data-cols='nine'] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -853,8 +887,10 @@ button:disabled {
   gap: 2px;
 }
 
-.cb-key:hover:not(:disabled) {
-  background: var(--cb-peer);
+@media (hover: hover) {
+  .cb-key:hover:not(:disabled) {
+    background: var(--cb-peer);
+  }
 }
 
 .cb-key:active:not(:disabled) {
@@ -921,8 +957,10 @@ button:disabled {
   gap: 4px;
 }
 
-.cb-tool:hover:not(:disabled) {
-  background: var(--cb-peer);
+@media (hover: hover) {
+  .cb-tool:hover:not(:disabled) {
+    background: var(--cb-peer);
+  }
 }
 
 .cb-tool.on {
@@ -1286,6 +1324,8 @@ button:disabled {
   width: min(86vw, 340px);
   max-width: none;
   height: 100%;
+  /* On a phone the visible height moves with the browser's toolbars. */
+  height: 100dvh;
   max-height: none;
   border: 0;
   border-right: 1px solid var(--cb-line-box);
@@ -1348,8 +1388,10 @@ button:disabled {
   gap: 2px;
 }
 
-.cb-menu-item:hover {
-  background: var(--cb-peer);
+@media (hover: hover) {
+  .cb-menu-item:hover {
+    background: var(--cb-peer);
+  }
 }
 
 .cb-menu-item.on {

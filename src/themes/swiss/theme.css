@@ -135,6 +135,11 @@
   font-variant-numeric: lining-nums tabular-nums;
   letter-spacing: -0.01em;
 }
+/* On a narrow band (a 360 px phone or less) the longest dates would run into the time. */
+@container (max-width: 340px) {
+  [data-theme="swiss"] .sw-meta { font-size: 13px; letter-spacing: 0; }
+  [data-theme="swiss"] .sw-time { font-size: 30px; }
+}
 [data-theme="swiss"] .sw-bar {
   position: absolute;
   left: 0;
@@ -374,7 +379,9 @@
 [data-theme="swiss"] .cb-key { position: relative; border: 2px solid var(--sw-ink); border-radius: 0; min-height: 60px; }
 [data-theme="swiss"] .cb-key-d { font-size: 28px; font-weight: 800; }
 [data-theme="swiss"] .cb-key-left { position: absolute; right: 5px; top: 3px; font-size: 11px; font-weight: 700; color: var(--sw-grey); }
-[data-theme="swiss"] .cb-key:hover:not(:disabled) { background: transparent; }
+@media (hover: hover) {
+  [data-theme="swiss"] .cb-key:hover:not(:disabled) { background: transparent; }
+}
 [data-theme="swiss"] .cb-key:active:not(:disabled) { background: var(--sw-yellow); color: #111111; border-color: var(--sw-ink); }
 [data-theme="swiss"] .cb-key:active:not(:disabled) .cb-key-left { color: #111111; }
 [data-theme="swiss"] .cb-key.spent { opacity: 0.3; }

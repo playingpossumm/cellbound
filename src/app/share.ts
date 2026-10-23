@@ -2,14 +2,15 @@
 import type { Difficulty, Size } from '../engine/types';
 import type { ClueKind } from '../engine/types';
 
-export async function shareResult(text: string, url: string): Promise<'shared' | 'copied' | 'failed'> {
+/** 'cancelled' means the player closed the share sheet, which needs no message. */
+export async function shareResult(text: string, url: string): Promise<'shared' | 'copied' | 'failed' | 'cancelled'> {
   try {
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       await navigator.share({ text, url });
       return 'shared';
     }
   } catch (e) {
-    if ((e as DOMException)?.name === 'AbortError') return 'failed';
+    if ((e as DOMException)?.name === 'AbortError') return 'cancelled';
   }
   try {
     await navigator.clipboard.writeText(`${text}\n${url}`);

@@ -473,8 +473,10 @@
 [data-theme="prism"] .cb-pad .cb-key:nth-child(8) .cb-key-d { color: var(--h8); }
 [data-theme="prism"] .cb-pad .cb-key:nth-child(9) .cb-key-d { color: var(--h9); }
 [data-theme="prism"] .cb-key-left { font-size: 11px; color: var(--pr-dim); }
-[data-theme="prism"] .cb-key:hover:not(:disabled),
 [data-theme="prism"] .cb-key:active:not(:disabled) { background: var(--cb-sel); border-color: transparent; }
+@media (hover: hover) {
+  [data-theme="prism"] .cb-key:hover:not(:disabled) { background: var(--cb-sel); border-color: transparent; }
+}
 [data-theme="prism"] .cb-key.spent { opacity: 0.35; border-style: none; }
 [data-theme="prism"] .cb-tool {
   border-radius: 12px;

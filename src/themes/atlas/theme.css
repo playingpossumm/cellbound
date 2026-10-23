@@ -1,5 +1,50 @@
 /* Star atlas: ink-blue chart paper, gold hairlines, a slow star field. */
 
+/* Digits. Cormorant draws old-style figures unless its lnum feature is on, and WebKit leaves
+   that feature off for a text run of one character, so a lone 1 came out as a small capital I.
+   These faces hold the ten digits with the lining glyphs in place (see scripts/lining-digits.py),
+   so every engine draws the same figures. Every other character comes from Cormorant Garamond. */
+@font-face {
+  font-family: "Cormorant Figures";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/cormorant-figures-500-normal.woff?no-inline") format("woff");
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: "Cormorant Figures";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/cormorant-figures-600-normal.woff?no-inline") format("woff");
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: "Cormorant Figures";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/cormorant-figures-700-normal.woff?no-inline") format("woff");
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: "Cormorant Figures";
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/cormorant-figures-500-italic.woff?no-inline") format("woff");
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: "Cormorant Figures";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/cormorant-figures-700-italic.woff?no-inline") format("woff");
+  unicode-range: U+0030-0039;
+}
+
 [data-theme="atlas"][data-night="true"] {
   --at-gold: #d8b766;
   --at-golddim: rgba(216, 183, 102, 0.5);
@@ -65,8 +110,8 @@
   --cb-text: var(--at-ivory);
   --cb-text-dim: var(--at-mist);
   --cb-accent: var(--at-gold);
-  --cb-font-ui: "Cormorant Garamond", Garamond, "Times New Roman", serif;
-  --cb-font-digit: "Cormorant Garamond", Garamond, "Times New Roman", serif;
+  --cb-font-ui: "Cormorant Figures", "Cormorant Garamond", Garamond, "Times New Roman", serif;
+  --cb-font-digit: "Cormorant Figures", "Cormorant Garamond", Garamond, "Times New Roman", serif;
 }
 
 /* Backdrop: the star field. */
@@ -146,7 +191,10 @@
   font-weight: 600;
 }
 /* A date is decoration and keeps the study's old-style figures; sizes and levels stay lining. */
-[data-theme="atlas"] .at-sub.is-date { font-variant-numeric: oldstyle-nums; }
+[data-theme="atlas"] .at-sub.is-date {
+  font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
+  font-variant-numeric: oldstyle-nums;
+}
 [data-theme="atlas"] .at-time {
   position: absolute;
   right: 2px;
@@ -432,8 +480,10 @@
   font-weight: 500;
   font-variant-numeric: lining-nums;
 }
-[data-theme="atlas"] .cb-key:hover:not(:disabled),
 [data-theme="atlas"] .cb-key:active:not(:disabled) { background: none; border-color: transparent; }
+@media (hover: hover) {
+  [data-theme="atlas"] .cb-key:hover:not(:disabled) { background: none; border-color: transparent; }
+}
 [data-theme="atlas"] .cb-key:active:not(:disabled) .cb-key-d { background: var(--cb-sel); border-color: var(--at-gold); }
 [data-theme="atlas"] .cb-pad[data-notes="true"] .cb-key-d { border-style: dotted; }
 [data-theme="atlas"] .cb-key-left { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; color: var(--at-mist); }

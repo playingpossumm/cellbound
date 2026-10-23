@@ -135,8 +135,10 @@
   font-weight: 600;
   letter-spacing: 0.01em;
 }
-.cb-run-btn:hover {
-  background: var(--cb-peer);
+@media (hover: hover) {
+  .cb-run-btn:hover {
+    background: var(--cb-peer);
+  }
 }
 .cb-run-btn:active {
   background: var(--cb-same);
@@ -146,8 +148,10 @@
   border-color: var(--cb-accent);
   color: var(--cb-ground);
 }
-.cb-run-btn.is-primary:hover {
-  filter: brightness(1.12);
+@media (hover: hover) {
+  .cb-run-btn.is-primary:hover {
+    filter: brightness(1.12);
+  }
 }
 .cb-run-btn:disabled {
   opacity: 0.45;
@@ -352,8 +356,10 @@ button.cb-run-card {
   cursor: pointer;
   touch-action: manipulation;
 }
-button.cb-run-card:hover {
-  border-color: var(--cb-ink);
+@media (hover: hover) {
+  button.cb-run-card:hover {
+    border-color: var(--cb-ink);
+  }
 }
 .cb-run-card.is-selected {
   border-color: var(--cb-ink);

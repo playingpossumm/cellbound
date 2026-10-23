@@ -39,11 +39,29 @@ function initialRoute(): Route {
 
 function clearQuery() {
   try {
-    if (location.search) history.replaceState(null, '', location.pathname);
+    if (location.search) history.replaceState(history.state, '', location.pathname);
   } catch {
     /* ignore */
   }
 }
+
+/** Each screen the player opens is a history entry, so the Back button and the Back swipe step back through them. */
+function remember(route: Route, how: 'push' | 'replace') {
+  try {
+    const state = { cbRoute: route };
+    if (how === 'push') history.pushState(state, '', location.pathname);
+    else history.replaceState(state, '', location.href);
+  } catch {
+    /* ignore */
+  }
+}
+
+function routeOf(state: unknown): Route {
+  const r = (state as { cbRoute?: Partial<Route> } | null)?.cbRoute;
+  return r && typeof r.screen === 'string' ? { screen: r.screen, date: r.date, code: r.code } : { screen: 'daily' };
+}
+
+const sameRoute = (a: Route, b: Route) => a.screen === b.screen && a.date === b.date && a.code === b.code;
 
 export default function App() {
   useApplyTheme();
@@ -67,14 +85,32 @@ export default function App() {
   // Counts visits, so choosing a mode from the menu always opens it at its start,
   // even when that mode is already on screen.
   const [visit, setVisit] = useState(0);
-  const go = useCallback((screen: ScreenId) => {
+  const current = useRef(route);
+  current.current = route;
+  const show = useCallback((next: Route) => {
     menuRef.current?.close();
-    clearQuery();
-    if (screen.startsWith('mode:')) closeGame();
-    setRoute({ screen });
+    if (next.screen.startsWith('mode:')) closeGame();
+    setRoute(next);
     setVisit((v) => v + 1);
     window.scrollTo?.(0, 0);
   }, []);
+  const go = useCallback(
+    (screen: ScreenId) => {
+      const next: Route = { screen };
+      if (sameRoute(current.current, next)) clearQuery();
+      else remember(next, 'push');
+      show(next);
+    },
+    [show],
+  );
+
+  // The first screen is the first history entry; Back and Forward then move between screens.
+  useEffect(() => {
+    remember(current.current, 'replace');
+    const onPop = (e: PopStateEvent) => show(routeOf(e.state));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [show]);
 
   const shell = useMemo<Shell>(
     () => ({

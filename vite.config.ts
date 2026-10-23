@@ -29,6 +29,8 @@ export default defineConfig({
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          // Full-bleed artwork that Android may crop to a circle or a squircle.
+          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml' },
         ],
       },
@@ -36,7 +38,8 @@ export default defineConfig({
         // Fonts ship as woff2 only: every browser that runs the app reads woff2, so the
         // .woff copies that @fontsource adds would only fill the cache. The app's text is
         // all Latin, so the latin-ext and Vietnamese slices are never requested either.
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // The Star atlas digit faces are small .woff files that the build keeps out of the CSS.
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}', '**/cormorant-figures-*.woff'],
         globIgnores: ['**/*-latin-ext-*.woff2', '**/*-vietnamese-*.woff2'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
       },
@@ -48,5 +51,8 @@ export default defineConfig({
     passWithNoTests: true,
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     exclude: ['node_modules/**', '.worktrees/**', 'dist/**'],
+    // The generation tests take under a second alone, and several times that when 25 files start
+    // together on a busy machine, so the default 5 s was sometimes not enough.
+    testTimeout: 20_000,
   },
 });
