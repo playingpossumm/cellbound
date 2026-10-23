@@ -1,0 +1,486 @@
+/* Learn mode. Only --cb-* theme variables and cb-learn-* classes. */
+
+:is(.cb-learn, .cb-learn-extra, .cb-learn-panel),
+:is(.cb-learn, .cb-learn-extra, .cb-learn-panel) *,
+:is(.cb-learn, .cb-learn-extra, .cb-learn-panel) *::before,
+:is(.cb-learn, .cb-learn-extra, .cb-learn-panel) *::after {
+  box-sizing: border-box;
+}
+.cb-learn {
+  color: var(--cb-text);
+  font-family: var(--cb-font-ui);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+.cb-learn-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 12px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cb-learn-page:focus {
+  outline: none;
+}
+.cb-learn p,
+.cb-learn ol,
+.cb-learn figure,
+:is(.cb-learn-extra, .cb-learn-panel) :is(p, h2) {
+  margin: 0;
+}
+.cb-learn-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: -10px;
+}
+.cb-learn-title {
+  margin: 0;
+  font-family: var(--cb-font-digit);
+  font-size: 40px;
+  line-height: 1.05;
+  font-weight: 500;
+  color: var(--cb-accent);
+}
+.cb-learn-lead {
+  max-width: 60ch;
+}
+.cb-learn-label {
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cb-text-dim);
+}
+.cb-learn-rule {
+  max-width: 60ch;
+  font-style: italic;
+  font-size: 18px;
+  line-height: 1.3;
+  color: var(--cb-text);
+}
+
+/* Buttons */
+.cb-learn-btn,
+.cb-learn-back,
+.cb-learn-row {
+  font: inherit;
+  color: var(--cb-text);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.cb-learn-btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--cb-accent);
+  border-radius: 4px;
+  background: transparent;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.cb-learn-btn:hover {
+  background: var(--cb-peer);
+}
+.cb-learn-btn:active {
+  background: var(--cb-same);
+}
+.cb-learn-btn.is-primary {
+  background: var(--cb-accent);
+  border-color: var(--cb-accent);
+  color: var(--cb-ground);
+}
+.cb-learn-btn.is-primary:hover {
+  filter: brightness(1.12);
+}
+.cb-learn-btn.is-quiet {
+  border-color: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cb-learn-btn.is-small {
+  padding: 0 12px;
+  font-size: 14px;
+}
+.cb-learn-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.cb-learn-back {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cb-ink);
+}
+.cb-learn-back-icon {
+  width: 24px;
+  height: 24px;
+}
+.cb-learn-btn:focus-visible,
+.cb-learn-back:focus-visible,
+.cb-learn-row:focus-visible {
+  outline: 3px solid var(--cb-accent);
+  outline-offset: 2px;
+}
+.cb-learn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Lesson list */
+.cb-learn-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.cb-learn-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 14px;
+  text-align: left;
+  border: 1px solid var(--cb-line-thin);
+  background: color-mix(in srgb, var(--cb-board) 85%, transparent);
+}
+.cb-learn-row:hover {
+  border-color: var(--cb-ink);
+}
+.cb-learn-num {
+  font-family: var(--cb-font-digit);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  color: var(--cb-text-dim);
+}
+.cb-learn-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cb-learn-row-title {
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--cb-ink);
+}
+.cb-learn-row-rule {
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--cb-text-dim);
+  text-wrap: pretty;
+}
+.cb-learn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cb-text);
+  white-space: nowrap;
+}
+.cb-learn-row.is-done .cb-learn-status {
+  color: var(--cb-text-dim);
+}
+.cb-learn-status-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* One lesson */
+.cb-learn-lesson {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cb-learn-figure {
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  border: 1px solid var(--cb-line-thin);
+  background: color-mix(in srgb, var(--cb-board) 85%, transparent);
+}
+.cb-learn-step-text {
+  max-width: 60ch;
+  min-height: 4.4em;
+  font-size: 18px;
+  line-height: 1.4;
+}
+.cb-learn-steps {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 8px;
+}
+.cb-learn-step {
+  width: 28px;
+  height: 6px;
+  border: 1px solid var(--cb-ink);
+  background: transparent;
+}
+.cb-learn-step.is-past {
+  background: var(--cb-text-dim);
+  border-color: var(--cb-text-dim);
+}
+.cb-learn-step.is-on {
+  background: var(--cb-ink);
+}
+.cb-learn-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The small board */
+.cb-learn-board {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  overflow: visible;
+}
+.cb-learn-board[data-size='4'] {
+  max-width: 240px;
+}
+/* The ground first, then the board over it: some themes make the board see-through. */
+.cb-learn-bg {
+  fill: var(--cb-ground);
+}
+.cb-learn-bg-board {
+  fill: var(--cb-board);
+}
+/* A faint tile under every cell, so the grid reads even where a theme draws none. */
+.cb-learn-tile {
+  fill: color-mix(in srgb, var(--cb-text) 5%, transparent);
+}
+/* Washes in the accent colour: visible in every theme, light enough for digits on top. */
+.cb-learn-tint {
+  fill: color-mix(in srgb, var(--cb-accent) 22%, transparent);
+}
+.cb-learn-focus {
+  fill: color-mix(in srgb, var(--cb-accent) 30%, transparent);
+}
+.cb-learn-ring-cell {
+  fill: none;
+  stroke: var(--cb-accent);
+  stroke-width: 2.5;
+}
+/* Thin lines from the text colour, because some themes draw theirs as gaps. */
+.cb-learn-thin {
+  stroke: color-mix(in srgb, var(--cb-text) 24%, transparent);
+  stroke-width: 1;
+}
+.cb-learn-thick {
+  stroke: var(--cb-line-box);
+  stroke-width: 2.4;
+}
+.cb-learn-frame {
+  fill: none;
+  stroke: var(--cb-line-box);
+  stroke-width: 2.6;
+}
+.cb-learn-thermo-line {
+  fill: none;
+  stroke: var(--cb-clue);
+  stroke-width: 13;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cb-learn-thermo-bulb {
+  fill: var(--cb-clue);
+}
+.cb-learn-ring {
+  fill: none;
+  stroke: var(--cb-clue-strong);
+  stroke-width: 2;
+}
+.cb-learn-shaft,
+.cb-learn-head {
+  fill: none;
+  stroke: var(--cb-clue-strong);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cb-learn-cage-line {
+  fill: none;
+  stroke: var(--cb-clue-strong);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 4;
+}
+.cb-learn-cage-pat {
+  fill: var(--cb-ground);
+}
+.cb-learn-cage-sum {
+  fill: var(--cb-clue-strong);
+  font-family: var(--cb-font-ui);
+  font-size: 13px;
+  font-weight: 700;
+}
+.cb-learn-renban-wide {
+  fill: none;
+  stroke: var(--cb-clue-fill);
+  stroke-width: 17;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cb-learn-renban-line {
+  fill: none;
+  stroke: var(--cb-clue-strong);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cb-learn-whisper-line {
+  fill: none;
+  stroke: var(--cb-clue-strong);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cb-learn-dot {
+  stroke: var(--cb-ink);
+  stroke-width: 2;
+}
+/* A white dot is white and a black dot is black in every theme: that is what the lesson teaches. */
+.cb-learn-dot.is-white {
+  fill: #ffffff;
+}
+.cb-learn-dot.is-black {
+  fill: #151515;
+}
+.cb-learn-xv-pat {
+  fill: var(--cb-ground);
+}
+.cb-learn-xv {
+  fill: var(--cb-clue-strong);
+  font-family: var(--cb-font-ui);
+  font-size: 22px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+.cb-learn-diag {
+  fill: none;
+  stroke: var(--cb-clue-strong);
+  stroke-width: 2;
+  opacity: 0.85;
+}
+.cb-learn-digit {
+  font-family: var(--cb-font-digit);
+  font-size: 29px;
+  text-anchor: middle;
+}
+.cb-learn-digit.is-given {
+  fill: var(--cb-ink);
+  font-weight: 600;
+}
+.cb-learn-digit.is-mine {
+  fill: var(--cb-mine);
+}
+.cb-learn-digit.has-halo {
+  stroke: var(--cb-ground);
+  stroke-width: 4.5px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+.cb-learn-link {
+  fill: none;
+  stroke: var(--cb-ink);
+  stroke-width: 2;
+  stroke-dasharray: 2 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+.cb-learn-cross {
+  fill: none;
+  stroke: var(--cb-wrong);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+/* Pieces rendered inside GameView during practice */
+.cb-learn-extra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 12px;
+  color: var(--cb-text);
+  font-family: var(--cb-font-ui);
+  font-size: 15px;
+  line-height: 1.35;
+}
+.cb-learn-panel {
+  width: min(100%, 340px);
+  max-height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  overflow-y: auto;
+  background: linear-gradient(var(--cb-board), var(--cb-board)), var(--cb-ground);
+  color: var(--cb-text);
+  font-family: var(--cb-font-ui);
+  font-size: 16px;
+  line-height: 1.45;
+  border: 1px solid var(--cb-line-box);
+}
+.cb-learn-panel-title {
+  font-family: var(--cb-font-digit);
+  font-size: 26px;
+  line-height: 1.1;
+  font-weight: 500;
+  color: var(--cb-accent);
+}
+
+@media (min-width: 720px) {
+  .cb-learn-lesson {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 28px;
+    row-gap: 12px;
+    align-items: start;
+  }
+  .cb-learn-lesson > .cb-learn-label,
+  .cb-learn-lesson > .cb-learn-title,
+  .cb-learn-lesson > .cb-learn-rule {
+    grid-column: 1;
+  }
+  .cb-learn-lesson > .cb-learn-figure {
+    grid-column: 2;
+    grid-row: 1 / span 5;
+  }
+  .cb-learn-lesson > .cb-learn-step-text,
+  .cb-learn-lesson > .cb-learn-steps,
+  .cb-learn-lesson > .cb-learn-actions {
+    grid-column: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cb-learn * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
