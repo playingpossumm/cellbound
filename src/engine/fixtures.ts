@@ -1,7 +1,7 @@
 import type { Puzzle } from './types';
 
 // The 6x6 puzzle from the look studies. Its seven givens make it unique;
-// the clues alone leave two solutions.
+// the clues alone leave 18 solutions.
 const solution = [
   2, 5, 4, 1, 6, 3,
   6, 3, 1, 4, 2, 5,
