@@ -1,0 +1,16 @@
+/* Dev only. Page furniture for the theme preview; the board itself is styled by
+   app-base.css (an excerpt of the app) plus the theme under test. */
+html, body { margin: 0; background: #888; font-family: system-ui, sans-serif; }
+.pv-grid { display: grid; grid-template-columns: repeat(2, 460px); gap: 12px; padding: 12px; width: max-content; }
+.pv-panel { position: relative; isolation: isolate; contain: layout paint; width: 460px; padding: 16px 16px 20px; box-sizing: border-box;
+  background: var(--cb-ground); color: var(--cb-text); font-family: var(--cb-font-ui); line-height: 1.4; }
+.pv-panel .cb-backdrop { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.pv-content { position: relative; z-index: 1; }
+.pv-tag { font: 11px/1 system-ui; opacity: 0.6; margin: 0 0 8px; }
+.pv-sample { display: flex; gap: 14px; align-items: baseline; margin: 10px 0 12px; font-size: 14px; }
+.pv-sample b { color: var(--cb-accent); font-weight: 600; }
+.pv-sample i { color: var(--cb-text-dim); font-style: normal; }
+.pv-board-wrap { margin: 14px 0 0; }
+.pv-cap { font: 11px/1 system-ui; opacity: 0.55; margin: 12px 0 6px; }
+.pv-study { padding: 0; width: 390px; }
+.pv-study .pv-content { padding: 8px 15px 0; }

@@ -1,0 +1,238 @@
+/* Letters in space: a monospaced grid, a cube of letters, rules spelled in glyphs. */
+
+[data-theme="letters"][data-night="false"] {
+  --lt-ground: #f4f2ed;
+  --lt-ink: #161a22;
+  --lt-blue: #1f4e9e;
+  --lt-dim: #5b616d;
+  --lt-faint: rgba(22, 26, 34, 0.4);
+  --lt-rule: rgba(22, 26, 34, 0.13);
+  --lt-box: rgba(22, 26, 34, 0.55);
+  --lt-err: #b3261e;
+  --lt-onbg: #1f4e9e;
+  --lt-onfg: #f4f2ed;
+  --lt-conflict: rgba(179, 38, 30, 0.1);
+  --cb-peer: rgba(31, 78, 158, 0.045);
+  --cb-sel: rgba(31, 78, 158, 0.12);
+  --cb-same: rgba(22, 26, 34, 0.07);
+  --cb-focus: rgba(31, 78, 158, 0.26);
+}
+
+[data-theme="letters"][data-night="true"] {
+  --lt-ground: #133a7c;
+  --lt-ink: #ffffff;
+  --lt-blue: #bfe0ff;
+  --lt-dim: rgba(255, 255, 255, 0.74);
+  --lt-faint: rgba(255, 255, 255, 0.42);
+  --lt-rule: rgba(255, 255, 255, 0.16);
+  --lt-box: rgba(255, 255, 255, 0.6);
+  --lt-err: #ffbdb2;
+  --lt-onbg: #ffffff;
+  --lt-onfg: #133a7c;
+  --lt-conflict: rgba(255, 180, 168, 0.16);
+  --cb-peer: rgba(255, 255, 255, 0.05);
+  --cb-sel: rgba(255, 255, 255, 0.14);
+  --cb-same: rgba(255, 255, 255, 0.09);
+  --cb-focus: rgba(191, 224, 255, 0.3);
+}
+
+[data-theme="letters"] {
+  --cb-ground: var(--lt-ground);
+  --cb-board: var(--lt-ground);
+  --cb-ink: var(--lt-ink);
+  --cb-mine: var(--lt-blue);
+  --cb-hint: var(--lt-dim);
+  --cb-note: var(--lt-dim);
+  --cb-wrong: var(--lt-err);
+  --cb-sel-ring: var(--lt-blue);
+  --cb-line-thin: var(--lt-rule);
+  --cb-line-box: var(--lt-box);
+  --cb-frame: var(--lt-box);
+  --cb-clue: var(--lt-faint);
+  --cb-clue-strong: var(--lt-blue);
+  --cb-clue-fill: var(--cb-peer);
+  --cb-text: var(--lt-ink);
+  --cb-text-dim: var(--lt-dim);
+  --cb-accent: var(--lt-blue);
+  --cb-font-ui: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --cb-font-digit: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* Band: the cube figure. */
+[data-theme="letters"] .lt-band {
+  position: relative;
+  height: 124px;
+  font-family: var(--cb-font-ui);
+  color: var(--lt-ink);
+}
+[data-theme="letters"] .lt-fig {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: ew-resize;
+  touch-action: pan-y;
+}
+[data-theme="letters"] .lt-gl {
+  position: absolute;
+  left: 50%;
+  top: 53%;
+  line-height: 1;
+  font-weight: 500;
+  color: var(--lt-ink);
+  white-space: pre;
+  pointer-events: none;
+  will-change: transform;
+}
+[data-theme="letters"] .lt-gl.lt-dg { font-weight: 600; }
+[data-theme="letters"] .lt-gl.hot { color: var(--lt-blue); font-weight: 600; }
+[data-theme="letters"] .lt-corner {
+  position: absolute;
+  top: 0;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--lt-dim);
+  pointer-events: none;
+}
+[data-theme="letters"] .lt-tl { left: 0; }
+[data-theme="letters"] .lt-tr { right: 0; }
+
+/* Cells. */
+[data-theme="letters"] .cb-cell.is-peer { background: var(--cb-peer); }
+[data-theme="letters"] .cb-cell.is-same { background: var(--cb-same); }
+[data-theme="letters"] .cb-cell.is-sel { background: var(--cb-sel); box-shadow: inset 0 0 0 1px var(--lt-blue); }
+[data-theme="letters"] .cb-cell.is-conflict {
+  background: var(--lt-conflict);
+  box-shadow: inset 0 0 0 1.5px var(--lt-err);
+}
+[data-theme="letters"] .cb-cell.is-focus {
+  background: var(--cb-focus);
+  box-shadow: inset 0 0 0 1.5px var(--lt-blue);
+  animation: lt-focus 1.6s steps(2, jump-none) infinite;
+}
+@keyframes lt-focus {
+  0% { box-shadow: inset 0 0 0 1.5px var(--lt-blue); }
+  100% { box-shadow: inset 0 0 0 3px var(--lt-blue); }
+}
+
+/* Unit flash: the letters of a finished unit swell and turn blue, one after the other. */
+[data-theme="letters"] .cb-slot.flash-a { animation: lt-swell-a 0.9s ease-out calc(var(--d, 0) * 90ms); }
+[data-theme="letters"] .cb-slot.flash-b { animation: lt-swell-b 0.9s ease-out calc(var(--d, 0) * 90ms); }
+@keyframes lt-swell-a { 0% { transform: none; } 35% { transform: scale(1.3); } 100% { transform: none; } }
+@keyframes lt-swell-b { 0% { transform: none; } 35% { transform: scale(1.3); } 100% { transform: none; } }
+[data-theme="letters"] .cb-slot.flash-a .cb-digit,
+[data-theme="letters"] .cb-slot.flash-b .cb-digit,
+[data-theme="letters"] .cb-slot.box-done .cb-digit { color: var(--lt-blue); }
+
+/* Grid. */
+[data-theme="letters"] .cb-grid .cb-thin { stroke: var(--cb-line-thin); stroke-width: 1px; }
+[data-theme="letters"] .cb-grid .cb-thick { stroke: var(--cb-line-box); stroke-width: 1.4px; }
+[data-theme="letters"] .cb-grid .cb-frame { stroke: var(--cb-frame); stroke-width: 1.4px; }
+
+/* Digits. */
+[data-theme="letters"] .cb-digit {
+  font-family: var(--cb-font-digit);
+  font-size: 50cqw;
+  text-shadow: 0 0 4px var(--lt-ground), 0 0 2px var(--lt-ground);
+}
+[data-theme="letters"] .cb-board[data-size="9"] .cb-digit { font-size: 52cqw; }
+[data-theme="letters"] .cb-digit.is-given { color: var(--cb-ink); font-weight: 600; }
+[data-theme="letters"] .cb-digit.is-mine { color: var(--cb-mine); font-weight: 400; }
+[data-theme="letters"] .cb-digit.is-hint { color: var(--cb-hint); font-weight: 400; font-style: normal; }
+[data-theme="letters"] .cb-digit.is-wrong {
+  color: var(--cb-wrong);
+  font-weight: 400;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+[data-theme="letters"] .cb-digit.is-dec { color: var(--lt-dim); font-weight: 400; }
+[data-theme="letters"] .cb-digit.place-a { animation: lt-pop-a 0.28s ease-out; }
+[data-theme="letters"] .cb-digit.place-b { animation: lt-pop-b 0.28s ease-out; }
+@keyframes lt-pop-a { 0% { transform: scale(1.35); } 100% { transform: none; } }
+@keyframes lt-pop-b { 0% { transform: scale(1.35); } 100% { transform: none; } }
+
+/* Notes. */
+[data-theme="letters"] .cb-notes {
+  font-family: var(--cb-font-digit);
+  font-size: 18.3cqw;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--cb-note);
+}
+[data-theme="letters"] .cb-board[data-size="4"] .cb-notes { font-size: 16cqw; }
+
+/* Clues: glyph chains. */
+[data-theme="letters"] .cb-clue { transition: none; }
+[data-theme="letters"] .lt-cg {
+  font-family: var(--cb-font-ui);
+  font-size: calc(var(--u) * 0.158);
+  font-weight: 500;
+  fill: var(--lt-faint);
+  white-space: pre;
+  transition: fill 0.3s ease;
+}
+[data-theme="letters"] .cb-board[data-size="9"] .lt-cg { font-size: calc(var(--u) * 0.2); }
+[data-theme="letters"] .lt-cg.lt-big { font-size: calc(var(--u) * 0.25); }
+[data-theme="letters"] .lt-cg.lt-lab { font-size: calc(var(--u) * 0.175); font-weight: 600; fill: var(--lt-dim); }
+[data-theme="letters"] .cb-board[data-size="9"] .lt-cg.lt-lab { font-size: calc(var(--u) * 0.2); }
+[data-theme="letters"] .cb-clue.is-lit .lt-cg { fill: var(--lt-blue); font-weight: 600; }
+[data-theme="letters"] .lt-dot {
+  stroke: var(--lt-faint);
+  stroke-width: 1.4px;
+  vector-effect: non-scaling-stroke;
+  transition: stroke 0.3s ease, fill 0.3s ease;
+}
+[data-theme="letters"] .lt-dot.white { fill: none; }
+[data-theme="letters"] .lt-dot.black { fill: var(--lt-faint); }
+[data-theme="letters"] .cb-clue.is-lit .lt-dot { stroke: var(--lt-blue); }
+[data-theme="letters"] .cb-clue.is-lit .lt-dot.black { fill: var(--lt-blue); }
+
+/* Fog: the hidden cell shows scrambled letters. */
+[data-theme="letters"] .cb-fog {
+  position: relative;
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--lt-ground);
+  opacity: 0;
+  transition: opacity 0.7s ease;
+  transition-delay: calc(var(--d, 0) * 110ms);
+}
+[data-theme="letters"] .cb-fog::before {
+  content: attr(data-glyphs);
+  position: static;
+  inset: auto;
+  width: 4ch;
+  font-family: var(--cb-font-ui);
+  font-size: 20cqw;
+  line-height: 1.083;
+  word-break: break-all;
+  text-align: center;
+  color: var(--lt-faint);
+  background: none;
+  filter: none;
+}
+[data-theme="letters"] .cb-fog.is-on { opacity: 1; }
+
+/* App chrome in the letters style: square outlined chips that fill, monospaced keys. */
+[data-theme="letters"] .cb-top-title,
+[data-theme="letters"] .cb-timer { font-weight: 500; letter-spacing: 0.08em; }
+[data-theme="letters"] .cb-play .cb-chip {
+  border: 1px solid var(--lt-rule);
+  border-radius: 0;
+  color: var(--lt-dim);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+[data-theme="letters"] .cb-play .cb-chip.on { background: var(--lt-onbg); color: var(--lt-onfg); border-color: var(--lt-onbg); }
+[data-theme="letters"] .cb-rtext { font-style: normal; font-size: 12.5px; line-height: 1.5; }
+[data-theme="letters"] .cb-key { border: 1px solid var(--lt-rule); border-radius: 0; min-height: 62px; gap: 4px; }
+[data-theme="letters"] .cb-key-d { font-size: 26px; font-weight: 500; }
+[data-theme="letters"] .cb-key-left { font-size: 10.5px; color: var(--lt-dim); }
+[data-theme="letters"] .cb-key.spent { opacity: 0.35; }
+[data-theme="letters"] .cb-tool { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; color: var(--lt-dim); }
+[data-theme="letters"] .cb-tool.on { color: var(--lt-blue); }

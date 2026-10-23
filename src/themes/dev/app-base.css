@@ -1,0 +1,447 @@
+/* Dev only. An excerpt of the app base board rules, kept here so the preview shows
+   how each theme sits on top of them. The app owns the real file. */
+
+:where(:root) {
+  --cb-ground: #ece2cc;
+  --cb-board: #f7f0e0;
+  --cb-ink: #6f4f0d;
+  --cb-mine: #1b2a4e;
+  --cb-hint: #4a5570;
+  --cb-note: #4a5570;
+  --cb-wrong: #b3261e;
+  --cb-peer: rgba(27, 42, 78, 0.05);
+  --cb-same: rgba(27, 42, 78, 0.09);
+  --cb-sel: rgba(125, 90, 18, 0.16);
+  --cb-sel-ring: #7d5a12;
+  --cb-focus: rgba(125, 90, 18, 0.32);
+  --cb-line-thin: rgba(27, 42, 78, 0.16);
+  --cb-line-box: rgba(125, 90, 18, 0.7);
+  --cb-frame: #7d5a12;
+  --cb-clue: rgba(27, 42, 78, 0.5);
+  --cb-clue-strong: #7d5a12;
+  --cb-clue-fill: rgba(125, 90, 18, 0.14);
+  --cb-text: #1b2a4e;
+  --cb-text-dim: #4a5570;
+  --cb-accent: #7d5a12;
+  --cb-font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --cb-font-digit: 'Palatino Linotype', Palatino, 'Book Antiqua', 'Iowan Old Style', Georgia, serif;
+}
+
+:where(:root[data-night='true']) {
+  --cb-ground: #0c1730;
+  --cb-board: #0f1f3f;
+  --cb-ink: #d8b766;
+  --cb-mine: #efe7d2;
+  --cb-hint: #a6b4d0;
+  --cb-note: #a6b4d0;
+  --cb-wrong: #ff9d8c;
+  --cb-peer: rgba(216, 183, 102, 0.07);
+  --cb-same: rgba(239, 231, 210, 0.1);
+  --cb-sel: rgba(216, 183, 102, 0.18);
+  --cb-sel-ring: #d8b766;
+  --cb-focus: rgba(216, 183, 102, 0.4);
+  --cb-line-thin: rgba(239, 231, 210, 0.14);
+  --cb-line-box: rgba(216, 183, 102, 0.6);
+  --cb-frame: #d8b766;
+  --cb-clue: rgba(216, 183, 102, 0.55);
+  --cb-clue-strong: #d8b766;
+  --cb-clue-fill: rgba(216, 183, 102, 0.16);
+  --cb-text: #efe7d2;
+  --cb-text-dim: #a6b4d0;
+  --cb-accent: #d8b766;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.cb-board {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--cb-board);
+  container-type: size;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.cb-cells,
+.cb-digits,
+.cb-fogs {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cb-n), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--cb-n), minmax(0, 1fr));
+}
+
+.cb-grid,
+.cb-clues,
+.cb-over {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.cb-cells {
+  z-index: 1;
+}
+
+.cb-grid {
+  z-index: 2;
+}
+
+.cb-clues {
+  z-index: 3;
+}
+
+.cb-digits {
+  z-index: 4;
+  pointer-events: none;
+}
+
+.cb-fogs {
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.cb-over {
+  z-index: 6;
+}
+
+.cb-cell {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cb-cell.is-peer {
+  background: var(--cb-peer);
+}
+
+.cb-cell.is-same {
+  background: var(--cb-same);
+}
+
+.cb-cell.is-conflict {
+  background: color-mix(in srgb, var(--cb-wrong) 16%, transparent);
+}
+
+.cb-cell.is-sel {
+  background: var(--cb-sel);
+  box-shadow: inset 0 0 0 2px var(--cb-sel-ring);
+}
+
+.cb-cell.is-focus {
+  background: var(--cb-focus);
+  box-shadow: inset 0 0 0 2px var(--cb-accent);
+}
+
+.cb-cell:focus-visible {
+  outline: 2px solid var(--cb-accent);
+  outline-offset: -4px;
+}
+
+.cb-cell.flash-a {
+  animation: cb-flash-a 1s ease-out both;
+  animation-delay: calc(var(--d, 0) * 70ms);
+}
+
+.cb-cell.flash-b {
+  animation: cb-flash-b 1s ease-out both;
+  animation-delay: calc(var(--d, 0) * 70ms);
+}
+
+@keyframes cb-flash-a {
+  30% {
+    background: var(--cb-focus);
+  }
+}
+
+@keyframes cb-flash-b {
+  30% {
+    background: var(--cb-focus);
+  }
+}
+
+.cb-grid path {
+  fill: none;
+}
+
+.cb-grid .cb-thin {
+  stroke: var(--cb-line-thin);
+  stroke-width: 1;
+}
+
+.cb-grid .cb-thick {
+  stroke: var(--cb-line-box);
+  stroke-width: 2;
+}
+
+.cb-grid .cb-frame {
+  fill: none;
+  stroke: var(--cb-frame);
+  stroke-width: 2.4;
+}
+
+/* Default clue look */
+.cb-clue {
+  transition: filter 0.3s ease;
+}
+
+.cb-clue.is-lit {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--cb-clue-strong) 70%, transparent));
+}
+
+.cb-clue .cb-line,
+.cb-clue .cb-shaft,
+.cb-clue .cb-head,
+.cb-clue .cb-diag,
+.cb-clue .cb-cage-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cb-clue[data-kind='thermo'] .cb-line {
+  stroke: var(--cb-clue-fill);
+  stroke-width: 16;
+}
+
+.cb-clue[data-kind='thermo'] .cb-bulb {
+  fill: var(--cb-clue-fill);
+  stroke: var(--cb-clue);
+  stroke-width: 1.3;
+}
+
+.cb-clue[data-kind='thermo'] .cb-node {
+  fill: var(--cb-clue);
+}
+
+
+.cb-clue[data-kind='arrow'] .cb-ring {
+  fill: none;
+  stroke: var(--cb-clue);
+  stroke-width: 1.4;
+}
+
+.cb-clue[data-kind='arrow'] .cb-shaft,
+.cb-clue[data-kind='arrow'] .cb-head {
+  stroke: var(--cb-clue);
+  stroke-width: 1.6;
+}
+
+.cb-clue[data-kind='cage'] .cb-cage-line {
+  stroke: var(--cb-clue);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+  stroke-linecap: butt;
+}
+
+.cb-clue .cb-cage-pat,
+.cb-clue .cb-xv-pat {
+  fill: var(--cb-board);
+}
+
+.cb-clue .cb-cage-sum {
+  fill: var(--cb-clue-strong);
+  font-family: var(--cb-font-ui);
+  font-weight: 700;
+}
+
+.cb-clue[data-kind='renban'] .cb-line {
+  stroke: var(--cb-clue);
+  stroke-width: 10;
+  stroke-opacity: 0.45;
+}
+
+.cb-clue[data-kind='whisper'] .cb-line {
+  stroke: var(--cb-clue);
+  stroke-width: 6;
+  stroke-opacity: 0.6;
+}
+
+.cb-clue .cb-dot {
+  stroke-width: 1.3;
+}
+
+.cb-clue .cb-dot.white {
+  fill: var(--cb-board);
+  stroke: var(--cb-text);
+}
+
+.cb-clue .cb-dot.black {
+  fill: var(--cb-text);
+  stroke: var(--cb-board);
+}
+
+.cb-clue .cb-xv {
+  fill: var(--cb-clue-strong);
+  font-family: var(--cb-font-ui);
+  font-weight: 700;
+}
+
+.cb-clue[data-kind='diagonal'] .cb-diag {
+  stroke: var(--cb-clue);
+  stroke-width: 1.2;
+  stroke-opacity: 0.45;
+}
+
+/* Lit clues: the chip for their rule is on. */
+.cb-clue[data-kind='thermo'].is-lit .cb-line,
+.cb-clue[data-kind='thermo'].is-lit .cb-bulb {
+  stroke: color-mix(in srgb, var(--cb-clue-strong) 38%, transparent);
+}
+
+.cb-clue[data-kind='thermo'].is-lit .cb-bulb {
+  fill: color-mix(in srgb, var(--cb-clue-strong) 38%, transparent);
+  stroke: var(--cb-clue-strong);
+}
+
+.cb-clue[data-kind='thermo'].is-lit .cb-node {
+  fill: var(--cb-clue-strong);
+}
+
+.cb-clue[data-kind='renban'].is-lit .cb-line,
+.cb-clue[data-kind='whisper'].is-lit .cb-line {
+  stroke: var(--cb-clue-strong);
+  stroke-opacity: 0.55;
+}
+
+.cb-clue.is-lit .cb-shaft,
+.cb-clue.is-lit .cb-head,
+.cb-clue.is-lit .cb-ring,
+.cb-clue.is-lit .cb-cage-line,
+.cb-clue.is-lit .cb-diag {
+  stroke: var(--cb-clue-strong);
+  stroke-opacity: 1;
+}
+
+.cb-clue[data-kind='cage'].is-lit .cb-cage-line {
+  stroke-width: 1.8;
+}
+
+.cb-clue[data-kind='kropki'].is-lit .cb-dot,
+.cb-clue[data-kind='xv'].is-lit .cb-xv-pat {
+  stroke: var(--cb-clue-strong);
+  stroke-width: 2.2;
+}
+
+/* Digits and notes */
+.cb-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+}
+
+.cb-digit {
+  display: block;
+  font-family: var(--cb-font-digit);
+  font-size: calc(100cqw / var(--cb-n) * 0.62);
+  line-height: 1;
+  font-variant-numeric: lining-nums;
+}
+
+.cb-digit.is-given {
+  color: var(--cb-ink);
+  font-weight: 600;
+}
+
+.cb-digit.is-mine {
+  color: var(--cb-mine);
+}
+
+.cb-digit.is-hint {
+  color: var(--cb-hint);
+  font-style: italic;
+}
+
+.cb-digit.is-wrong {
+  color: var(--cb-wrong);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.cb-digit.place-a {
+  animation: cb-place-a 0.45s ease-out;
+}
+
+.cb-digit.place-b {
+  animation: cb-place-b 0.45s ease-out;
+}
+
+@keyframes cb-place-a {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes cb-place-b {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+.cb-notes {
+  position: absolute;
+  inset: 8%;
+  display: grid;
+  grid-template-columns: repeat(var(--cb-note-cols, 3), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  font-family: var(--cb-font-ui);
+  font-size: calc(100cqw / var(--cb-n) * 0.22);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--cb-note);
+}
+
+.cb-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+}
+
+.cb-note.on {
+  opacity: 1;
+}
+
+/* Fog */
+.cb-fog {
+  position: relative;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+  transition-delay: calc(var(--d, 0) * 90ms);
+}
+
+.cb-fog::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  background: color-mix(in srgb, var(--cb-board) 72%, var(--cb-text-dim));
+  filter: blur(3px);
+}
+
+.cb-fog.is-on {
+  opacity: 1;
+}
+

@@ -55,6 +55,8 @@ export interface ThemeDef {
   blurb: string;
   /** Mode used when the setting is Auto and the device has no preference. */
   defaultNight: boolean;
+  /** True when the band draws the timer itself, so the app can hide its own copy. */
+  bandShowsTime?: boolean;
   /** Loads the theme's fonts (dynamic import of @fontsource CSS). */
   loadFonts: () => Promise<unknown>;
   /** Signature header band above the board. */

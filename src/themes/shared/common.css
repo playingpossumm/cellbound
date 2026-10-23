@@ -1,0 +1,72 @@
+/* Structure shared by all six themes. Looks live in each theme.css, which is
+   always loaded after this file. */
+
+/* Each digit slot is a size container: theme digits and notes size themselves
+   from the cell with cqw units, so 4x4, 6x6 and 9x9 need no extra rules. */
+[data-theme] .cb-slot {
+  container-type: inline-size;
+}
+
+[data-theme] .cb-cell {
+  position: relative;
+}
+
+[data-theme] .cb-digit {
+  display: block;
+  line-height: 1;
+}
+
+[data-theme] .cb-note {
+  opacity: 0;
+}
+
+[data-theme] .cb-note.on {
+  opacity: 1;
+}
+
+[data-theme] .cb-cell:focus-visible {
+  outline: 2px solid var(--cb-accent);
+  outline-offset: -3px;
+}
+
+/* The base stylesheet gives every clue part a default look. Start each part from
+   a clean slate (same weight as a theme rule, loaded first) so nothing of the
+   default shows through, then let the theme paint. */
+[data-theme] .cb-clue[data-kind] :is(
+  .cb-line, .cb-core, .cb-bulb, .cb-node, .cb-ring, .cb-shaft, .cb-head,
+  .cb-cage-line, .cb-cage-pat, .cb-cage-sum, .cb-dot, .cb-xv-pat, .cb-xv,
+  .cb-diag, .cb-knight, .cb-knight-end
+) {
+  fill: none;
+  stroke: none;
+  stroke-width: 1px;
+  stroke-opacity: 1;
+  fill-opacity: 1;
+  opacity: 1;
+  stroke-dasharray: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: none;
+  paint-order: normal;
+}
+
+[data-theme] .cb-clue[data-kind] :is(.cb-node, .cb-core, .cb-knight, .cb-knight-end) {
+  display: none;
+}
+
+[data-theme] .cb-grid .cb-thin,
+[data-theme] .cb-grid .cb-thick,
+[data-theme] .cb-grid .cb-frame {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The base stylesheet flashes the cell itself; themes paint their own flash. */
+[data-theme] .cb-cell.flash-a,
+[data-theme] .cb-cell.flash-b {
+  animation: none;
+}
+
+[data-theme] .cb-clue.is-lit {
+  filter: none;
+}

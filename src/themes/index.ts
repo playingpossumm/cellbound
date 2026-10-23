@@ -1,19 +1,14 @@
-// Theme registry. STUB with one plain theme; the themes agent replaces it with
-// the six themes and keeps the exports.
-import { createElement } from 'react';
+// Theme registry: the six themes in picker order. The exports themes,
+// DEFAULT_THEME and getTheme are the contract with the app.
 import type { ThemeDef, ThemeId } from './types';
+import { atlas } from './atlas';
+import { paper } from './paper';
+import { swiss } from './swiss';
+import { prism } from './prism';
+import { washi } from './washi';
+import { letters } from './letters';
 
-const stub: ThemeDef = {
-  id: 'atlas',
-  name: 'Star atlas',
-  blurb: 'Ink-blue chart paper, gold hairlines, a slow star field.',
-  defaultNight: true,
-  loadFonts: async () => undefined,
-  Band: ({ title, subtitle, time }) =>
-    createElement('div', { className: 'cb-band-stub' }, `${title} · ${subtitle} · ${time}`),
-};
-
-export const themes: ThemeDef[] = [stub];
+export const themes: ThemeDef[] = [atlas, paper, washi, swiss, prism, letters];
 
 export const DEFAULT_THEME: ThemeId = 'atlas';
 

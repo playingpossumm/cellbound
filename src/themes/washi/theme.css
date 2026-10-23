@@ -1,0 +1,416 @@
+/* Washi and sumi: rice paper, ink and a vermilion seal. */
+
+/* Only the seal glyphs come from the CJK face: one small slice per character. */
+@font-face {
+  font-family: "Shippori Seal";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-111-700-normal.woff2") format("woff2");
+  unicode-range: U+5B8C;
+}
+@font-face {
+  font-family: "Shippori Seal";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-107-700-normal.woff2") format("woff2");
+  unicode-range: U+79CB;
+}
+@font-face {
+  font-family: "Shippori Seal";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-109-700-normal.woff2") format("woff2");
+  unicode-range: U+6625;
+}
+@font-face {
+  font-family: "Shippori Seal";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-106-700-normal.woff2") format("woff2");
+  unicode-range: U+590F;
+}
+@font-face {
+  font-family: "Shippori Seal";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-102-700-normal.woff2") format("woff2");
+  unicode-range: U+51AC;
+}
+
+[data-theme="washi"][data-night="false"] {
+  --wa-paper: #f6f2e9;
+  --wa-sumi: #1e1c1a;
+  --wa-indigo: #2c4a7e;
+  --wa-grey: #645f58;
+  --wa-rule: rgba(30, 28, 26, 0.17);
+  --wa-err: #b3311f;
+  --wa-shu: #c2412d;
+  --wa-shu-text: #b0351f;
+  --wa-shuwash: rgba(194, 65, 45, 0.24);
+  --wa-wash: rgba(30, 28, 26, 0.11);
+  --wa-thermo: rgba(30, 28, 26, 0.12);
+  --wa-renban: rgba(61, 110, 92, 0.28);
+  --wa-mist: rgba(246, 242, 233, 0.96);
+  --wa-conflict: rgba(179, 49, 31, 0.11);
+  --wa-fibre-opacity: 0.13;
+  --wa-fibre-blend: multiply;
+  --wa-blend: multiply;
+  --cb-focus: rgba(194, 65, 45, 0.3);
+  --cb-ground: #f2ede3;
+  --cb-peer: rgba(44, 74, 126, 0.05);
+  --cb-sel: rgba(44, 74, 126, 0.12);
+  --cb-same: rgba(30, 28, 26, 0.07);
+}
+
+[data-theme="washi"][data-night="true"] {
+  --wa-paper: #191c24;
+  --wa-sumi: #ebe5d8;
+  --wa-indigo: #a8c0ea;
+  --wa-grey: #a29c90;
+  --wa-rule: rgba(235, 229, 216, 0.15);
+  --wa-err: #ff8c7a;
+  --wa-shu: #c2412d;
+  --wa-shu-text: #ee7a64;
+  --wa-shuwash: rgba(226, 96, 72, 0.3);
+  --wa-wash: rgba(235, 229, 216, 0.1);
+  --wa-thermo: rgba(235, 229, 216, 0.11);
+  --wa-renban: rgba(120, 180, 150, 0.22);
+  --wa-mist: rgba(25, 28, 36, 0.96);
+  --wa-conflict: rgba(255, 140, 122, 0.12);
+  --wa-fibre-opacity: 0.05;
+  --wa-fibre-blend: screen;
+  --wa-blend: normal;
+  --cb-focus: rgba(226, 96, 72, 0.35);
+  --cb-ground: #14171e;
+  --cb-peer: rgba(168, 192, 234, 0.05);
+  --cb-sel: rgba(168, 192, 234, 0.13);
+  --cb-same: rgba(235, 229, 216, 0.07);
+}
+
+[data-theme="washi"] {
+  --cb-board: var(--wa-paper);
+  --cb-ink: var(--wa-sumi);
+  --cb-mine: var(--wa-indigo);
+  --cb-hint: var(--wa-grey);
+  --cb-note: var(--wa-grey);
+  --cb-wrong: var(--wa-err);
+  --cb-sel-ring: var(--wa-indigo);
+  --cb-line-thin: var(--wa-rule);
+  --cb-line-box: var(--wa-sumi);
+  --cb-frame: var(--wa-sumi);
+  --cb-clue: var(--wa-sumi);
+  --cb-clue-strong: var(--wa-shu);
+  --cb-clue-fill: var(--wa-thermo);
+  --cb-text: var(--wa-sumi);
+  --cb-text-dim: var(--wa-grey);
+  --cb-accent: var(--wa-shu-text);
+  --cb-font-ui: "Shippori Mincho", "Shippori Seal", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+  --cb-font-digit: "Shippori Mincho", "Shippori Seal", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+}
+
+/* Backdrop: long paper fibres from stretched noise. */
+[data-theme="washi"] .wa-fibre {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: var(--wa-fibre-opacity);
+  mix-blend-mode: var(--wa-fibre-blend);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='520' height='300'><filter id='f' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.012 .3' numOctaves='3' seed='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23f)'/></svg>");
+  background-size: 520px 300px;
+}
+
+/* Band: the enso, a title in ink, a season seal. */
+[data-theme="washi"] .wa-band {
+  position: relative;
+  height: 122px;
+  container-type: inline-size;
+  font-family: var(--cb-font-ui);
+  color: var(--wa-sumi);
+}
+[data-theme="washi"] .wa-enso {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+[data-theme="washi"] .wa-e1 { fill: none; stroke: var(--wa-sumi); stroke-width: 10; stroke-linecap: round; opacity: 0.86; }
+[data-theme="washi"] .wa-e2 { fill: none; stroke: var(--wa-sumi); stroke-width: 3; stroke-linecap: round; opacity: 0.35; }
+[data-theme="washi"] .wa-hanko-box { fill: var(--wa-shu); }
+[data-theme="washi"] .wa-hanko-glyph {
+  fill: #ffffff;
+  font-family: var(--cb-font-ui);
+  font-size: 19px;
+  font-weight: 700;
+}
+[data-theme="washi"][data-night="false"] .wa-hanko { mix-blend-mode: multiply; }
+[data-theme="washi"] .wa-title {
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  margin: 0;
+  font-weight: 600;
+  font-size: clamp(30px, 12.8cqw, 48px);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--wa-sumi);
+  white-space: nowrap;
+}
+[data-theme="washi"] .wa-date {
+  position: absolute;
+  left: 4px;
+  top: 66px;
+  font-size: 15px;
+  font-weight: 500;
+}
+[data-theme="washi"] .wa-meta {
+  position: absolute;
+  left: 4px;
+  top: 90px;
+  font-size: 12.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--wa-grey);
+  font-weight: 600;
+}
+[data-theme="washi"] .wa-time {
+  position: absolute;
+  left: 4px;
+  top: 108px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--wa-grey);
+}
+
+/* Cells. */
+[data-theme="washi"] .cb-cell.is-peer { background: var(--cb-peer); }
+[data-theme="washi"] .cb-cell.is-same { background: var(--cb-same); }
+[data-theme="washi"] .cb-cell.is-sel { background: var(--cb-sel); box-shadow: inset 0 0 0 1px var(--cb-sel-ring); }
+[data-theme="washi"] .cb-cell.is-conflict {
+  background: var(--wa-conflict);
+  box-shadow: inset 0 0 0 1.5px var(--wa-err);
+}
+[data-theme="washi"] .cb-cell.is-focus {
+  background: var(--wa-shuwash);
+  box-shadow: inset 0 0 0 1.5px var(--wa-shu);
+  animation: wa-focus 1.8s ease-in-out infinite;
+}
+@keyframes wa-focus {
+  0%, 100% { box-shadow: inset 0 0 0 1px var(--wa-shu); }
+  50% { box-shadow: inset 0 0 0 2.5px var(--wa-shu); }
+}
+[data-theme="washi"] .cb-cell:focus-visible { outline: 2px solid var(--wa-shu-text); outline-offset: -3px; }
+
+/* Unit flash: a wash of ink. */
+[data-theme="washi"] .cb-cell.flash-a::after,
+[data-theme="washi"] .cb-cell.flash-b::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--wa-wash);
+  opacity: 0;
+}
+[data-theme="washi"] .cb-cell.flash-a::after { animation: wa-wash-a 1.4s ease-out calc(var(--d, 0) * 70ms) both; }
+[data-theme="washi"] .cb-cell.flash-b::after { animation: wa-wash-b 1.4s ease-out calc(var(--d, 0) * 70ms) both; }
+@keyframes wa-wash-a { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes wa-wash-b { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Grid: the brush layer draws its own box lines. */
+[data-theme="washi"] .cb-grid { z-index: 3; }
+[data-theme="washi"] .cb-clues { z-index: 2; }
+[data-theme="washi"] .cb-grid .cb-thin { stroke: var(--wa-rule); stroke-width: 1px; }
+[data-theme="washi"] .cb-grid .cb-brush { fill: var(--wa-sumi); stroke: none; }
+
+/* Digits. */
+[data-theme="washi"] .cb-digit { font-family: var(--cb-font-digit); font-size: 57cqw; }
+[data-theme="washi"] .cb-board[data-size="9"] .cb-digit { font-size: 55cqw; }
+[data-theme="washi"] .cb-digit.is-given { color: var(--cb-ink); font-weight: 700; }
+[data-theme="washi"] .cb-digit.is-mine { color: var(--cb-mine); font-weight: 500; font-size: 58cqw; }
+[data-theme="washi"] .cb-digit.is-hint { color: var(--cb-hint); font-weight: 500; font-size: 58cqw; font-style: normal; }
+[data-theme="washi"] .cb-digit.is-wrong {
+  color: var(--cb-wrong);
+  font-weight: 500;
+  font-size: 58cqw;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.1em;
+}
+[data-theme="washi"] .cb-board[data-size="9"] .cb-digit:is(.is-mine, .is-hint, .is-wrong) { font-size: 56cqw; }
+[data-theme="washi"] .cb-digit.place-a { animation: wa-brush-a 0.5s cubic-bezier(0.3, 0.7, 0.2, 1); }
+[data-theme="washi"] .cb-digit.place-b { animation: wa-brush-b 0.5s cubic-bezier(0.3, 0.7, 0.2, 1); }
+@keyframes wa-brush-a { 0% { clip-path: inset(0 100% 0 0); opacity: 0.25; } 100% { clip-path: inset(0 0 0 0); opacity: 1; } }
+@keyframes wa-brush-b { 0% { clip-path: inset(0 100% 0 0); opacity: 0.25; } 100% { clip-path: inset(0 0 0 0); opacity: 1; } }
+
+/* Notes. */
+[data-theme="washi"] .cb-notes {
+  font-family: var(--cb-font-digit);
+  font-size: 22cqw;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--cb-note);
+}
+[data-theme="washi"] .cb-board[data-size="4"] .cb-notes { font-size: 19cqw; }
+
+/* Seals stamped on finished boxes. */
+[data-theme="washi"] .wa-seals { position: absolute; inset: 0; pointer-events: none; }
+[data-theme="washi"] .wa-seal {
+  position: absolute;
+  width: calc(46.7% / var(--cb-n, 6));
+  aspect-ratio: 1;
+  margin: calc(-23.3% / var(--cb-n, 6)) 0 0 calc(-23.3% / var(--cb-n, 6));
+  container-type: inline-size;
+  display: grid;
+  place-items: center;
+  background: var(--wa-shu);
+  color: #ffffff;
+  border-radius: 11%;
+  transform: rotate(-6deg);
+  animation: wa-stamp 0.6s cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+[data-theme="washi"][data-night="false"] .wa-seal { mix-blend-mode: multiply; }
+[data-theme="washi"] .wa-seal span {
+  font-family: var(--cb-font-ui);
+  font-size: 61cqw;
+  font-weight: 700;
+  line-height: 1;
+}
+@keyframes wa-stamp {
+  0% { opacity: 0; transform: scale(1.9) rotate(-16deg); }
+  55% { opacity: 1; transform: scale(0.92) rotate(-5deg); }
+  100% { transform: scale(1) rotate(-6deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="washi"] .wa-seal { animation: none; }
+}
+
+/* Clues. */
+[data-theme="washi"] .cb-clue { transition: opacity 0.3s ease; }
+[data-theme="washi"] .cb-clue[data-kind="thermo"],
+[data-theme="washi"] .cb-clue[data-kind="renban"] { mix-blend-mode: var(--wa-blend); }
+
+[data-theme="washi"] .cb-clue[data-kind="thermo"] .cb-line { stroke: var(--wa-thermo); stroke-width: calc(var(--u) * 0.283); }
+[data-theme="washi"] .cb-clue[data-kind="thermo"] .cb-bulb { r: calc(var(--u) * 0.35); fill: var(--wa-thermo); }
+[data-theme="washi"] .cb-clue[data-kind="thermo"].is-lit .cb-line { stroke: var(--wa-shuwash); }
+[data-theme="washi"] .cb-clue[data-kind="thermo"].is-lit .cb-bulb { fill: var(--wa-shuwash); stroke: none; fill-opacity: 1; }
+
+[data-theme="washi"] .cb-clue[data-kind="arrow"] .cb-ring {
+  r: calc(var(--u) * 0.383);
+  stroke: var(--wa-sumi);
+  stroke-width: 1.6px;
+  opacity: 0.78;
+  vector-effect: non-scaling-stroke;
+}
+[data-theme="washi"] .cb-clue[data-kind="arrow"] .cb-shaft,
+[data-theme="washi"] .cb-clue[data-kind="arrow"] .cb-head {
+  stroke: var(--wa-sumi);
+  stroke-width: 1.6px;
+  opacity: 0.78;
+  vector-effect: non-scaling-stroke;
+}
+[data-theme="washi"] .cb-clue[data-kind="arrow"].is-lit :is(.cb-ring, .cb-shaft, .cb-head) { stroke: var(--wa-shu); opacity: 1; stroke-width: 2px; }
+
+[data-theme="washi"] .cb-clue[data-kind="cage"] .cb-cage-line {
+  stroke: var(--wa-sumi);
+  stroke-width: 1.9px;
+  stroke-dasharray: 0.1 5.5;
+  opacity: 0.6;
+  vector-effect: non-scaling-stroke;
+}
+[data-theme="washi"] .cb-clue[data-kind="cage"].is-lit .cb-cage-line { stroke: var(--wa-shu); opacity: 1; }
+[data-theme="washi"] .cb-clue[data-kind="cage"] .cb-cage-pat { fill: var(--wa-paper); }
+[data-theme="washi"] .cb-clue[data-kind="cage"] .cb-cage-sum {
+  fill: var(--wa-sumi);
+  font-family: var(--cb-font-digit);
+  font-size: calc(var(--u) * var(--k) * 0.21);
+  font-weight: 700;
+}
+
+[data-theme="washi"] .cb-clue[data-kind="renban"] .cb-line { stroke: var(--wa-renban); stroke-width: calc(var(--u) * 0.233); }
+[data-theme="washi"] .cb-clue[data-kind="renban"].is-lit .cb-line { stroke: var(--wa-shuwash); }
+
+[data-theme="washi"] .cb-clue[data-kind="whisper"] .cb-line {
+  stroke: var(--wa-sumi);
+  stroke-width: 1.6px;
+  opacity: 0.6;
+  vector-effect: non-scaling-stroke;
+}
+[data-theme="washi"] .cb-clue[data-kind="whisper"].is-lit .cb-line { stroke: var(--wa-shu); opacity: 1; stroke-width: 2.2px; }
+
+[data-theme="washi"] .cb-clue[data-kind="kropki"] .cb-dot { r: calc(var(--u) * var(--k) * 0.1); }
+[data-theme="washi"] .cb-clue[data-kind="kropki"] .cb-dot.white { fill: var(--wa-paper); stroke: var(--wa-sumi); stroke-width: 1.4px; }
+[data-theme="washi"] .cb-clue[data-kind="kropki"] .cb-dot.black { fill: var(--wa-sumi); stroke: var(--wa-sumi); stroke-width: 1px; }
+[data-theme="washi"] .cb-clue[data-kind="kropki"].is-lit .cb-dot { stroke: var(--wa-shu); stroke-width: 2.2px; }
+
+[data-theme="washi"] .cb-clue[data-kind="xv"] .cb-xv-pat { fill: var(--wa-paper); }
+[data-theme="washi"] .cb-clue[data-kind="xv"] .cb-xv {
+  fill: var(--wa-sumi);
+  font-family: var(--cb-font-digit);
+  font-size: calc(var(--u) * var(--k) * 0.25);
+  font-weight: 700;
+}
+[data-theme="washi"] .cb-clue[data-kind="xv"].is-lit .cb-xv { fill: var(--wa-shu-text); }
+
+[data-theme="washi"] .cb-clue[data-kind="diagonal"] .cb-diag {
+  stroke: var(--wa-sumi);
+  stroke-width: 1.9px;
+  stroke-dasharray: 0.1 6.5;
+  opacity: 0.45;
+  vector-effect: non-scaling-stroke;
+}
+[data-theme="washi"] .cb-clue[data-kind="diagonal"].is-lit .cb-diag { stroke: var(--wa-shu); opacity: 1; }
+
+[data-theme="washi"] .cb-clue[data-kind="antiKnight"] { opacity: 0; }
+[data-theme="washi"] .cb-clue[data-kind="antiKnight"].is-lit { opacity: 1; }
+[data-theme="washi"] .cb-clue[data-kind="antiKnight"] .cb-knight {
+  display: inline;
+  stroke: var(--wa-shu);
+  stroke-width: 2px;
+  stroke-dasharray: 0.1 5.5;
+  vector-effect: non-scaling-stroke;
+}
+[data-theme="washi"] .cb-clue[data-kind="antiKnight"] .cb-knight-end { display: inline; fill: var(--wa-shu); }
+
+/* Fog: mist that thickens over a cell and softly bleeds into the next. */
+[data-theme="washi"] .cb-fog {
+  position: relative;
+  container-type: inline-size;
+  opacity: 0;
+  transition: opacity 1s ease;
+  transition-delay: calc(var(--d, 0) * 110ms);
+}
+[data-theme="washi"] .cb-fog::before {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  border-radius: 34%;
+  background: var(--wa-mist);
+  filter: blur(10cqw);
+}
+[data-theme="washi"] .cb-fog.is-on { opacity: 1; }
+
+/* App chrome in the washi style: square chips that fill with ink, underlined keys. */
+[data-theme="washi"] .cb-timer { font-size: 19px; font-weight: 500; letter-spacing: 0.04em; }
+[data-theme="washi"] .cb-play .cb-chip {
+  border: 1px solid var(--wa-rule);
+  border-radius: 0;
+  color: var(--wa-sumi);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+[data-theme="washi"] .cb-play .cb-chip.on { background: var(--wa-sumi); color: var(--wa-paper); border-color: var(--wa-sumi); }
+[data-theme="washi"] .cb-rtext { font-style: normal; font-size: 15.5px; line-height: 1.35; }
+[data-theme="washi"] .cb-key { border: 0; border-bottom: 1px solid var(--wa-rule); border-radius: 0; min-height: 64px; gap: 3px; }
+[data-theme="washi"] .cb-key-d { font-size: 30px; font-weight: 600; }
+[data-theme="washi"] .cb-key-left { font-size: 12px; font-weight: 500; color: var(--wa-grey); }
+[data-theme="washi"] .cb-key.spent { opacity: 0.38; border-bottom-style: solid; }
+[data-theme="washi"] .cb-tool { font-size: 13.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: none; color: var(--wa-grey); }
+[data-theme="washi"] .cb-tool.on { color: var(--wa-shu-text); }
