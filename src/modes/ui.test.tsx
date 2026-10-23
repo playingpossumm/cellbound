@@ -5,7 +5,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { GameViewProps } from '../app/GameView';
-import { actions, getGame } from '../game/store';
+import { actions, getGame, solveForTesting } from '../game/store';
 import { LearnApp } from './learn/LearnApp';
 import { LESSONS } from './learn/lessons';
 import { isLessonDone, openLesson, peekLessonRequest, resetLearnStore } from './learn/store';
@@ -102,7 +102,7 @@ describe('Learn screen', () => {
     expect(getGame()?.mode).toBe('learn');
     expect(getGame()?.puzzle.size).toBe(4);
     expect(isLessonDone('thermo')).toBe(false);
-    await act(async () => actions.solveForTesting());
+    await act(async () => solveForTesting());
     await until(() => text().includes('Lesson complete'), 'the lesson panel');
     expect(isLessonDone('thermo')).toBe(true);
     await click(button('All lessons'));
@@ -127,8 +127,18 @@ describe('Learn screen', () => {
   it('goes back out through onExit from the list', async () => {
     let exited = 0;
     await mount(<LearnApp onExit={() => exited++} GameViewComponent={FakeGameView} />);
-    await click(host.querySelector('.cb-learn-back') ?? undefined);
+    await click(host.querySelector('button[aria-label="Back"]') ?? undefined);
     expect(exited).toBe(1);
+  });
+
+  it('keeps the menu one tap away on the list and on a lesson', async () => {
+    await learn();
+    expect(host.querySelector('header.cb-top button[aria-label="Menu"]')).not.toBeNull();
+    await click(button(/Cage/));
+    expect(host.querySelector('header.cb-top button[aria-label="Menu"]')).not.toBeNull();
+    // The arrow in the bar returns to the list; the step buttons keep Back and Next.
+    await click(host.querySelector('button[aria-label="All lessons"]') ?? undefined);
+    expect(host.querySelector('.cb-learn-list')).not.toBeNull();
   });
 });
 
@@ -160,7 +170,7 @@ describe('Run screen', () => {
     expect(getGame()?.mods).toMatchObject({ hearts: 3, shield: 0 });
     expect(host.querySelector('.cb-run-hearts')?.getAttribute('aria-label')).toBe('3 hearts');
 
-    await act(async () => actions.solveForTesting());
+    await act(async () => solveForTesting());
     await until(() => text().includes('Board 1 cleared'), 'the board result');
     expect(text()).toContain('Run total');
     await click(button('Choose a card'));
@@ -239,7 +249,14 @@ describe('Run screen', () => {
     await click(button(/Collection/));
     expect(host.querySelectorAll('.cb-run-card.is-locked')).toHaveLength(5);
     expect(text()).toContain('Finish a run.');
-    await click(host.querySelector('.cb-run-back') ?? undefined);
+    await click(host.querySelector('button[aria-label="Back"]') ?? undefined);
     expect(button('Start daily run')).toBeDefined();
+  });
+
+  it('keeps the menu one tap away on the home and the Collection', async () => {
+    await run();
+    expect(host.querySelector('header.cb-top button[aria-label="Menu"]')).not.toBeNull();
+    await click(button(/Collection/));
+    expect(host.querySelector('header.cb-top button[aria-label="Menu"]')).not.toBeNull();
   });
 });

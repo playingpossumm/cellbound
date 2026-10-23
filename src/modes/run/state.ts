@@ -1,5 +1,7 @@
 // The Run state machine. Every transition is a pure function from one RunState to the
 // next, so it can be saved, resumed and tested without a browser.
+import { APP_NAME } from '../../app/brand';
+import { formatDateLong } from '../../game/logic';
 import { BOARD_COUNT, BOARD_SPECS, setupBoard, type BoardSetup } from './boards';
 import { cardById, isCursed, multiplierOf, START_HEARTS, type Card } from './cards';
 import { offerFor } from './offers';
@@ -216,7 +218,7 @@ export function boardsCleared(run: RunState): number {
 
 export function shareText(run: RunState): string {
   const lines: string[] = [];
-  lines.push(run.daily ? `Cellbound Run, daily ${run.daily}` : 'Cellbound Run, free run');
+  lines.push(run.daily ? `${APP_NAME} Run, ${formatDateLong(run.daily)}` : `${APP_NAME} Run, free run`);
   const last = run.results[run.results.length - 1];
   if (run.outcome === 'finished') {
     lines.push(`Finished all ${BOARD_COUNT} boards with ${run.hearts} ${run.hearts === 1 ? 'heart' : 'hearts'} left`);

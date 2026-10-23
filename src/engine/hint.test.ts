@@ -14,6 +14,7 @@ function playByHints(p: Puzzle): { moves: number; solved: boolean } {
     expect(h.map((s) => s.level)).toEqual([1, 2, 3]);
     for (const s of h) {
       expect(s.text).not.toMatch(/\u2014/);
+      expect(s.text).not.toMatch(/\ba 8\b/);
       expect(s.focus.length).toBeGreaterThan(0);
     }
     const mv = h[2].move!;

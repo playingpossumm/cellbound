@@ -9,14 +9,15 @@ import { actions, checksSolution, getGame, heartsLeft, startClock, useFx } from 
 import { formatTime, fullGrid } from '../game/logic';
 import { useSettings } from '../game/settings';
 import { currentStreak, useStats } from '../game/stats';
-import { learn } from '../modes';
+import { useLessonDone } from '../modes';
 import { getTheme } from '../themes';
-import { APP_NAME } from './App';
-import { BackIcon, EraseIcon, HintIcon, MenuIcon, NotesIcon, PauseIcon, PlayIcon, ShareIcon, StatsIcon, UndoIcon } from './icons';
+import { APP_NAME } from './brand';
+import { EraseIcon, HintIcon, NotesIcon, PauseIcon, PlayIcon, ShareIcon, StatsIcon, UndoIcon } from './icons';
 import { classicText, kindsIn, RULE_NAMES, ruleText } from './rules';
 import { appUrl, shareResult } from './share';
 import { useShell } from './shell';
 import { useNight } from './theme';
+import { TopBar } from './TopBar';
 
 export interface GameViewProps {
   game: GameState;
@@ -37,6 +38,7 @@ export interface GameViewProps {
 }
 
 const LAPTOP = 900;
+const NO_NOTES = 'Notes are off for this board.';
 
 /**
  * Board edge in CSS pixels: as large as fits. Phones use the column width;
@@ -176,7 +178,8 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
       return;
     }
     const reduce = document.documentElement.dataset.reducedMotion === 'true';
-    const t = setTimeout(() => setShowEnd(true), reduce ? 0 : 1100);
+    // Long enough for the whole-board wave to reach the far corner of a 9x9.
+    const t = setTimeout(() => setShowEnd(true), reduce ? 0 : 1500);
     return () => clearTimeout(t);
   }, [ended, game.key]);
 
@@ -239,7 +242,9 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
       const code = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
       if (e.shiftKey && code) {
         e.preventDefault();
-        if (g.notesMode) enter(Number(code[1]));
+        // With notes off (a Run curse) the note key must not place a digit instead.
+        if (g.mods?.noNotes) setNotice(NO_NOTES);
+        else if (g.notesMode) enter(Number(code[1]));
         else {
           actions.toggleNotes();
           enter(Number(code[1]));
@@ -280,7 +285,8 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
         case 'd':
           return move(0, 1);
         case 'n':
-          actions.toggleNotes();
+          if (g.mods?.noNotes) setNotice(NO_NOTES);
+          else actions.toggleNotes();
           return;
         case 'z':
           actions.undo();
@@ -313,44 +319,87 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
 
   return (
     <div className="cb-game" data-mode={game.mode} style={{ ['--cb-side' as string]: `${side}px` }}>
-      <header className="cb-top" ref={topRef}>
-        <div className="cb-top-left">
-          <button type="button" className="cb-ib" aria-label="Menu" onClick={shell.openMenu}>
-            <MenuIcon />
-          </button>
-          {onExit && (
-            <button type="button" className="cb-ib" aria-label="Leave this board" onClick={onExit}>
-              <BackIcon />
+      <TopBar
+        ref={topRef}
+        title={title}
+        onBack={onExit}
+        backLabel="Leave this board"
+        right={
+          <>
+            <button
+              type="button"
+              className="cb-ib"
+              aria-label={paused ? 'Resume' : 'Pause'}
+              onClick={() => (paused ? actions.resume() : actions.pause())}
+              disabled={ended}
+            >
+              {paused ? <PlayIcon /> : <PauseIcon />}
             </button>
-          )}
-        </div>
-        <div className="cb-top-mid">
-          <span className="cb-top-title">{title}</span>
-          {time && (
-            <span className={`cb-timer${limit !== undefined ? ' is-limit' : ''}`} aria-label={`${limit !== undefined ? 'Time left' : 'Time'} ${time}`} role="timer">
-              {time}
-            </span>
-          )}
-        </div>
-        <div className="cb-top-right">
-          <button
-            type="button"
-            className="cb-ib"
-            aria-label={paused ? 'Resume' : 'Pause'}
-            onClick={() => (paused ? actions.resume() : actions.pause())}
-            disabled={ended}
+            <button type="button" className="cb-ib" aria-label="Stats" onClick={() => shell.go('stats')}>
+              <StatsIcon />
+            </button>
+          </>
+        }
+      >
+        {time && (
+          // Themes whose band draws the time keep this copy for screen readers only,
+          // so the time shows once on screen.
+          <span
+            className={`cb-timer${limit !== undefined ? ' is-limit' : ''}${theme.bandShowsTime ? ' cb-sr' : ''}`}
+            aria-label={`${limit !== undefined ? 'Time left' : 'Time'} ${time}`}
+            role="timer"
           >
-            {paused ? <PlayIcon /> : <PauseIcon />}
-          </button>
-          <button type="button" className="cb-ib" aria-label="Stats" onClick={() => shell.go('stats')}>
-            <StatsIcon />
-          </button>
-        </div>
-      </header>
+            {time}
+          </span>
+        )}
+      </TopBar>
 
       <div className="cb-play" ref={playRef}>
         <div className="cb-band-wrap" ref={bandRef}>
           <Band title={title} subtitle={subtitle} time={time} puzzle={p} values={full} night={night} />
+        </div>
+
+        {/* The board comes before the side panel in the page, so Tab and screen readers
+            reach it first; grid areas still place the panel above, beside or below it. */}
+        <div className="cb-stage">
+          <div className={`cb-board-wrap${paused ? ' is-paused' : ''}`} style={{ width: side, height: side }}>
+            <Board
+              puzzle={p}
+              values={game.values}
+              notes={game.notes}
+              selected={ended ? null : game.selected}
+              hinted={game.hinted}
+              fogCleared={game.fog?.cleared}
+              highlights={highlights}
+              wrong={wrong}
+              conflict={conflictCells}
+              focus={focus}
+              lit={lit}
+              doneBoxes={game.doneBoxes}
+              flash={fx.flash}
+              flashCount={fx.flashCount}
+              placedCell={fx.placedCell}
+              placeCount={fx.placeCount}
+              placedAt={fx.placedAt}
+              theme={theme}
+              solved={game.status === 'solved'}
+              onSelect={onSelect}
+            />
+            {paused && (
+              <div className="cb-pause">
+                <p className="cb-pause-title">Paused</p>
+                <button type="button" className="cb-btn primary" onClick={actions.resume} autoFocus>
+                  Resume
+                </button>
+              </div>
+            )}
+            {ended && showEnd &&
+              (endPanel ? (
+                <div className="cb-result cb-end-panel">{endPanel}</div>
+              ) : (
+                <ResultCard game={game} title={title} subtitle={subtitle} next={next} shareUrl={shareUrl} />
+              ))}
+          </div>
         </div>
 
         <div className="cb-side">
@@ -367,7 +416,6 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
           {!hideRuleChips && kinds.length > 0 && (
             <div className="cb-chips" role="group" aria-label="Rules">
               {kinds.map((k) => {
-                const isNew = !learn.isLessonDone(k);
                 return (
                   <span key={k} className="cb-chip-wrap">
                     <button
@@ -382,16 +430,7 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
                     >
                       {RULE_NAMES[k]}
                     </button>
-                    {isNew && (
-                      <button
-                        type="button"
-                        className="cb-chip-new"
-                        aria-label={`New rule: open the ${RULE_NAMES[k]} lesson`}
-                        onClick={() => shell.openLesson(k)}
-                      >
-                        New
-                      </button>
-                    )}
+                    <NewMark kind={k} onOpen={() => shell.openLesson(k)} />
                   </span>
                 );
               })}
@@ -440,7 +479,7 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
               aria-pressed={game.notesMode}
               onClick={actions.toggleNotes}
               disabled={ended || paused || !!game.mods?.noNotes}
-              title={game.mods?.noNotes ? 'Notes are off for this board' : undefined}
+              title={game.mods?.noNotes ? NO_NOTES : undefined}
             >
               <NotesIcon />
               <span>Notes</span>
@@ -451,49 +490,19 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
             </button>
           </div>
         </div>
-
-        <div className="cb-stage">
-          <div className={`cb-board-wrap${paused ? ' is-paused' : ''}`} style={{ width: side, height: side }}>
-            <Board
-              puzzle={p}
-              values={game.values}
-              notes={game.notes}
-              selected={ended ? null : game.selected}
-              hinted={game.hinted}
-              fogCleared={game.fog?.cleared}
-              highlights={highlights}
-              wrong={wrong}
-              conflict={conflictCells}
-              focus={focus}
-              lit={lit}
-              doneBoxes={game.doneBoxes}
-              flash={fx.flash}
-              flashCount={fx.flashCount}
-              placedCell={fx.placedCell}
-              placeCount={fx.placeCount}
-              placedAt={fx.placedAt}
-              theme={theme}
-              solved={game.status === 'solved'}
-              onSelect={onSelect}
-            />
-            {paused && (
-              <div className="cb-pause">
-                <p className="cb-pause-title">Paused</p>
-                <button type="button" className="cb-btn primary" onClick={actions.resume} autoFocus>
-                  Resume
-                </button>
-              </div>
-            )}
-            {ended && showEnd &&
-              (endPanel ? (
-                <div className="cb-result cb-end-panel">{endPanel}</div>
-              ) : (
-                <ResultCard game={game} title={title} subtitle={subtitle} next={next} shareUrl={shareUrl} />
-              ))}
-          </div>
-        </div>
       </div>
     </div>
+  );
+}
+
+/** The New mark on a rule chip, until the player finishes that rule's lesson. */
+function NewMark({ kind, onOpen }: { kind: ClueKind; onOpen: () => void }) {
+  const done = useLessonDone(kind);
+  if (done) return null;
+  return (
+    <button type="button" className="cb-chip-new" aria-label={`New rule: open the ${RULE_NAMES[kind]} lesson`} onClick={onOpen}>
+      New
+    </button>
   );
 }
 
@@ -521,7 +530,7 @@ function ResultCard({ game, title, subtitle, next, shareUrl }: { game: GameState
       ? `${APP_NAME} ${title}, ${subtitle}: solved in ${time} with ${plural(game.mistakes, 'mistake', 'mistakes')} and ${plural(game.hintsUsed, 'hint', 'hints')}.${streak ? ` Streak ${streak}.` : ''}`
       : `${APP_NAME} ${title}, ${subtitle}: ${reason.toLowerCase()} after ${time}.`;
     const r = await shareResult(text, shareUrl ?? appUrl());
-    setShared(r === 'copied' ? 'Result copied.' : r === 'shared' ? 'Shared.' : 'Sharing is not available here.');
+    setShared(r === 'copied' ? 'Copied to the clipboard.' : r === 'shared' ? 'Shared.' : 'Sharing is not available here.');
   };
 
   return (
@@ -551,15 +560,15 @@ function ResultCard({ game, title, subtitle, next, shareUrl }: { game: GameState
           )}
         </dl>
         <div className="cb-result-actions">
-          <button type="button" className="cb-btn" onClick={share}>
-            <ShareIcon />
-            Share
-          </button>
           {next && (
             <button type="button" className="cb-btn primary" onClick={next.run}>
               {next.label}
             </button>
           )}
+          <button type="button" className="cb-btn" onClick={share}>
+            <ShareIcon />
+            Share
+          </button>
           <button type="button" className="cb-btn" onClick={() => shell.go('stats')}>
             Stats
           </button>

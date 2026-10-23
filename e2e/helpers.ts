@@ -20,7 +20,9 @@ export async function openFresh(page: Page, seed?: unknown, path = '/') {
     if (saved) localStorage.setItem('cellbound:v1', JSON.stringify(saved));
   }, seed ?? null);
   await page.goto(path);
-  await expect(page.locator('.cb-board, .cb-page').first()).toBeVisible();
+  // Every path the tests open starts on a board. The Loading page also uses .cb-page,
+  // so waiting for the board avoids typing before the game is there.
+  await expect(page.locator('.cb-board')).toBeVisible();
 }
 
 export async function openScreen(page: Page, name: string) {

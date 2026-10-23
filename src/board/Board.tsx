@@ -1,12 +1,12 @@
 // The board: cells, grid, clues, digits, fog and overlays, in the class
 // vocabulary of the spec (section 5). Themes style these classes and may
 // replace the grid, clue, box-done and digit layers.
-import { memo, useEffect, useMemo, useRef, type CSSProperties } from 'react';
+import { memo, useEffect, useId, useMemo, useRef, type CSSProperties } from 'react';
 import type { CellIndex, ClueKind, Digit, Puzzle } from '../engine/types';
 import type { ThemeDef } from '../themes/types';
 import { fogGlyphs } from '../game/logic';
 import { makeGeometry } from './geometry';
-import { DefaultClueLayer, DefaultGridLayer } from './layers';
+import { clueCells, DefaultClueLayer, DefaultGridLayer } from './layers';
 
 export interface BoardProps {
   puzzle: Puzzle;
@@ -45,6 +45,22 @@ function cellLabel(r: number, c: number, d: Digit, given: boolean, notes: number
   return notes.length ? `${at}, empty, notes ${notes.join(' ')}` : `${at}, empty`;
 }
 
+/**
+ * The clues a fog board draws. A dot or an X/V sits on the edge between two cells, so it
+ * appears once both are clear (as the engine's fog solver sees it); a line appears as soon
+ * as one of its cells is clear, and the mask in the clue layer hides the rest under fog.
+ */
+function shownClues(puzzle: Puzzle, hidden: boolean[] | undefined): Puzzle {
+  if (!hidden) return puzzle;
+  const clues = puzzle.clues.filter((c) => {
+    const cells = clueCells(c);
+    if (!cells.length) return true;
+    if (c.kind === 'kropki' || c.kind === 'xv') return cells.every((i) => !hidden[i]);
+    return cells.some((i) => !hidden[i]);
+  });
+  return clues.length === puzzle.clues.length ? puzzle : { ...puzzle, clues };
+}
+
 function BoardImpl(props: BoardProps) {
   const {
     puzzle, values, notes, selected, hinted, fogCleared, highlights, wrong, conflict, focus, lit,
@@ -53,8 +69,10 @@ function BoardImpl(props: BoardProps) {
   const n = puzzle.size;
   const geo = useMemo(() => makeGeometry(puzzle), [puzzle]);
   const cellsRef = useRef<HTMLDivElement>(null);
+  const maskId = `cb-fogmask-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const full = useMemo(() => puzzle.givens.map((d, i) => d || values[i] || 0), [puzzle, values]);
   const hidden = useMemo(() => (fogCleared ? fogCleared.map((c) => !c) : undefined), [fogCleared]);
+  const cluePuzzle = useMemo(() => shownClues(puzzle, hidden), [puzzle, hidden]);
   const done = useMemo(() => new Set(doneBoxes), [doneBoxes]);
   const focusSet = useMemo(() => new Set(focus), [focus]);
   const flashCls = flashCount % 2 ? 'flash-a' : 'flash-b';
@@ -173,7 +191,26 @@ function BoardImpl(props: BoardProps) {
         <Grid geo={geo} />
       </svg>
       <svg className="cb-clues" viewBox={`0 0 ${geo.px} ${geo.px}`} aria-hidden="true" focusable="false">
-        <Clues puzzle={puzzle} geo={geo} lit={lit} hidden={hidden} />
+        {hidden ? (
+          <>
+            {/* Clues show only over cleared cells, whatever a theme's fog lets through. */}
+            <defs>
+              <mask id={maskId} maskUnits="userSpaceOnUse" x={-geo.cell} y={-geo.cell} width={geo.px + 2 * geo.cell} height={geo.px + 2 * geo.cell}>
+                {hidden.map((h, i) =>
+                  h ? null : (
+                    // A half-unit overlap, so no seam shows where two cleared cells meet.
+                    <rect key={i} x={(i % n) * geo.cell - 0.5} y={Math.floor(i / n) * geo.cell - 0.5} width={geo.cell + 1} height={geo.cell + 1} fill="#fff" />
+                  ),
+                )}
+              </mask>
+            </defs>
+            <g mask={`url(#${maskId})`}>
+              <Clues puzzle={cluePuzzle} geo={geo} lit={lit} hidden={hidden} />
+            </g>
+          </>
+        ) : (
+          <Clues puzzle={puzzle} geo={geo} lit={lit} hidden={hidden} />
+        )}
       </svg>
       <div className="cb-digits" aria-hidden="true">
         {slots}

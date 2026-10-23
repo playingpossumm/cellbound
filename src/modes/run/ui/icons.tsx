@@ -63,14 +63,6 @@ export function KindIcon({ kind, className }: { kind: CardKind; className?: stri
   );
 }
 
-export function BackIcon({ className }: { className?: string }) {
-  return (
-    <Svg className={className}>
-      <path d="M15 5l-7 7 7 7" />
-    </Svg>
-  );
-}
-
 export function LockIcon({ className }: { className?: string }) {
   return (
     <Svg className={className}>

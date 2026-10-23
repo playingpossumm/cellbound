@@ -1,8 +1,9 @@
 // The Learn screen: the lesson list, one lesson at a time, and its practice puzzle.
 import { useEffect, useLayoutEffect, useState, type ComponentType, type KeyboardEvent, type ReactNode } from 'react';
 import { GameView, type GameViewProps } from '../../app/GameView';
+import { TopBar } from '../../app/TopBar';
 import { startGame, useGame } from '../../game/store';
-import { BackIcon, CheckIcon } from '../run/ui/icons';
+import { CheckIcon } from '../run/ui/icons';
 import { useScreenEntry } from '../screenEntry';
 import './learn.css';
 import { LESSONS, lessonById, practicePuzzle, type LessonId } from './lessons';
@@ -17,17 +18,14 @@ export interface LearnAppProps {
   GameViewComponent?: ComponentType<GameViewProps>;
 }
 
-function Page({ title, onBack, children }: { title?: string; onBack: () => void; children: ReactNode }) {
+/** A Learn page: the app's top bar (menu and back), then the page. */
+function Page({ title, onBack, backLabel, children }: { title?: string; onBack: () => void; backLabel?: string; children: ReactNode }) {
   const ref = useScreenEntry<HTMLElement>();
   return (
     <div className="cb-learn">
+      <TopBar title="Learn" onBack={onBack} backLabel={backLabel} />
       <main className="cb-learn-page" ref={ref} tabIndex={-1}>
-        <header className="cb-learn-head">
-          <button type="button" className="cb-learn-back" onClick={onBack} aria-label="Back">
-            <BackIcon className="cb-learn-back-icon" />
-          </button>
-          {title && <h1 className="cb-learn-title">{title}</h1>}
-        </header>
+        {title && <h1 className="cb-learn-title">{title}</h1>}
         {children}
       </main>
     </div>
@@ -136,7 +134,7 @@ function LessonView(p: {
     if (e.key === 'ArrowLeft' && p.step > 0) p.onStep(p.step - 1);
   };
   return (
-    <Page onBack={p.onList}>
+    <Page onBack={p.onList} backLabel="All lessons">
       <div className="cb-learn-lesson" onKeyDown={onKey}>
         <p className="cb-learn-label">
           Lesson {index + 1} of {LESSONS.length}
@@ -227,7 +225,7 @@ function Practice(p: {
       onExit={p.onLesson}
       extra={
         <div className="cb-learn-extra">
-          <span>Practice: fill the grid using the {lesson.title.toLowerCase()} rule.</span>
+          <span>{lesson.id === 'basics' ? 'Practice: fill the grid with the basic rules.' : `Practice: fill the grid using the ${lesson.title} rule.`}</span>
           <button type="button" className="cb-learn-btn is-small" onClick={p.onLesson}>
             Lesson
           </button>
@@ -239,7 +237,10 @@ function Practice(p: {
             <h2 id="cb-learn-panel-h" className="cb-learn-panel-title">
               Lesson complete
             </h2>
-            <p>You solved the {lesson.title.toLowerCase()} practice puzzle. {following ? `Next is ${following.title.toLowerCase()}.` : 'That was the last lesson.'}</p>
+            <p>
+              You solved the {lesson.id === 'basics' ? 'basics' : lesson.title} practice puzzle.{' '}
+              {following ? `Next is ${following.title}.` : 'That was the last lesson.'}
+            </p>
             <div className="cb-learn-actions">
               {following && (
                 <button type="button" className="cb-learn-btn is-primary" onClick={() => p.onNext(following.id)} autoFocus>

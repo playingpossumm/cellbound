@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BAD_COPY } from '../dev/forbidden';
+import { APP_NAME } from '../../app/brand';
+import { BAD_COPY } from '../../test/copy';
 import { BOARD_COUNT, BOARD_SPECS, PAR_MS } from './boards';
 import { cardPool, cardById, START_HEARTS } from './cards';
 import {
@@ -285,7 +286,7 @@ describe('share text', () => {
     r = choose({ ...r, offer: ['fog'] }, 'fog');
     r = finishBoard(r, { status: 'failed', mistakes: 3, hintsUsed: 0, elapsedMs: 90_000 });
     const t = shareText(r);
-    expect(t).toContain('Cellbound Run, daily 2026-10-23');
+    expect(t).toContain(`${APP_NAME} Run, Friday 23 October`);
     expect(t).toContain('Out of hearts on board 2 of 5');
     expect(t).toContain('Score ');
     expect(t).toContain('1: ');
@@ -298,7 +299,7 @@ describe('share text', () => {
     for (let i = 0; i < BOARD_COUNT - 1; i++) r = playOn(r);
     r = finishBoard(r, clean);
     const t = shareText(r);
-    expect(t.split('\n')[0]).toBe('Cellbound Run, free run');
+    expect(t.split('\n')[0]).toBe(`${APP_NAME} Run, free run`);
     expect(t).toMatch(/Finished all 5 boards with \d hearts? left/);
   });
 });

@@ -1,7 +1,6 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { themeDir as dir, rootVars, themeCss } from './dev/cssvars';
+import { EM_DASH } from '../test/copy';
+import { rootVars, themeCss } from '../test/cssvars';
 import { DEFAULT_THEME, getTheme, themes } from './index';
 import { buildItems, project } from './letters/cube';
 import { cellsLoops, cellsOutline, simplify, wavePath } from './shared/util';
@@ -24,7 +23,8 @@ describe('theme registry', () => {
   it('describes each theme in one plain line', () => {
     for (const t of themes) {
       expect(t.name.length).toBeGreaterThan(2);
-      expect(t.blurb).not.toMatch(/\n|—/);
+      expect(t.blurb).not.toContain('\n');
+      expect(t.blurb).not.toContain(EM_DASH);
       expect(typeof t.loadFonts).toBe('function');
       expect(typeof t.Band).toBe('function');
     }
@@ -45,23 +45,6 @@ describe('theme stylesheets', () => {
     }
   }
 
-  it('keeps em dashes, emails and absolute paths out of every source file', () => {
-    const files: string[] = [];
-    const walk = (d: string): void => {
-      for (const f of readdirSync(d)) {
-        const p = join(d, f);
-        if (statSync(p).isDirectory()) walk(p);
-        else if (/\.(ts|tsx|css|html)$/.test(f) && f !== 'themes.test.ts') files.push(p);
-      }
-    };
-    walk(dir);
-    expect(files.length).toBeGreaterThan(20);
-    for (const f of files) {
-      const text = readFileSync(f, 'utf8');
-      expect(text, f).not.toMatch(/—/);
-      expect(text, f).not.toMatch(/[A-Za-z]:\\Users|\/Users\/|@[a-z0-9-]+\.(com|org|net)\b/i);
-    }
-  });
 });
 
 describe('shape helpers', () => {

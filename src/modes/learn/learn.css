@@ -30,12 +30,6 @@
 :is(.cb-learn-extra, .cb-learn-panel) :is(p, h2) {
   margin: 0;
 }
-.cb-learn-head {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: -10px;
-}
 .cb-learn-title {
   margin: 0;
   font-family: var(--cb-font-digit);
@@ -65,7 +59,6 @@
 
 /* Buttons */
 .cb-learn-btn,
-.cb-learn-back,
 .cb-learn-row {
   font: inherit;
   color: var(--cb-text);
@@ -110,22 +103,7 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
-.cb-learn-back {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--cb-ink);
-}
-.cb-learn-back-icon {
-  width: 24px;
-  height: 24px;
-}
 .cb-learn-btn:focus-visible,
-.cb-learn-back:focus-visible,
 .cb-learn-row:focus-visible {
   outline: 3px solid var(--cb-accent);
   outline-offset: 2px;
@@ -162,7 +140,7 @@
 .cb-learn-num {
   font-family: var(--cb-font-digit);
   font-size: 24px;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   color: var(--cb-text-dim);
 }
 .cb-learn-row-text {
@@ -297,15 +275,16 @@
   stroke: var(--cb-line-box);
   stroke-width: 2.6;
 }
+/* A pale band, as the boards draw it, so digits on the thermometer stay easy to read. */
 .cb-learn-thermo-line {
   fill: none;
-  stroke: var(--cb-clue);
+  stroke: color-mix(in srgb, var(--cb-clue) 32%, transparent);
   stroke-width: 13;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 .cb-learn-thermo-bulb {
-  fill: var(--cb-clue);
+  fill: color-mix(in srgb, var(--cb-clue) 32%, transparent);
 }
 .cb-learn-ring {
   fill: none;

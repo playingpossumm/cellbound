@@ -101,14 +101,43 @@ test('the timer stops while the tab is hidden', async ({ page }) => {
 test('settings persist and apply', async ({ page }) => {
   await openFresh(page);
   await openScreen(page, 'Settings');
-  await page.getByLabel('Dark').check();
-  await page.getByLabel('Hide the timer').check();
+  await page.getByRole('radio', { name: 'Dark', exact: true }).check();
+  await page.getByRole('checkbox', { name: 'Hide the timer' }).check();
   await expect(page.locator('html')).toHaveAttribute('data-night', 'true');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-night', 'true');
+  await openScreen(page, 'Settings');
+  await expect(page.getByRole('radio', { name: 'Dark', exact: true })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Hide the timer' })).toBeChecked();
   await openScreen(page, 'Daily');
   await expect(page.locator('.cb-board')).toBeVisible();
+  // No time anywhere: neither in the top bar nor in the theme band.
   await expect(page.locator('.cb-timer')).toHaveCount(0);
+  await expect(page.locator('.cb-top')).not.toContainText(/\d:\d\d/);
+  await expect(page.locator('.cb-band-wrap')).not.toContainText(/\d:\d\d/);
+});
+
+test('the time shows once in every theme', async ({ page }) => {
+  await openFresh(page);
+  for (const theme of ['Star atlas', 'Paper and ink', 'Washi and sumi', 'Swiss poster', 'Prism', 'Letters in space']) {
+    await openScreen(page, 'Settings');
+    await page.getByRole('radio', { name: new RegExp(`^${theme}`) }).check();
+    await openScreen(page, 'Daily');
+    await expect(page.locator('.cb-board')).toBeVisible();
+    // Every visible text node that looks like a clock.
+    const clocks = await page.evaluate(() => {
+      const out: string[] = [];
+      const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        const el = n.parentElement;
+        if (!el || !/^\s*\d+:\d\d\s*$/.test(n.textContent ?? '')) continue;
+        const box = el.getBoundingClientRect();
+        if (box.width > 2 && box.height > 2 && getComputedStyle(el).visibility !== 'hidden') out.push(n.textContent!.trim());
+      }
+      return out;
+    });
+    expect(clocks, theme).toHaveLength(1);
+  }
 });
 
 test('free play starts a board and shares a challenge link', async ({ page }) => {

@@ -160,6 +160,8 @@
   color: var(--cb-note);
 }
 [data-theme="letters"] .cb-board[data-size="4"] .cb-notes { font-size: 16cqw; }
+/* Nine notes share a small cell on 9x9: a little larger so they stay readable on a phone. */
+[data-theme="letters"] .cb-board[data-size="9"] .cb-notes { font-size: 21cqw; }
 
 /* Clues: glyph chains. */
 [data-theme="letters"] .cb-clue { transition: none; }

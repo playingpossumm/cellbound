@@ -32,12 +32,6 @@
 .cb-run-page:focus {
   outline: none;
 }
-.cb-run-head {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: -10px;
-}
 .cb-run-title {
   margin: 0;
   font-family: var(--cb-font-digit);
@@ -124,8 +118,7 @@
 }
 
 /* Buttons */
-.cb-run-btn,
-.cb-run-back {
+.cb-run-btn {
   font: inherit;
   color: var(--cb-text);
   cursor: pointer;
@@ -160,22 +153,7 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
-.cb-run-back {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--cb-ink);
-}
-.cb-run-back-icon {
-  width: 24px;
-  height: 24px;
-}
 .cb-run-btn:focus-visible,
-.cb-run-back:focus-visible,
 .cb-run-card:focus-visible,
 .cb-run-share:focus-visible {
   outline: 3px solid var(--cb-accent);
@@ -209,7 +187,7 @@
 .cb-run-fact strong {
   font-family: var(--cb-font-digit);
   font-size: 20px;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   color: var(--cb-ink);
 }
 .cb-run-stats {
@@ -233,7 +211,7 @@
   margin: 2px 0 0;
   font-family: var(--cb-font-digit);
   font-size: 22px;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   color: var(--cb-ink);
 }
 
@@ -271,7 +249,7 @@
   gap: 3px;
   margin-left: 8px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   color: var(--cb-text);
 }
 .cb-run-shield-icon {
@@ -286,7 +264,7 @@
   white-space: nowrap;
 }
 .cb-run-score {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -336,7 +314,7 @@
   height: 14px;
 }
 .cb-run-tag-mult {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   color: var(--cb-text-dim);
 }
 
@@ -576,7 +554,7 @@ button.cb-run-card:hover {
   font-size: 56px;
   line-height: 1;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   color: var(--cb-ink);
 }
 .cb-run-table {
@@ -595,7 +573,7 @@ button.cb-run-card:hover {
   text-align: left;
   vertical-align: top;
   font-weight: 400;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 .cb-run-table thead th {
   font-size: 12px;

@@ -1,4 +1,6 @@
 // Share or copy a plain text result. Web Share when the browser has it, the clipboard otherwise.
+import { APP_NAME } from '../app/brand';
+
 export type ShareOutcome = 'shared' | 'copied' | 'failed';
 
 /** The address of the app, for the link that goes with a shared result. */
@@ -10,7 +12,7 @@ export function appLink(): string {
   }
 }
 
-export async function shareResult(text: string, title = 'Cellbound', url: string = appLink()): Promise<ShareOutcome> {
+export async function shareResult(text: string, title = APP_NAME, url: string = appLink()): Promise<ShareOutcome> {
   const nav: Navigator | undefined = typeof navigator === 'undefined' ? undefined : navigator;
   if (!nav) return 'failed';
   try {

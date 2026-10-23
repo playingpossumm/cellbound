@@ -1,6 +1,6 @@
 // App shell: opens straight into today's Daily, a menu one tap away, the
 // theme on <html>, challenge links, and the extra modes from src/modes.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { dailyDate } from '../engine';
 import type { ClueKind } from '../engine/types';
 import { closeGame, onGameEnd } from '../game/store';
@@ -9,12 +9,14 @@ import { useStats } from '../game/stats';
 import { useSettings } from '../game/settings';
 import { extraModes, learn } from '../modes';
 import { getTheme } from '../themes';
+import { APP_NAME } from './brand';
 import { CloseIcon } from './icons';
-import { AboutScreen, DailyScreen, FogScreen, FreeScreen, SettingsScreen, StatsScreen } from './screens';
+import { AboutScreen, DailyScreen, FogScreen, FreeScreen, Loading, SettingsScreen, StatsScreen } from './screens';
 import { OPEN_EVENT, ShellContext, type ScreenId, type Shell } from './shell';
 import { useApplyTheme, useNight } from './theme';
 
-export const APP_NAME = 'Cellbound';
+/** Names for the page title; the Daily uses the app's name alone. */
+const SCREEN_NAMES: Partial<Record<ScreenId, string>> = { fog: 'Fog', free: 'Free play', stats: 'Stats', settings: 'Settings', about: 'About' };
 
 interface Route {
   screen: ScreenId;
@@ -62,11 +64,15 @@ export default function App() {
 
   useEffect(() => onGameEnd((g) => useStats.getState().record(g)), []);
 
+  // Counts visits, so choosing a mode from the menu always opens it at its start,
+  // even when that mode is already on screen.
+  const [visit, setVisit] = useState(0);
   const go = useCallback((screen: ScreenId) => {
     menuRef.current?.close();
     clearQuery();
     if (screen.startsWith('mode:')) closeGame();
     setRoute({ screen });
+    setVisit((v) => v + 1);
     window.scrollTo?.(0, 0);
   }, []);
 
@@ -118,8 +124,20 @@ export default function App() {
       body = <AboutScreen />;
       break;
     default:
-      body = extra ? <extra.Screen onExit={() => go('daily')} /> : <DailyScreen key={today} date={today} />;
+      body = extra ? (
+        // Run and Learn load on first use; the frame shows while their code arrives.
+        <Suspense fallback={<Loading title={extra.name} text={`Opening ${extra.name}.`} />}>
+          <extra.Screen key={visit} onExit={() => go('daily')} />
+        </Suspense>
+      ) : (
+        <DailyScreen key={today} date={today} />
+      );
   }
+
+  const screenName = route.screen === 'daily' ? null : (extra?.name ?? SCREEN_NAMES[route.screen] ?? null);
+  useEffect(() => {
+    document.title = screenName ? `${screenName} · ${APP_NAME}` : APP_NAME;
+  }, [screenName]);
 
   const items: { screen: ScreenId; name: string; blurb: string }[] = [
     { screen: 'daily', name: 'Daily', blurb: 'One shared puzzle a day.' },

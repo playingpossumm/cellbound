@@ -55,7 +55,7 @@
   --wa-wash: rgba(30, 28, 26, 0.11);
   --wa-thermo: rgba(30, 28, 26, 0.12);
   --wa-renban: rgba(61, 110, 92, 0.28);
-  --wa-mist: rgba(246, 242, 233, 0.96);
+  --wa-mist: rgba(228, 222, 210, 0.96);
   --wa-conflict: rgba(179, 49, 31, 0.11);
   --wa-fibre-opacity: 0.13;
   --wa-fibre-blend: multiply;
@@ -80,7 +80,7 @@
   --wa-wash: rgba(235, 229, 216, 0.1);
   --wa-thermo: rgba(235, 229, 216, 0.11);
   --wa-renban: rgba(120, 180, 150, 0.22);
-  --wa-mist: rgba(25, 28, 36, 0.96);
+  --wa-mist: rgba(44, 48, 59, 0.96);
   --wa-conflict: rgba(255, 140, 122, 0.12);
   --wa-fibre-opacity: 0.05;
   --wa-fibre-blend: screen;
@@ -179,16 +179,6 @@
   color: var(--wa-grey);
   font-weight: 600;
 }
-[data-theme="washi"] .wa-time {
-  position: absolute;
-  left: 4px;
-  top: 108px;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  font-variant-numeric: tabular-nums;
-  color: var(--wa-grey);
-}
 
 /* Cells. */
 [data-theme="washi"] .cb-cell.is-peer { background: var(--cb-peer); }
@@ -259,6 +249,8 @@
   color: var(--cb-note);
 }
 [data-theme="washi"] .cb-board[data-size="4"] .cb-notes { font-size: 19cqw; }
+/* Nine notes share a small cell on 9x9: a little larger so they stay readable on a phone. */
+[data-theme="washi"] .cb-board[data-size="9"] .cb-notes { font-size: 25cqw; }
 
 /* Seals stamped on finished boxes. */
 [data-theme="washi"] .wa-seals { position: absolute; inset: 0; pointer-events: none; }

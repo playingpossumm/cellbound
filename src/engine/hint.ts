@@ -10,6 +10,8 @@ function joinWith(items: string[], word: string): string {
 }
 
 const list = (ds: number[]) => joinWith(ds.map(String), 'and');
+/** "a 5", but "an 8". */
+const aDigit = (d: number) => (d === 8 ? `an ${d}` : `a ${d}`);
 const listOr = (ds: number[]) => joinWith(ds.map(String), 'or');
 const joinAnd = (xs: string[]) => joinWith(xs, 'and');
 
@@ -133,7 +135,7 @@ function stepSource(p: Puzzle, m: Model, s: Step, keep: Digit): StepSource {
         key: `l${s.house}:${s.house2}`,
         tech: true,
         rule: houseRule(m, s.house!),
-        label: (ds) => `the ${list(ds)} that ${from} must keep inside ${into}`,
+        label: (ds) => `the ${list(ds)} that ${from} must place in ${into}`,
         text: (ds) => `the ${list(ds)} of ${from} must sit in ${into}, which rules ${ds.length > 1 ? 'them' : 'it'} out here`,
       };
     }
@@ -162,7 +164,7 @@ function stepSource(p: Puzzle, m: Model, s: Step, keep: Digit): StepSource {
         key: 'probe',
         tech: true,
         rule: 'cell',
-        label: () => 'a quick test of the options here',
+        label: () => 'a quick test of the options',
         text: (ds) => `putting ${listOr(ds)} here quickly breaks a rule`,
       };
   }
@@ -239,11 +241,11 @@ function hiddenHint(p: Puzzle, m: Model, grid: Digit[], pre: Step[], h: number, 
   const labels = [...new Set(srcs.map((s) => s.label([digit])))];
   const rule: HintRule = srcs.find((s) => !s.tech)?.rule ?? srcs[0]?.rule ?? houseRule(m, h);
   const text = !others.length
-    ? `${cap(hName)} is missing only a ${digit}, so this cell is ${digit}.`
+    ? `${cap(hName)} is missing only ${aDigit(digit)}, so this cell is ${digit}.`
     : labels.length
-      ? `${cap(hName)} needs a ${digit}. The other empty cells in it either see a ${digit} already or are blocked by ${joinAnd(labels)}, so this cell is ${digit}.`
-      : `${cap(hName)} needs a ${digit}. Every other empty cell in it already sees a ${digit}, so this cell is ${digit}.`;
-  const why = labels.length ? ` Keep ${joinAnd(labels)} in mind.` : '';
+      ? `${cap(hName)} needs ${aDigit(digit)}. The other empty cells in it either see ${aDigit(digit)} already or are blocked by ${joinAnd(labels)}, so this cell is ${digit}.`
+      : `${cap(hName)} needs ${aDigit(digit)}. Every other empty cell in it already sees ${aDigit(digit)}, so this cell is ${digit}.`;
+  const why = labels.length ? ` Use ${joinAnd(labels)} to find it.` : '';
   return [
     { level: 1, focus: m.houses[h].slice(), rule, text: `Look at ${hName}.` },
     { level: 2, focus: m.houses[h].slice(), rule, text: `${cap(hName)} has only one place left for one of its digits.${why}` },

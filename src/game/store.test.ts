@@ -1,10 +1,18 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LYRA } from '../engine/fixtures';
-import { fogFor } from '../engine';
-import { actions, getGame, heartsLeft, onGameEnd, resetStoreForTesting, sanitizeSaved, startGame, tickClock, useFx } from './store';
+import type { FogSpec } from '../engine/types';
+import { actions, getGame, heartsLeft, onGameEnd, resetStoreForTesting, sanitizeSaved, solveForTesting, startGame, tickClock, useFx } from './store';
 import { addResult, bestStreak, currentStreak } from './stats';
 import { fogGlyphs, formatDateLong, formatTime } from './logic';
 import type { GameState } from './types';
+
+// The engine hint is real everywhere except where a test switches it off to reach the
+// store's own fallback.
+const engineHint = vi.hoisted(() => ({ off: false }));
+vi.mock('../engine', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../engine')>();
+  return { ...real, hint: (...args: Parameters<typeof real.hint>) => (engineHint.off ? null : real.hint(...args)) };
+});
 
 const empty = LYRA.givens.map((d, i) => (d ? -1 : i)).filter((i) => i >= 0);
 
@@ -63,7 +71,7 @@ describe('game store', () => {
     for (const i of empty) play(i, LYRA.solution[i]);
     expect(getGame()!.status).toBe('solved');
     expect(getGame()!.doneBoxes.length).toBe(6);
-    actions.solveForTesting();
+    solveForTesting();
     expect(ended.length).toBe(1);
     startGame({ key: 'daily:2026-10-23', mode: 'daily', puzzle: LYRA });
     expect(ended.length).toBe(1);
@@ -72,6 +80,21 @@ describe('game store', () => {
     expect(s.solves.daily).toBe(1);
     expect(s.daily['2026-10-23'].status).toBe('solved');
     expect(addResult(s, ended[0], '2026-10-23')).toBe(s);
+  });
+
+  it('flashes the whole board from the last digit when the board is solved', () => {
+    startGame({ key: 't9', mode: 'free', puzzle: LYRA });
+    const last = empty[empty.length - 1];
+    for (const i of empty) if (i !== last) play(i, LYRA.solution[i]);
+    const before = useFx.getState().flashCount;
+    play(last, LYRA.solution[last]);
+    expect(getGame()!.status).toBe('solved');
+    const fx = useFx.getState();
+    expect(fx.flashCount).toBe(before + 1);
+    expect(Object.keys(fx.flash)).toHaveLength(36);
+    expect(fx.flash[last]).toBe(0);
+    // Stagger by distance: the far corner from the last cell waits longest.
+    expect(Math.max(...Object.values(fx.flash))).toBeGreaterThan(0);
   });
 
   it('flashes units and marks done boxes', () => {
@@ -83,16 +106,25 @@ describe('game store', () => {
   });
 
   it('clears fog only around correct digits', () => {
-    const fog = fogFor(LYRA);
+    // Visible at the start: the top left box (cells 0, 1, 2, 6, 7, 8).
+    const fog: FogSpec = { start: [0, 1, 2, 6, 7, 8], radius: 1 };
     startGame({ key: 'fog:1', mode: 'fog', puzzle: LYRA, fog });
-    const g0 = getGame()!;
-    const edge = empty.find((i) => g0.fog!.cleared[i] && !g0.fog!.cleared[Math.min(35, i + 7)])!;
-    const target = Math.min(35, edge + 7);
-    const right = LYRA.solution[edge];
-    play(edge, right === 1 ? 2 : 1);
-    expect(getGame()!.fog!.cleared[target]).toBe(false);
-    play(edge, right);
-    expect(getGame()!.fog!.cleared[target]).toBe(true);
+    const cleared = () => getGame()!.fog!.cleared;
+    expect(cleared().filter(Boolean)).toHaveLength(6);
+    // Cell 7 (row 2, column 2) is empty and visible; 12, 13 and 14 sit under fog next to it.
+    const at = 7;
+    const right = LYRA.solution[at];
+    play(at, right === 1 ? 2 : 1);
+    expect(getGame()!.mistakes).toBe(1);
+    expect([12, 13, 14].map((i) => cleared()[i])).toEqual([false, false, false]);
+    play(at, right);
+    expect([12, 13, 14].map((i) => cleared()[i])).toEqual([true, true, true]);
+    // Only distance 1: row 4 stays hidden.
+    expect([18, 19, 20].map((i) => cleared()[i])).toEqual([false, false, false]);
+    expect(cleared().filter(Boolean)).toHaveLength(9);
+    // Digits cannot go into a cell that is still under fog.
+    play(20, LYRA.solution[20]);
+    expect(getGame()!.values[20]).toBe(0);
   });
 
   it('fails when hearts run out, shield first', () => {
@@ -163,18 +195,42 @@ describe('streaks and helpers', () => {
 
 describe('hint fallbacks', () => {
   beforeEach(() => resetStoreForTesting());
+  afterEach(() => {
+    engineHint.off = false;
+  });
+
   it('points at the selected empty cell and counts one hint per deduction', () => {
+    // With no deduction from the engine, the store falls back to the selected cell.
+    engineHint.off = true;
     startGame({ key: 'h1', mode: 'free', puzzle: LYRA });
     const target = empty[3];
     actions.select(target);
     const first = actions.hint()!;
+    expect(first.level).toBe(1);
     expect(first.focus).toEqual([target]);
-    actions.hint();
-    actions.hint();
+    expect(actions.hint()!.level).toBe(2);
+    const third = actions.hint()!;
+    expect(third.move).toEqual({ cell: target, digit: LYRA.solution[target] });
     expect(getGame()!.values[target]).toBe(LYRA.solution[target]);
+    expect(getGame()!.hinted![target]).toBe(true);
+    expect(getGame()!.hintsUsed).toBe(1);
     actions.select(empty[4]);
-    actions.hint();
+    expect(actions.hint()!.focus).toEqual([empty[4]]);
     expect(getGame()!.hintsUsed).toBe(2);
+  });
+
+  it('uses the engine deduction when there is one', () => {
+    startGame({ key: 'h3', mode: 'free', puzzle: LYRA });
+    const first = actions.hint()!;
+    expect(first.level).toBe(1);
+    expect(first.focus.length).toBeGreaterThan(0);
+    expect(first.text).toMatch(/\w/);
+    actions.hint();
+    const third = actions.hint()!;
+    expect(third.level).toBe(3);
+    // Every move the ladder makes is the solution digit.
+    if (third.move) expect(third.move.digit).toBe(LYRA.solution[third.move.cell]);
+    expect(getGame()!.hintsUsed).toBe(1);
   });
 
   it('points at mistakes before anything else', () => {

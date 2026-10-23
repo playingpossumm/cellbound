@@ -2,8 +2,8 @@
 // Digits and notes need 4.5:1 on the board, on the selected cell and on the
 // same-digit cell; interface text needs 4.5:1 on the page ground.
 import { describe, expect, it } from 'vitest';
-import { contrast, over, parseColor, resolve, rootVars, sizeVars, themeCss } from './dev/cssvars';
-import type { Rgba } from './dev/cssvars';
+import { contrast, over, parseColor, resolve, rootVars, sizeVars, themeCss } from '../test/cssvars';
+import type { Rgba } from '../test/cssvars';
 
 const ids = ['atlas', 'paper', 'washi', 'swiss', 'prism', 'letters'] as const;
 
@@ -65,7 +65,8 @@ describe('contrast', () => {
           for (const k of ['red', 'blue', 'yellow', 'ink']) {
             const on = colour(env, `--sw-on-${k}`);
             const bg = colour(env, `--sw-${k}`);
-            expect(contrast(on, bg), `${label} ${k}`).toBeGreaterThanOrEqual(3);
+            // 9x9 digits on a phone are under the large-text size, so the full 4.5:1 applies.
+            expect(contrast(on, bg), `${label} ${k}`).toBeGreaterThanOrEqual(4.5);
           }
         });
       }

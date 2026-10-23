@@ -1,14 +1,18 @@
-// Extra modes owned by the modes agent (Run and Learn). The app shell lists these
-// after Daily, Fog and Free play.
+// The extra modes, Run and Learn. The app shell lists them in the menu after Daily.
+import { lazy } from 'react';
 import { isLessonDone, openLesson } from './learn/store';
-import { LearnScreen, RunScreen } from './screens';
 import type { LearnApi, ModeEntry } from './types';
+
+// Both screens load on first use, so the first paint carries only what the Daily needs.
+// The service worker precaches their chunks, so they open offline too.
+const RunScreen = lazy(() => import('./run/screen'));
+const LearnScreen = lazy(() => import('./learn/screen'));
 
 export const extraModes: ModeEntry[] = [
   {
     id: 'run',
     name: 'Run',
-    blurb: 'Five boards, three hearts, a card between each. A new seeded run every day.',
+    blurb: 'Five boards, three hearts and a card between each, with a new daily run every day.',
     Screen: RunScreen,
   },
   {
@@ -21,6 +25,5 @@ export const extraModes: ModeEntry[] = [
 
 export const learn: LearnApi = { isLessonDone, openLesson };
 
-// Additive exports for the app shell, see the report: subscribe to lesson requests then show the Learn
-// screen, and re-render a rule chip when its lesson is finished.
+// For the app shell: subscribe to lesson requests, and re-render a rule chip once its lesson is done.
 export { onLessonRequest, useLessonDone } from './learn/store';

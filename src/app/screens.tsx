@@ -9,9 +9,9 @@ import { useSettings, type MistakeSetting, type MotionSetting, type NightSetting
 import { bestStreak, currentStreak, useStats } from '../game/stats';
 import type { ModeId } from '../game/types';
 import { themes } from '../themes';
-import { APP_NAME } from './App';
+import { APP_NAME } from './brand';
 import { GameView } from './GameView';
-import { MenuIcon } from './icons';
+import { TopBar } from './TopBar';
 import { ALL_KINDS, RULE_NAMES } from './rules';
 import { appUrl, decodeFree, encodeFree, type FreeOptions } from './share';
 import { useShell } from './shell';
@@ -24,20 +24,9 @@ function randomSeed(): string {
 
 /** Frame for screens that are not a board: top bar with the menu and a title. */
 export function Page({ title, children }: { title: string; children: ReactNode }) {
-  const shell = useShell();
   return (
     <div className="cb-page">
-      <header className="cb-top">
-        <div className="cb-top-left">
-          <button type="button" className="cb-ib" aria-label="Menu" onClick={shell.openMenu}>
-            <MenuIcon />
-          </button>
-        </div>
-        <div className="cb-top-mid">
-          <span className="cb-top-title">{title}</span>
-        </div>
-        <div className="cb-top-right" />
-      </header>
+      <TopBar title={title} />
       <main className="cb-page-body">
         <h1 className="cb-page-title">{title}</h1>
         {children}
@@ -46,7 +35,7 @@ export function Page({ title, children }: { title: string; children: ReactNode }
   );
 }
 
-function Loading({ title, text }: { title: string; text: string }) {
+export function Loading({ title, text }: { title: string; text: string }) {
   return (
     <Page title={title}>
       <p className="cb-muted" role="status">
@@ -262,6 +251,8 @@ export function FreeScreen({ code }: { code?: string | null }) {
   }
   const current = game.key.startsWith('free:') ? decodeFree(game.key.slice(5)) : null;
   const opts = current ?? { ...setup, seed: game.puzzle.seed };
+  // Some rule mixes cannot reach every level; the generator then gives the closest board.
+  const offLevel = opts.difficulty !== game.puzzle.difficulty;
   const controls = (
     <div className="cb-mode-bar">
       <button type="button" className="cb-btn" onClick={() => setPhase('setup')}>
@@ -270,6 +261,11 @@ export function FreeScreen({ code }: { code?: string | null }) {
       <button type="button" className="cb-btn" onClick={() => start({ ...opts, seed: randomSeed() }, false)}>
         New board
       </button>
+      {offLevel && (
+        <p className="cb-muted cb-mode-note">
+          These rules could not make a level {opts.difficulty} board, so this one is level {game.puzzle.difficulty}.
+        </p>
+      )}
     </div>
   );
   return (
@@ -467,8 +463,8 @@ export function AboutScreen() {
     <Page title="About">
       <section className="cb-card cb-prose">
         <p>
-          {APP_NAME} is variant sudoku for short daily sessions: a shared Daily, roguelite runs, fog boards, free play and short lessons for
-          each rule.
+          {APP_NAME} is variant sudoku for short daily sessions. It has a shared Daily, roguelite runs, fog boards, free play and a short
+          lesson for each rule.
         </p>
         <p>Everything runs on your device. Puzzles are made in the browser and progress stays in local storage. There are no ads and no accounts.</p>
         <p>Released under the MIT licence.</p>

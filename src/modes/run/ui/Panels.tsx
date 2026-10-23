@@ -1,5 +1,7 @@
 // The board result (shown over the solved board), and the run summary and failure screen.
 import { useState } from 'react';
+import { APP_NAME } from '../../../app/brand';
+import { formatDateLong } from '../../../game/logic';
 import { DIFFICULTY_NAMES } from '../../names';
 import { shareResult, type ShareOutcome } from '../../share';
 import { BOARD_COUNT } from '../boards';
@@ -147,8 +149,8 @@ export function Summary({ run, dailyBest, fresh, onFree, onHome }: SummaryProps)
       {run.daily && (
         <p className="cb-run-note">
           {isReplay
-            ? `Daily run ${run.daily}. Your first attempt set the daily best at ${formatScore(dailyBest!)}, so this replay does not change it.`
-            : `Daily run ${run.daily}. This first attempt sets your daily best.`}
+            ? `Daily run, ${formatDateLong(run.daily)}. Your first attempt set the daily best at ${formatScore(dailyBest!)}, so this replay does not change it.`
+            : `Daily run, ${formatDateLong(run.daily)}. This first attempt sets your daily best.`}
         </p>
       )}
 
@@ -214,7 +216,7 @@ export function Summary({ run, dailyBest, fresh, onFree, onHome }: SummaryProps)
         <button
           type="button"
           className="cb-run-btn is-primary"
-          onClick={async () => setSent(await shareResult(text, 'Cellbound Run'))}
+          onClick={async () => setSent(await shareResult(text, `${APP_NAME} Run`))}
         >
           Share result
         </button>

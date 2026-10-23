@@ -9,7 +9,7 @@
   --pr-dim: #9aa3b2;
   --pr-box: rgba(255, 255, 255, 0.3);
   --pr-err: #ff7a7a;
-  --pr-fogc: rgba(16, 19, 26, 0.88);
+  --pr-fogc: rgba(48, 53, 66, 0.9);
   --pr-beam: rgba(255, 255, 255, 0.88);
   --pr-tint: 16%;
   --pr-s1: oklch(0.8 0.15 28);
@@ -32,7 +32,7 @@
   --pr-dim: #555d6b;
   --pr-box: rgba(10, 12, 17, 0.32);
   --pr-err: #c62828;
-  --pr-fogc: rgba(236, 238, 243, 0.9);
+  --pr-fogc: rgba(208, 213, 224, 0.92);
   --pr-beam: rgba(18, 21, 28, 0.75);
   --pr-tint: 14%;
   --pr-s1: oklch(0.55 0.18 28);
@@ -164,7 +164,8 @@
   left: 0;
   top: 0;
   margin: 0;
-  font-size: 34px;
+  /* Long titles shrink to stay clear of the glass on narrow bands. */
+  font-size: min(34px, calc((100cqw - 230px) / (var(--pr-len, 5) * 0.46)));
   font-weight: 250;
   letter-spacing: -0.01em;
   line-height: 1;
@@ -173,20 +174,14 @@
   position: absolute;
   left: 1px;
   top: 42px;
+  /* The space left of the glass: the drawing keeps 250px of the band's right side. */
+  max-width: max(96px, calc(100cqw - 258px));
   font-size: 12px;
   font-weight: 400;
+  line-height: 1.35;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--pr-dim);
-}
-[data-theme="prism"] .pr-time {
-  position: absolute;
-  left: 1px;
-  top: 62px;
-  font-size: 18px;
-  font-weight: 300;
-  letter-spacing: 0.06em;
-  font-variant-numeric: tabular-nums;
 }
 [data-theme="prism"] :is(.pr-ray, .pr-lab) { --c: var(--pr-text); }
 [data-theme="prism"] .pr-ray { stroke: var(--c); }
@@ -314,6 +309,8 @@
   color: var(--cb-note);
 }
 [data-theme="prism"] .cb-board[data-size="4"] .cb-notes { font-size: 18cqw; }
+/* Nine notes share a small cell on 9x9: a little larger so they stay readable on a phone. */
+[data-theme="prism"] .cb-board[data-size="9"] .cb-notes { font-size: 23cqw; }
 
 /* Clues. */
 [data-theme="prism"] .cb-clue { transition: filter 0.35s ease; }
@@ -488,3 +485,14 @@
   color: var(--pr-dim);
 }
 [data-theme="prism"] .cb-tool.on { color: var(--pr-text); }
+
+/* Page panels as glass tiles: the theme's thin lines are clear, so cards would have no edge. */
+[data-theme="prism"] :is(.cb-card, .cb-theme-opt, .cb-run-box:not(.is-warn), .cb-learn-row, .cb-learn-figure) {
+  border-color: var(--pr-edge);
+  border-radius: 12px;
+  background: var(--pr-glass);
+}
+[data-theme="prism"] .cb-theme-opt.on {
+  border-color: var(--pr-text);
+  background: var(--cb-sel);
+}

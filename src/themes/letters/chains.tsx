@@ -16,8 +16,8 @@ interface Glyph {
   anchor?: 'start';
 }
 
-/** Letters along a polyline, one every `step`, the word repeating. */
-function walk(line: Pt[], word: string, step: number, out: Glyph[]): void {
+/** Letters along a polyline, one every `step`, the word repeating. Returns how many it placed. */
+function walk(line: Pt[], word: string, step: number, out: Glyph[]): number {
   const pts = simplify(line);
   let k = 0;
   for (let a = 0; a < pts.length - 1; a++) {
@@ -32,6 +32,7 @@ function walk(line: Pt[], word: string, step: number, out: Glyph[]): void {
       k++;
     }
   }
+  return k;
 }
 
 /** Letters around a circle, upright toward the outside. */
@@ -108,10 +109,11 @@ function chainFor(c: Clue, geo: BoardGeometry): Chain {
     }
     case 'renban': {
       const p = c.cells.map((i) => geo.center(i));
-      walk(p, 'RUN·', step, out);
+      const placed = walk(p, 'RUN·', step, out);
       const last = p[p.length - 1];
       const prev = p[p.length - 2] ?? last;
-      out.push({ ch: 'N', x: last[0], y: last[1], rot: (Math.atan2(last[1] - prev[1], last[0] - prev[0]) * 180) / Math.PI });
+      // The last cell carries the next letter of the word, so the chain never reads RUNN.
+      out.push({ ch: 'RUN·'.charAt(placed % 4), x: last[0], y: last[1], rot: (Math.atan2(last[1] - prev[1], last[0] - prev[0]) * 180) / Math.PI });
       return { glyphs: out };
     }
     case 'whisper': {

@@ -1,5 +1,7 @@
 // Run home, the Collection and the card choice.
 import { useState, type ReactNode } from 'react';
+import { TopBar } from '../../../app/TopBar';
+import { formatDateLong } from '../../../game/logic';
 import { DIFFICULTY_NAMES, listRules } from '../../names';
 import { useScreenEntry } from '../../screenEntry';
 import { loadBoard } from '../board';
@@ -10,34 +12,24 @@ import { boardsCleared, cardsOf, choose as chooseCard, type RunState } from '../
 import { MILESTONES, bestDaily, milestoneOf, unlockedSet, type RunStats } from '../stats';
 import { CardBody } from './CardTile';
 import { Hearts } from './Hud';
-import { BackIcon, LockIcon } from './icons';
+import { LockIcon } from './icons';
 
+/** A Run page: the app's top bar (menu and back), then the page. */
 export function Page({ title, onBack, children }: { title?: string; onBack?: () => void; children: ReactNode }) {
   const ref = useScreenEntry<HTMLElement>();
   return (
     <div className="cb-run">
+      <TopBar title="Run" onBack={onBack} />
       <main className="cb-run-page" ref={ref} tabIndex={-1}>
-        {(onBack || title) && (
-          <header className="cb-run-head">
-            {onBack && (
-              <button type="button" className="cb-run-back" onClick={onBack} aria-label="Back">
-                <BackIcon className="cb-run-back-icon" />
-              </button>
-            )}
-            {title && <h1 className="cb-run-title">{title}</h1>}
-          </header>
-        )}
+        {title && <h1 className="cb-run-title">{title}</h1>}
         {children}
       </main>
     </div>
   );
 }
 
-export function formatDay(date: string): string {
-  const [y, m, d] = date.split('-').map(Number);
-  if (!y || !m || !d) return date;
-  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-}
+/** "Friday 23 October", the date format of the rest of the app. */
+export const formatDay = formatDateLong;
 
 export interface HomeProps {
   today: string;
@@ -164,7 +156,7 @@ export function Home(p: HomeProps) {
           <h2 id="cb-run-free-h" className="cb-run-h2">
             Free run
           </h2>
-          <p className="cb-run-dim">Random seed, unlimited</p>
+          <p className="cb-run-dim">As often as you like</p>
           <p>A fresh run every time. Cards you have unlocked can appear here.</p>
           <div className="cb-run-actions">
             <button type="button" className={'cb-run-btn' + (todays ? ' is-primary' : '')} onClick={() => start('free')}>

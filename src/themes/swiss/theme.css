@@ -3,7 +3,7 @@
 [data-theme="swiss"][data-night="false"] {
   --sw-ground: #f1efea;
   --sw-ink: #111111;
-  --sw-red: #e0362c;
+  --sw-red: #dc3227;
   --sw-red-text: #ae251c;
   --sw-blue: #1b47b5;
   --sw-yellow: #f3c024;
@@ -132,7 +132,7 @@
   font-size: 34px;
   font-weight: 800;
   font-stretch: 112%;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   letter-spacing: -0.01em;
 }
 [data-theme="swiss"] .sw-bar {
@@ -228,6 +228,8 @@
   color: var(--cb-note);
 }
 [data-theme="swiss"] .cb-board[data-size="4"] .cb-notes { font-size: 19cqw; }
+/* Nine notes share a small cell on 9x9: a little larger so they stay readable on a phone. */
+[data-theme="swiss"] .cb-board[data-size="9"] .cb-notes { font-size: 25cqw; }
 [data-theme="swiss"] .cb-slot.is-sel .cb-notes { color: #111111; }
 
 /* Clues. */
@@ -378,3 +380,8 @@
 [data-theme="swiss"] .cb-key.spent { opacity: 0.3; }
 [data-theme="swiss"] .cb-tool { font-size: 12px; font-weight: 800; font-stretch: 110%; letter-spacing: 0.08em; color: var(--sw-ink); }
 [data-theme="swiss"] .cb-tool.on { color: var(--sw-red-text); }
+
+/* Selected chrome takes the yellow of the selected cell, so its text is near black in both modes. */
+[data-theme="swiss"] :is(.cb-menu-item.on, .cb-seg > .on, .cb-checks > .on, .cb-theme-opt.on) { color: #111111; }
+[data-theme="swiss"] :is(.cb-menu-item.on .cb-menu-item-blurb, .cb-theme-opt.on .cb-theme-blurb) { color: #3d3d3d; }
+[data-theme="swiss"] :is(.cb-seg > .on, .cb-checks > .on, .cb-theme-opt.on) input { accent-color: #111111; }

@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react';
 import type { BandProps, ClueLayerProps, ThemeDef } from '../types';
 import { ClueSvg } from '../shared/clues';
+import { cssVars } from '../shared/util';
 import '../shared/common.css';
 import './theme.css';
 
@@ -16,14 +17,24 @@ function ClueLayer(props: ClueLayerProps): ReactNode {
 }
 
 function Band({ title, subtitle, puzzle }: BandProps): ReactNode {
+  // A masthead: "The Free Play Puzzle".
+  const head = `The ${title.replace(/\b[a-z]/g, (c) => c.toUpperCase())} Puzzle`;
+  // Fog and Free play already name the size in the subtitle.
+  const sized = subtitle.includes(`${puzzle.size} by ${puzzle.size}`);
   return (
     <div className="cb-band pp-mast">
       <div className="pp-r1" aria-hidden="true" />
-      <h2 className="pp-title">{`The ${title} Puzzle`}</h2>
+      <h2 className="pp-title" style={cssVars({ '--pp-len': Math.max(16, head.length) })}>
+        {head}
+      </h2>
       <div className="pp-meta">
         <span>{subtitle}</span>
-        <span className="pp-sep" aria-hidden="true" />
-        <span>{SIZE_WORD[puzzle.size] ?? `${puzzle.size} by ${puzzle.size}`}</span>
+        {!sized && (
+          <>
+            <span className="pp-sep" aria-hidden="true" />
+            <span>{SIZE_WORD[puzzle.size] ?? `${puzzle.size} by ${puzzle.size}`}</span>
+          </>
+        )}
         {puzzle.name ? (
           <>
             <span className="pp-sep" aria-hidden="true" />

@@ -316,8 +316,12 @@ function place(g: GameState, i: CellIndex, d: Digit, kind: 'value' | 'hint'): Ga
     hint: kind === 'hint' ? fx.hint : null,
   };
   let doneBoxes = g.doneBoxes;
+  let status: GameState['status'] = g.status;
+  if (isSolvedGrid(g.puzzle, grid)) status = 'solved';
   if (correct) {
-    const units = completedUnits(g.puzzle, grid, i);
+    // The last digit flashes the whole board, in the theme's unit flash, as a wave
+    // that spreads from that cell; any other digit flashes the units it completes.
+    const units = status === 'solved' ? [{ cells: Array.from({ length: n * n }, (_, j) => j) }] : completedUnits(g.puzzle, grid, i);
     if (units.length) {
       const flash: Record<number, number> = {};
       for (const u of units) for (const j of u.cells) flash[j] = cellDistance(n, i, j);
@@ -327,8 +331,6 @@ function place(g: GameState, i: CellIndex, d: Digit, kind: 'value' | 'hint'): Ga
     doneBoxes = doneRegions(g.puzzle, grid, g.doneBoxes);
   }
   useFx.setState(fxPatch);
-  let status: GameState['status'] = g.status;
-  if (isSolvedGrid(g.puzzle, grid)) status = 'solved';
   const next: GameState = {
     ...g,
     values,
@@ -413,7 +415,7 @@ function fallbackSteps(g: GameState): HintStep[] | null {
   return [
     { level: 1, focus: [target], rule: 'cell', text: 'Look at the glowing cell.' },
     { level: 2, focus: [target], rule: 'cell', text: 'Only one digit fits here once every rule is applied.' },
-    { level: 3, focus: [target], rule: 'cell', text: `This cell is a ${d}.`, move: { cell: target, digit: d } },
+    { level: 3, focus: [target], rule: 'cell', text: `This cell is ${d}.`, move: { cell: target, digit: d } },
   ];
 }
 
@@ -426,7 +428,7 @@ function mistakeSteps(g: GameState, wrong: CellIndex[]): HintStep[] {
       level: 3,
       focus: [first],
       rule: 'cell',
-      text: `This cell is a ${g.puzzle.solution[first]}.`,
+      text: `This cell is ${g.puzzle.solution[first]}.`,
       move: { cell: first, digit: g.puzzle.solution[first] },
     },
   ];
@@ -591,21 +593,22 @@ export const actions = {
     if (!moves.length) return;
     setGame({ ...g, notes: g.notes.map((old, i) => (g.values[i] || g.puzzle.givens[i] ? old : notes[i])), undo: [...g.undo, ...moves].slice(-MAX_UNDO), redo: [] });
   },
-  /** Development helper: fills the solution and marks the game solved. */
-  solveForTesting(): void {
-    const g = getGame();
-    if (!g) return;
-    const n = g.puzzle.size * g.puzzle.size;
-    setGame({
-      ...g,
-      values: g.puzzle.solution.map((d, i) => (g.puzzle.givens[i] ? 0 : d)),
-      notes: new Array(n).fill(0),
-      fog: g.fog ? { ...g.fog, cleared: new Array(n).fill(true) } : undefined,
-      doneBoxes: doneRegions(g.puzzle, g.puzzle.solution, g.doneBoxes),
-      status: 'solved',
-    });
-  },
 };
+
+/** Test helper: fills the solution and marks the game solved. Not part of `actions`, so builds leave it out. */
+export function solveForTesting(): void {
+  const g = getGame();
+  if (!g) return;
+  const n = g.puzzle.size * g.puzzle.size;
+  setGame({
+    ...g,
+    values: g.puzzle.solution.map((d, i) => (g.puzzle.givens[i] ? 0 : d)),
+    notes: new Array(n).fill(0),
+    fog: g.fog ? { ...g.fog, cleared: new Array(n).fill(true) } : undefined,
+    doneBoxes: doneRegions(g.puzzle, g.puzzle.solution, g.doneBoxes),
+    status: 'solved',
+  });
+}
 
 function canPlaceHint(g: GameState, i: CellIndex): boolean {
   return !g.puzzle.givens[i] && g.values[i] !== g.puzzle.solution[i];

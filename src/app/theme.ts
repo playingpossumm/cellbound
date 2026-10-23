@@ -76,6 +76,10 @@ export function useApplyTheme(): void {
     html.dataset.night = String(night);
     html.dataset.reducedMotion = String(reduced);
     html.style.colorScheme = night ? 'dark' : 'light';
+    // The browser bar and the installed app's frame take the theme's ground colour.
+    const ground = getComputedStyle(html).getPropertyValue('--cb-ground').trim();
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (ground && meta) meta.setAttribute('content', ground);
   }, [theme.id, night, reduced]);
   useEffect(() => {
     theme.loadFonts().catch(() => undefined);

@@ -1,5 +1,5 @@
 // Characters the copy rules forbid, built from code points so this file holds none of them.
-// Tests import it to check every string the modes show.
+// Tests import it to check the strings the app shows.
 export const EM_DASH = String.fromCharCode(0x2014);
 export const EN_DASH = String.fromCharCode(0x2013);
 

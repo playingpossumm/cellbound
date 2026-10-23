@@ -14,7 +14,7 @@
   --pp-renbanlit: rgba(200, 118, 106, 0.62);
   --pp-accent: #9b2c1f;
   --pp-wash: rgba(31, 63, 134, 0.17);
-  --pp-vellum: rgba(246, 241, 230, 0.94);
+  --pp-vellum: rgba(229, 221, 204, 0.95);
   --pp-conflict: rgba(180, 35, 27, 0.1);
   --cb-ground: #f1ebde;
   --cb-peer: rgba(31, 63, 134, 0.05);
@@ -40,7 +40,7 @@
   --pp-renbanlit: rgba(224, 140, 128, 0.45);
   --pp-accent: #e48a7b;
   --pp-wash: rgba(169, 196, 255, 0.18);
-  --pp-vellum: rgba(33, 34, 39, 0.95);
+  --pp-vellum: rgba(50, 51, 58, 0.95);
   --pp-conflict: rgba(255, 143, 132, 0.12);
   --cb-ground: #1b1c20;
   --cb-peer: rgba(169, 196, 255, 0.05);
@@ -111,7 +111,8 @@
   margin: 14px 0 0;
   text-align: center;
   font-weight: 600;
-  font-size: clamp(26px, 11.4cqw, 48px);
+  /* "The Daily Puzzle" sets the size; longer mastheads shrink to stay on one line. */
+  font-size: min(48px, 11.4cqw, calc(96cqw / (var(--pp-len, 16) * 0.47)));
   line-height: 1;
   letter-spacing: -0.015em;
   color: var(--pp-ink);
@@ -135,11 +136,6 @@
   height: 12px;
   background: var(--pp-graphite);
   opacity: 0.5;
-}
-[data-theme="paper"] .pp-time {
-  font-variant-numeric: tabular-nums;
-  font-style: italic;
-  color: var(--pp-ink);
 }
 
 /* Cells. */
@@ -229,6 +225,8 @@
   color: var(--cb-note);
 }
 [data-theme="paper"] .cb-board[data-size="4"] .cb-notes { font-size: 20cqw; }
+/* Nine notes share a small cell on 9x9: a little larger so they stay readable on a phone. */
+[data-theme="paper"] .cb-board[data-size="9"] .cb-notes { font-size: 27cqw; }
 
 /* Clues. Thermo and renban are broad pencil bands, the rest is fine line work. */
 [data-theme="paper"] .cb-clue { transition: opacity 0.3s ease; }

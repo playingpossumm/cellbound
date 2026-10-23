@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { BandProps, ClueLayerProps, ThemeDef } from '../types';
 import { ClueSvg } from '../shared/clues';
-import { rng } from '../shared/util';
+import { cssVars, rng } from '../shared/util';
 import '../shared/common.css';
 import './theme.css';
 
@@ -62,6 +62,9 @@ function ClueLayer(props: ClueLayerProps): ReactNode {
   return <ClueSvg {...props} options={{ head: { angle: 39, len: 0.237, tip: 0.067 } }} />;
 }
 
+/** "Friday 23 October": a date, which keeps the study's old-style figures. */
+const DATE = /^[A-Z][a-z]+day \d{1,2} [A-Z][a-z]+$/;
+
 function Band({ title, subtitle, time, puzzle }: BandProps): ReactNode {
   const name = puzzle.name ?? title;
   return (
@@ -72,8 +75,10 @@ function Band({ title, subtitle, time, puzzle }: BandProps): ReactNode {
         <path className="dash" d="M206 -14 Q252 56 228 134" />
         <path d="M296 -14 Q330 56 314 134" />
       </svg>
-      <h2 className="at-name">{name}</h2>
-      <span className="at-sub">{subtitle}</span>
+      <h2 className="at-name" style={cssVars({ '--at-len': Math.max(6, name.length) })}>
+        {name}
+      </h2>
+      <span className={DATE.test(subtitle) ? 'at-sub is-date' : 'at-sub'}>{subtitle}</span>
       {time ? (
         <span className="at-time" aria-hidden="true">
           {time}

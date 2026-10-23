@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EM_DASH } from './dev/forbidden';
+import { EM_DASH } from '../test/copy';
 import { ALL_KINDS } from './run/cards';
 import { DIFFICULTY_NAMES, RULE_NAMES, RULE_TEXTS, listRules } from './names';
 

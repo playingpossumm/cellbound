@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "gen:daily": "tsx scripts/gen-daily.ts",
+    "gen:practice": "tsx scripts/craft-practice.ts",
     "e2e": "playwright test"
   },
   "dependencies": {
@@ -38,5 +39,8 @@
     "vite": "^8.3.5",
     "vite-plugin-pwa": "^2.0.0",
     "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "glob": "^13.0.6"
   }
 }

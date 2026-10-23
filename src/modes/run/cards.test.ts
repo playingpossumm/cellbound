@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EM_DASH } from '../dev/forbidden';
+import { EM_DASH } from '../../test/copy';
 import { BOARD_SPECS, basePlan, rulesFor } from './boards';
 import {
   ALL_KINDS,

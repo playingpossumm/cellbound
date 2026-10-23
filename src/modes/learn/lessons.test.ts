@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BAD_COPY } from '../dev/forbidden';
+import { BAD_COPY } from '../../test/copy';
 import type { Clue, ClueKind, Digit, PuzzleShape } from '../../engine/types';
 import { RULE_TEXTS } from '../names';
 import { consistent, countSolutions, firstSolution } from './check';

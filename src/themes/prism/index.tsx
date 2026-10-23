@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react';
 import type { BandProps, ClueLayerProps, ThemeDef } from '../types';
 import { ClueSvg } from '../shared/clues';
+import { cssVars } from '../shared/util';
 import '../shared/common.css';
 import './theme.css';
 
@@ -37,7 +38,9 @@ function Band({ title, subtitle, puzzle }: BandProps): ReactNode {
           </text>
         ))}
       </svg>
-      <h2 className="pr-title">{title}</h2>
+      <h2 className="pr-title" style={cssVars({ '--pr-len': Math.max(5, title.length) })}>
+        {title}
+      </h2>
       <span className="pr-sub">{subtitle}</span>
     </div>
   );

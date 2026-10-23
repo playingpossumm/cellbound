@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
-export const themeDir = fileURLToPath(new URL('..', import.meta.url));
+export const themeDir = fileURLToPath(new URL('../themes/', import.meta.url));
 
 export function themeCss(id: string): string {
   return readFileSync(join(themeDir, id, 'theme.css'), 'utf8');
