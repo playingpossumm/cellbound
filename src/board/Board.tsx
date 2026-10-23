@@ -1,0 +1,193 @@
+// The board: cells, grid, clues, digits, fog and overlays, in the class
+// vocabulary of the spec (section 5). Themes style these classes and may
+// replace the grid, clue, box-done and digit layers.
+import { memo, useEffect, useMemo, useRef, type CSSProperties } from 'react';
+import type { CellIndex, ClueKind, Digit, Puzzle } from '../engine/types';
+import type { ThemeDef } from '../themes/types';
+import { fogGlyphs } from '../game/logic';
+import { makeGeometry } from './geometry';
+import { DefaultClueLayer, DefaultGridLayer } from './layers';
+
+export interface BoardProps {
+  puzzle: Puzzle;
+  values: Digit[];
+  notes: number[];
+  selected: CellIndex | null;
+  hinted?: boolean[];
+  /** cleared[i] false means cell i is under fog. Omit for boards without fog. */
+  fogCleared?: boolean[];
+  highlights: boolean;
+  /** Digits to mark as wrong. */
+  wrong: boolean[];
+  /** Cells taking part in a rule break. */
+  conflict: boolean[];
+  /** Hint focus cells. */
+  focus: CellIndex[];
+  lit: ClueKind | null;
+  doneBoxes: number[];
+  /** Cell to stagger index for the unit that just finished. */
+  flash: Record<number, number>;
+  flashCount: number;
+  placedCell: CellIndex | null;
+  placeCount: number;
+  placedAt: Record<number, number>;
+  theme: ThemeDef;
+  solved?: boolean;
+  onSelect(i: CellIndex): void;
+}
+
+type VarStyle = CSSProperties & Record<`--${string}`, string | number>;
+
+function cellLabel(r: number, c: number, d: Digit, given: boolean, notes: number[], hiddenCell: boolean, wrong: boolean): string {
+  const at = `Row ${r + 1}, column ${c + 1}`;
+  if (hiddenCell) return `${at}, under fog`;
+  if (d) return `${at}, ${d}${given ? ', given' : ''}${wrong ? ', does not fit' : ''}`;
+  return notes.length ? `${at}, empty, notes ${notes.join(' ')}` : `${at}, empty`;
+}
+
+function BoardImpl(props: BoardProps) {
+  const {
+    puzzle, values, notes, selected, hinted, fogCleared, highlights, wrong, conflict, focus, lit,
+    doneBoxes, flash, flashCount, placedCell, placeCount, placedAt, theme, solved, onSelect,
+  } = props;
+  const n = puzzle.size;
+  const geo = useMemo(() => makeGeometry(puzzle), [puzzle]);
+  const cellsRef = useRef<HTMLDivElement>(null);
+  const full = useMemo(() => puzzle.givens.map((d, i) => d || values[i] || 0), [puzzle, values]);
+  const hidden = useMemo(() => (fogCleared ? fogCleared.map((c) => !c) : undefined), [fogCleared]);
+  const done = useMemo(() => new Set(doneBoxes), [doneBoxes]);
+  const focusSet = useMemo(() => new Set(focus), [focus]);
+  const flashCls = flashCount % 2 ? 'flash-a' : 'flash-b';
+  const placeCls = placeCount % 2 ? 'place-a' : 'place-b';
+  const selR = selected === null ? -1 : Math.floor(selected / n);
+  const selC = selected === null ? -1 : selected % n;
+  const selB = selected === null ? -1 : geo.regionOf(selected);
+  const selD = selected === null || hidden?.[selected] ? 0 : full[selected];
+
+  // Keep keyboard focus on the selected cell when it moves.
+  useEffect(() => {
+    const root = cellsRef.current;
+    if (!root || selected === null) return;
+    const active = document.activeElement;
+    if (active && root.contains(active) && active.getAttribute('data-cell') !== String(selected)) {
+      (root.querySelector(`[data-cell="${selected}"]`) as HTMLButtonElement | null)?.focus();
+    }
+  }, [selected]);
+
+  const Grid = theme.GridLayer ?? DefaultGridLayer;
+  const Clues = theme.ClueLayer ?? DefaultClueLayer;
+  const BoxDone = theme.BoxDoneLayer;
+  const DigitView = theme.Digit;
+  const tabCell = selected ?? 0;
+  const noteCols = n === 4 ? 2 : 3;
+
+  const cells = [];
+  const slots = [];
+  const fogs = [];
+  for (let i = 0; i < n * n; i++) {
+    const r = Math.floor(i / n);
+    const c = i % n;
+    const b = geo.regionOf(i);
+    const given = !!puzzle.givens[i];
+    const isHidden = !!hidden?.[i];
+    const d = isHidden && given ? 0 : full[i];
+    const inFlash = flash[i] !== undefined;
+    const style: VarStyle | undefined = inFlash ? { '--d': flash[i] } : undefined;
+    const noteList: number[] = [];
+    if (!d && !isHidden) for (let k = 1; k <= n; k++) if (notes[i] & (1 << k)) noteList.push(k);
+
+    let cls = 'cb-cell';
+    if (i === selected) cls += ' is-sel';
+    else if (highlights && selected !== null && (r === selR || c === selC || b === selB)) cls += ' is-peer';
+    if (highlights && selD && d === selD && i !== selected) cls += ' is-same';
+    if (conflict[i] && !isHidden) cls += ' is-conflict';
+    if (given) cls += ' is-given';
+    if (focusSet.has(i)) cls += ' is-focus';
+    if (done.has(b)) cls += ` box-done bd-${b}`;
+    if (inFlash) cls += ` ${flashCls}`;
+    cells.push(
+      <button
+        key={i}
+        type="button"
+        className={cls}
+        data-cell={i}
+        tabIndex={i === tabCell ? 0 : -1}
+        style={style}
+        aria-label={cellLabel(r, c, d, given, noteList, isHidden, wrong[i] && !given)}
+        aria-current={i === selected ? 'true' : undefined}
+        onPointerDown={(e) => {
+          if (e.button === 0) onSelect(i);
+        }}
+        onClick={() => onSelect(i)}
+        onFocus={() => onSelect(i)}
+      />,
+    );
+
+    let slotCls = 'cb-slot';
+    if (inFlash) slotCls += ` ${flashCls}`;
+    if (done.has(b)) slotCls += ` box-done bd-${b}`;
+    if (i === selected) slotCls += ' is-sel';
+    let inner = null;
+    if (d) {
+      const kind: 'given' | 'mine' | 'hint' | 'wrong' = given ? 'given' : wrong[i] ? 'wrong' : hinted?.[i] ? 'hint' : 'mine';
+      if (DigitView) inner = <DigitView digit={d} kind={kind} placedAt={placedAt[i] ?? 0} />;
+      else {
+        let dc = `cb-digit is-${kind} h${d}`;
+        if (i === placedCell && !given) dc += ` ${placeCls}`;
+        inner = (
+          <span key={placedAt[i] ?? 0} className={dc} aria-hidden="true">
+            {d}
+          </span>
+        );
+      }
+    } else if (noteList.length) {
+      inner = (
+        <span className="cb-notes" aria-hidden="true">
+          {Array.from({ length: n }, (_, k) => (
+            <span key={k} className={notes[i] & (1 << (k + 1)) ? 'cb-note on' : 'cb-note'}>
+              {k + 1}
+            </span>
+          ))}
+        </span>
+      );
+    }
+    slots.push(
+      <div key={i} className={slotCls} style={style}>
+        {inner}
+      </div>,
+    );
+
+    if (fogCleared) {
+      const fs: VarStyle = { '--d': (r + c) % 3 };
+      fogs.push(<div key={i} className={isHidden ? 'cb-fog is-on' : 'cb-fog'} style={fs} data-glyphs={fogGlyphs(puzzle.seed, i)} />);
+    }
+  }
+
+  const boardStyle: VarStyle = { '--cb-n': n, '--cb-note-cols': noteCols };
+  return (
+    <div className={`cb-board${solved ? ' is-solved' : ''}`} data-size={n} style={boardStyle}>
+      <div className="cb-cells" ref={cellsRef} role="group" aria-label="Board">
+        {cells}
+      </div>
+      <svg className="cb-grid" viewBox={`0 0 ${geo.px} ${geo.px}`} aria-hidden="true" focusable="false">
+        <Grid geo={geo} />
+      </svg>
+      <svg className="cb-clues" viewBox={`0 0 ${geo.px} ${geo.px}`} aria-hidden="true" focusable="false">
+        <Clues puzzle={puzzle} geo={geo} lit={lit} hidden={hidden} />
+      </svg>
+      <div className="cb-digits" aria-hidden="true">
+        {slots}
+      </div>
+      {fogCleared && (
+        <div className="cb-fogs" aria-hidden="true">
+          {fogs}
+        </div>
+      )}
+      <div className="cb-over" aria-hidden="true">
+        {BoxDone && <BoxDone geo={geo} done={doneBoxes} />}
+      </div>
+    </div>
+  );
+}
+
+export const Board = memo(BoardImpl);

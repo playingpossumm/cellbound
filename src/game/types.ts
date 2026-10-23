@@ -10,6 +10,8 @@ export interface Move {
   value: Digit;
   notes: number;
   kind: 'value' | 'note' | 'erase' | 'hint';
+  /** Moves made by one action share a group id, so undo and redo treat them as one step. */
+  group?: number;
 }
 
 /** Modifiers a Run card can put on one board. */
@@ -52,4 +54,8 @@ export interface GameState {
   /** Boxes (or regions) completed correctly, in completion order. */
   doneBoxes: number[];
   mods?: GameMods;
+  /** hinted[i] is true when the digit in cell i was placed by a hint or a reveal. */
+  hinted?: boolean[];
+  /** Local date (YYYY-MM-DD) the game was started on. */
+  startedOn?: string;
 }
