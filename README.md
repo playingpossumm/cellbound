@@ -2,6 +2,8 @@
 
 Cellbound is a variant sudoku game that runs in the browser and installs as an app on phones and laptops. It opens straight into the day's puzzle, and every board is made or stored on your device. Progress stays in the browser's local storage, so there is no server, no account and no advertising, and after the first visit the whole app works offline.
 
+Play it at [cellbound-sudoku.vercel.app](https://cellbound-sudoku.vercel.app).
+
 ![The Daily in the six looks, on a phone](docs/six-looks.png)
 
 ## Modes
