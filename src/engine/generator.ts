@@ -204,7 +204,7 @@ function layClues(n: number, sol: number[], kinds: ClueKind[], rng: Rng, hiddenT
   return clues;
 }
 
-function fillSolution(n: Size, boxW: number, boxH: number, globals: Clue[], rng: Rng): number[] | null {
+export function fillSolution(n: Size, boxW: number, boxH: number, globals: Clue[], rng: Rng): number[] | null {
   const m = buildModel({ size: n, boxW, boxH, clues: globals });
   for (let t = 0; t < 4; t++) {
     const r = search(m, new Array(n * n).fill(0), 1, rng, globals.length > 1 ? 60000 : 4000);

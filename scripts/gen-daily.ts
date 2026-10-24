@@ -2,7 +2,8 @@
 // Usage: npm run gen:daily [-- FROM TO], months as YYYY-MM (default 2026-10 to 2027-12).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { generateDaily, packDay, type MonthFile } from '../src/engine/daily';
+import { packDay, type MonthFile } from '../src/engine/daily';
+import { generateDaily } from '../src/engine/dailygen';
 
 const [from = '2026-10', to = '2027-12'] = process.argv.slice(2);
 const outDir = fileURLToPath(new URL('../src/data/daily/', import.meta.url));

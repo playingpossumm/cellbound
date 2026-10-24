@@ -253,6 +253,9 @@ function hiddenHint(p: Puzzle, m: Model, grid: Digit[], pre: Step[], h: number, 
   ];
 }
 
+/** Longest chain, in forced cells, that a hint's contradiction test prefers. */
+const SHORT_CHAIN = 8;
+
 export function hintFor(p: Puzzle, values: Digit[], notes?: number[]): HintStep[] | null {
   const n = p.size;
   const N = n * n;
@@ -272,11 +275,20 @@ export function hintFor(p: Puzzle, values: Digit[], notes?: number[]): HintStep[
   if (grid.every((v) => v)) return null;
   const m = buildModel(p);
   const L = new Logic(m, grid);
-  L.probeWidth = n;
   const pre: Step[] = [];
   let s: Step | null = null;
   for (let i = 0; i < 400; i++) {
-    const st = L.next(4);
+    // A contradiction test first looks for a short chain from a cell with two
+    // or three candidates, so "quickly breaks a rule" holds. Only when there
+    // is none does it test any cell with the full chain.
+    L.probeWidth = 3;
+    L.probeDepth = SHORT_CHAIN;
+    let st = L.next(4);
+    if (!st) {
+      L.probeWidth = n;
+      L.probeDepth = Infinity;
+      st = L.next(4);
+    }
     if (!st) break;
     if (st.place) { s = st; break; }
     pre.push(st);

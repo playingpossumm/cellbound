@@ -19,10 +19,15 @@ export interface Step {
   house2?: number;
   /** Model constraint index for clue steps. */
   con?: number;
-  /** Digits involved (pairs, pointing). */
+  /** Digits involved (pairs, pointing, a short contradiction test). */
   digits?: number[];
   cells: number[];
+  /** Short contradiction tests: how many other cells were forced before the contradiction. */
+  depth?: number;
 }
+
+/** Chain length, in forced cells, that a short contradiction test tries before longer ones. */
+const SHORT_FIRST = 2;
 
 const COST: Record<StepKind, number> = {
   naked: 1, hidden: 1.5, clue: 3, locked: 6, nakedPair: 8, hiddenPair: 9, probe: 25,
@@ -230,10 +235,18 @@ export class Logic {
   probeBudget = Infinity;
   /** Largest candidate count a contradiction test looks at. */
   probeWidth = 3;
+  /**
+   * When finite, a contradiction test rules out one digit with a short chain:
+   * first one that forces at most SHORT_FIRST other cells, then up to this
+   * many. The default keeps the grader's original test. The 9x9 Dailies are
+   * made with this test, so a change to it changes them (see craft.ts).
+   */
+  probeDepth = Infinity;
 
   private probe(): Step | null {
     if (this.probeBudget <= 0) return null;
     this.probeBudget--;
+    if (this.probeDepth !== Infinity) return this.shortProbe();
     const { m, masks, values } = this;
     for (let want = 2; want <= this.probeWidth; want++) {
       for (let c = 0; c < m.N; c++) {
@@ -251,6 +264,25 @@ export class Logic {
     return null;
   }
 
+  /** Looks for a chain of at most two forced cells first, then up to probeDepth, taking the first contradiction found. */
+  private shortProbe(): Step | null {
+    const { m, masks, values } = this;
+    const limits = this.probeDepth > SHORT_FIRST ? [SHORT_FIRST, this.probeDepth] : [this.probeDepth];
+    for (const limit of limits) {
+      for (let want = 2; want <= this.probeWidth; want++) {
+        for (let c = 0; c < m.N; c++) {
+          if (values[c] || POP[masks[c]] !== want) continue;
+          for (let d = 1; d <= m.n; d++) {
+            if (!(masks[c] & (1 << d))) continue;
+            const depth = contradictionDepth(m, masks, c, d, limit);
+            if (depth >= 0) return { kind: 'probe', level: 4, elim: [{ cell: c, mask: 1 << d }], cells: [c], digits: [d], depth };
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   /** Runs until solved or stuck. Returns true when solved. */
   run(maxTech: Tech, maxSteps = 5000): boolean {
     for (let i = 0; i < maxSteps; i++) {
@@ -258,6 +290,92 @@ export class Logic {
       if (!this.next(maxTech)) break;
     }
     return this.solved();
+  }
+}
+
+/**
+ * Puts digit in cell and propagates (singles, hidden singles and one clue at
+ * a time, as the search solver does) until something breaks. Returns how many
+ * other cells were forced before the contradiction showed, or -1 when there
+ * is none, or none within limit forced cells.
+ */
+export function contradictionDepth(m: Model, masks: ArrayLike<number>, cell: number, digit: number, limit: number): number {
+  const { N, peers, cellCons, cellHouses, houses, cons, all } = m;
+  const mk = Int32Array.from(masks);
+  mk[cell] = 1 << digit;
+  const fixed = new Uint8Array(N);
+  for (let c = 0; c < N; c++) if (single(mk[c])) fixed[c] = 1;
+  let forced = 0;
+  const inQ = new Uint8Array(N);
+  const q: number[] = [cell];
+  inQ[cell] = 1;
+  const conDirty = new Uint8Array(cons.length);
+  const conList: number[] = [];
+  const houseDirty = new Uint8Array(houses.length);
+  const houseList: number[] = [];
+  // Queues a changed cell; false once more cells were forced than the limit allows.
+  const changed = (c: number): boolean => {
+    if (!fixed[c] && single(mk[c])) {
+      fixed[c] = 1;
+      if (++forced > limit) return false;
+    }
+    if (!inQ[c]) { inQ[c] = 1; q.push(c); }
+    return true;
+  };
+  for (;;) {
+    while (q.length) {
+      const c = q.pop()!;
+      inQ[c] = 0;
+      const v = mk[c];
+      if (v === 0) return forced;
+      if (single(v)) {
+        for (const p of peers[c]) {
+          if (mk[p] & v) {
+            const nm = mk[p] & ~v;
+            if (!nm) return forced;
+            mk[p] = nm;
+            if (!changed(p)) return -1;
+          }
+        }
+      }
+      for (const k of cellCons[c]) if (!conDirty[k]) { conDirty[k] = 1; conList.push(k); }
+      for (const h of cellHouses[c]) if (!houseDirty[h]) { houseDirty[h] = 1; houseList.push(h); }
+    }
+    if (houseList.length) {
+      const h = houseList.pop()!;
+      houseDirty[h] = 0;
+      let once = 0, twice = 0;
+      for (const c of houses[h]) { const v = mk[c]; twice |= once & v; once |= v; }
+      if (once !== all) return forced;
+      const uniq = once & ~twice;
+      if (uniq) {
+        for (const c of houses[h]) {
+          const v = mk[c], u = v & uniq;
+          if (u && v !== u) {
+            if (u & (u - 1)) return forced;
+            mk[c] = u;
+            if (!changed(c)) return -1;
+          }
+        }
+      }
+      continue;
+    }
+    if (conList.length) {
+      const k = conList.pop()!;
+      conDirty[k] = 0;
+      const con = cons[k];
+      const sup = support(con, mk);
+      if (!sup) return forced;
+      for (let i = 0; i < sup.length; i++) {
+        const c = con.cells[i];
+        if (mk[c] !== sup[i]) {
+          mk[c] = sup[i];
+          if (!changed(c)) return -1;
+        }
+      }
+      continue;
+    }
+    return -1;
   }
 }
 
