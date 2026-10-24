@@ -2,24 +2,24 @@
 import { useState, type ReactNode } from 'react';
 import { TopBar } from '../../../app/TopBar';
 import { formatDateLong } from '../../../game/logic';
-import { DIFFICULTY_NAMES, listRules } from '../../names';
+import { RULE_NAMES } from '../../names';
 import { useScreenEntry } from '../../screenEntry';
 import { loadBoard } from '../board';
 import { BOARD_COUNT, BOARD_SPECS, rulesFor } from '../boards';
-import { CARDS, cardsByKind, type Card, type CardKind } from '../cards';
+import { START_HEARTS, CARDS, cardsByKind, type Card, type CardKind } from '../cards';
 import { formatScore } from '../score';
-import { boardsCleared, cardsOf, choose as chooseCard, type RunState } from '../state';
+import { cardsOf, choose as chooseCard, type RunState } from '../state';
 import { MILESTONES, bestDaily, milestoneOf, unlockedSet, type RunStats } from '../stats';
 import { CardBody } from './CardTile';
-import { Hearts } from './Hud';
+import { Hearts, Track } from './Hud';
 import { LockIcon } from './icons';
 
-/** A Run page: the app's top bar (menu and back), then the page. */
+/** A Run page: the app's top bar (menu and back), then the page. The page's title is its heading. */
 export function Page({ title, onBack, children }: { title?: string; onBack?: () => void; children: ReactNode }) {
   const ref = useScreenEntry<HTMLElement>();
   return (
     <div className="cb-run">
-      <TopBar title="Run" onBack={onBack} />
+      <TopBar title="Run" quietTitle={title === 'Run'} onBack={onBack} />
       <main className="cb-run-page" ref={ref} tabIndex={-1}>
         {title && <h1 className="cb-run-title">{title}</h1>}
         {children}
@@ -43,6 +43,15 @@ export interface HomeProps {
   onGiveUp: () => void;
   onLast: () => void;
   onCollection: () => void;
+}
+
+/** A score figure with its short label. */
+function Score({ value }: { value: number }) {
+  return (
+    <span className="cb-run-score">
+      <span className="cb-run-label">Score</span> {formatScore(value)}
+    </span>
+  );
 }
 
 export function Home(p: HomeProps) {
@@ -89,37 +98,23 @@ export function Home(p: HomeProps) {
   );
   return (
     <Page title="Run" onBack={p.onBack}>
-      <p className="cb-run-lead">
-        Five boards in a row. You start with three hearts and a wrong digit costs one. Between boards you take one of three cards.
-      </p>
-
-      <details className="cb-run-help">
-        <summary>How a run works</summary>
-        <ul>
-          <li>A run is five boards. They start gentle and get harder, and the last one is the test.</li>
-          <li>A wrong digit costs a heart. A shield absorbs a wrong digit first. With no hearts left the run ends.</li>
-          <li>
-            After each board you take one of three cards. A boon helps you. A curse makes the next board harder and raises its score. A
-            bargain does both.
-          </li>
-          <li>
-            A board scores a base, plus a bonus for finishing under par, minus a small cost for each hint, times the curse bonus. Hearts
-            left at the end add more.
-          </li>
-        </ul>
-      </details>
+      {/* What a run is, drawn: five boards, the last a 9x9, and three hearts. */}
+      <div className="cb-run-shape">
+        <Track label={`Five boards, the last one 9 by 9, and ${START_HEARTS} hearts.`} />
+        <Hearts now={START_HEARTS} slots={START_HEARTS} />
+      </div>
 
       {p.current && (
         <section className="cb-run-box" aria-labelledby="cb-run-resume-h">
           <h2 id="cb-run-resume-h" className="cb-run-h2">
             Run in progress
           </h2>
-          <p>
-            {p.current.daily ? `Daily run, ${formatDay(p.current.daily)}` : 'Free run'}. Board {p.current.index + 1} of {BOARD_COUNT}, score{' '}
-            {formatScore(p.current.score)}.
-          </p>
-          <div className="cb-run-actions">
+          <div className="cb-run-hud-row">
+            <Track results={p.current.results} at={p.current.index} label={`Board ${p.current.index + 1} of ${BOARD_COUNT}`} />
             <Hearts now={p.current.hearts} slots={Math.max(3, p.current.hearts)} shield={p.current.shield} />
+            <Score value={p.current.score} />
+          </div>
+          <div className="cb-run-actions">
             <button type="button" className="cb-run-btn is-primary" onClick={p.onResume}>
               Resume run
             </button>
@@ -132,38 +127,13 @@ export function Home(p: HomeProps) {
 
       {ask === 'end' && question}
 
-      <div className="cb-run-modes">
-        <section className="cb-run-box" aria-labelledby="cb-run-daily-h">
-          <h2 id="cb-run-daily-h" className="cb-run-h2">
-            Daily run
-          </h2>
-          <p className="cb-run-dim">{formatDay(p.today)}</p>
-          <p>Everyone gets the same boards and the same card offers today. Your first attempt sets your daily best.</p>
-          {todays && (
-            <p className="cb-run-fact">
-              Your daily best <strong>{formatScore(todays.score)}</strong>
-            </p>
-          )}
-          <div className="cb-run-actions">
-            <button type="button" className="cb-run-btn is-primary" onClick={() => start('daily')}>
-              {dailyRunning ? 'Resume daily run' : todays ? 'Play again' : 'Start daily run'}
-            </button>
-          </div>
-          {todays && <p className="cb-run-note">Replays do not change your daily best.</p>}
-        </section>
-
-        <section className="cb-run-box" aria-labelledby="cb-run-free-h">
-          <h2 id="cb-run-free-h" className="cb-run-h2">
-            Free run
-          </h2>
-          <p className="cb-run-dim">As often as you like</p>
-          <p>A fresh run every time. Cards you have unlocked can appear here.</p>
-          <div className="cb-run-actions">
-            <button type="button" className={'cb-run-btn' + (todays ? ' is-primary' : '')} onClick={() => start('free')}>
-              Start free run
-            </button>
-          </div>
-        </section>
+      <div className="cb-run-start">
+        <button type="button" className={'cb-run-btn is-big' + (todays && !dailyRunning ? '' : ' is-primary')} onClick={() => start('daily')}>
+          {dailyRunning ? 'Resume daily run' : todays ? 'Play again' : 'Start daily run'}
+        </button>
+        <button type="button" className={'cb-run-btn is-big' + (todays && !dailyRunning ? ' is-primary' : '')} onClick={() => start('free')}>
+          Start free run
+        </button>
       </div>
 
       {(ask === 'daily' || ask === 'free') && question}
@@ -194,19 +164,14 @@ export function Home(p: HomeProps) {
 
       <div className="cb-run-actions is-split">
         <button type="button" className="cb-run-btn" onClick={p.onCollection}>
-          Collection
+          Collection{' '}
           <span className="cb-run-dim">
-            {' '}
-            {open} of {CARDS.length} cards
+            {open} of {CARDS.length}
           </span>
         </button>
         {p.last && (
           <button type="button" className="cb-run-btn" onClick={p.onLast}>
-            Last run
-            <span className="cb-run-dim">
-              {' '}
-              {formatScore(p.last.score)}, {p.last.outcome === 'finished' ? 'finished' : p.last.outcome === 'failed' ? 'failed' : 'ended'}
-            </span>
+            Last run <span className="cb-run-dim">{formatScore(p.last.score)}</span>
           </button>
         )}
       </div>
@@ -216,10 +181,10 @@ export function Home(p: HomeProps) {
 
 // ---- Collection ------------------------------------------------------------------------
 
-const GROUPS: Array<{ kind: CardKind; title: string; blurb: string }> = [
-  { kind: 'boon', title: 'Boons', blurb: 'Help for the next board. No cost.' },
-  { kind: 'curse', title: 'Curses', blurb: 'A harder next board, and a higher score on it.' },
-  { kind: 'bargain', title: 'Bargains', blurb: 'A curse and a boon in one card.' },
+const GROUPS: Array<{ kind: CardKind; title: string }> = [
+  { kind: 'boon', title: 'Boons' },
+  { kind: 'curse', title: 'Curses' },
+  { kind: 'bargain', title: 'Bargains' },
 ];
 
 export function Collection({ stats, onBack }: { stats: RunStats; onBack: () => void }) {
@@ -229,8 +194,8 @@ export function Collection({ stats, onBack }: { stats: RunStats; onBack: () => v
   const open = CARDS.filter(isOpen).length;
   return (
     <Page title="Collection" onBack={onBack}>
-      <p className="cb-run-lead">
-        {open} of {total} cards unlocked. Daily runs use the starter cards so everyone sees the same offers. Unlocked cards appear in free runs.
+      <p className="cb-run-count">
+        <strong>{open}</strong> of {total} cards
       </p>
       <section aria-labelledby="cb-run-ms-h">
         <h2 id="cb-run-ms-h" className="cb-run-h2">
@@ -245,7 +210,7 @@ export function Collection({ stats, onBack }: { stats: RunStats; onBack: () => v
               <li key={m.id} className={done ? 'is-done' : ''}>
                 <span className="cb-run-ms-how">{m.how}</span>
                 <span className="cb-run-dim">
-                  {done ? 'Done' : `${prog} of ${m.goal}`}. Opens {opens.join(', ')}.
+                  {done ? 'Done' : `${prog} of ${m.goal}`}, opens {opens.join(', ')}
                 </span>
               </li>
             );
@@ -257,7 +222,6 @@ export function Collection({ stats, onBack }: { stats: RunStats; onBack: () => v
           <h2 id={`cb-run-g-${g.kind}`} className="cb-run-h2">
             {g.title}
           </h2>
-          <p className="cb-run-dim">{g.blurb}</p>
           <ul className="cb-run-grid">
             {cardsByKind(g.kind).map((c) => {
               const ok = isOpen(c);
@@ -269,11 +233,10 @@ export function Collection({ stats, onBack }: { stats: RunStats; onBack: () => v
                     <span className="cb-run-lock">
                       <LockIcon className="cb-run-lock-icon" />
                       <span>
-                        Locked. {m.how} <span className="cb-run-dim">{Math.min(m.goal, m.progress(stats))} of {m.goal}</span>
+                        {m.how} <span className="cb-run-dim">{Math.min(m.goal, m.progress(stats))} of {m.goal}</span>
                       </span>
                     </span>
                   )}
-                  {ok && c.unlock && <span className="cb-run-lock is-open">Unlocked</span>}
                 </li>
               );
             })}
@@ -299,21 +262,18 @@ export function Choose({ run, onPick, onHome }: { run: RunState; onPick: (id: st
     if (after !== run) loadBoard(after.setup.options).catch(() => undefined);
   };
   return (
-    <Page onBack={onHome}>
-      <p className="cb-run-label">
-        Board {run.index + 1} cleared, {boardsCleared(run)} of {BOARD_COUNT}
-      </p>
-      <h1 className="cb-run-title">Choose a card</h1>
+    <Page title="Choose a card" onBack={onHome}>
+      {/* The track rings the board the card is for; the final 9x9 is the large one. */}
       <div className="cb-run-hud-row cb-run-choose-status">
+        <Track results={run.results} at={next} label={`The card is for board ${next + 1} of ${BOARD_COUNT}, ${spec.size} by ${spec.size}.`} />
         <Hearts now={run.hearts} slots={Math.max(3, run.hearts)} shield={run.shield} />
-        <span className="cb-run-score">
-          <span className="cb-run-label">Score</span> {formatScore(run.score)}
-        </span>
+        <Score value={run.score} />
       </div>
-      <p className="cb-run-lead">
-        Next is board {next + 1} of {BOARD_COUNT}{next === BOARD_COUNT - 1 ? ', the final board' : ''}: {spec.size} by {spec.size}, {DIFFICULTY_NAMES[spec.difficulty].toLowerCase()}, with {listRules(rulesFor(run.seed, next))}. The card you take applies to that board.
-      </p>
-      {run.daily && <p className="cb-run-note">This is a daily run, so everyone sees these same three cards today.</p>}
+      <ul className="cb-run-rules" aria-label="Rules on that board">
+        {rulesFor(run.seed, next).map((k) => (
+          <li key={k}>{RULE_NAMES[k]}</li>
+        ))}
+      </ul>
       <ul className="cb-run-offers">
         {offers.map((c) => (
           <li key={c.id}>
@@ -323,7 +283,7 @@ export function Choose({ run, onPick, onHome }: { run: RunState; onPick: (id: st
               aria-pressed={sel === c.id}
               onClick={() => select(c.id)}
             >
-              <CardBody card={c} selected={sel === c.id} />
+              <CardBody card={c} selected={sel === c.id} size={spec.size} />
             </button>
           </li>
         ))}

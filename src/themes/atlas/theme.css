@@ -143,7 +143,7 @@
 /* Band: constellation name, graticule, timer. */
 [data-theme="atlas"] .at-band {
   position: relative;
-  height: 120px;
+  height: 92px;
   container-type: inline-size;
   font-family: var(--cb-font-ui);
   color: var(--at-ivory);
@@ -180,6 +180,8 @@
   color: var(--at-gold);
   white-space: nowrap;
 }
+/* A past Daily adds its date under the name. */
+[data-theme="atlas"] .at-band.has-sub { height: 104px; }
 [data-theme="atlas"] .at-sub {
   position: absolute;
   left: 4px;
@@ -309,7 +311,7 @@
 }
 [data-theme="atlas"] .cb-board[data-size="4"] .cb-notes { font-size: 20cqw; }
 /* Nine notes share a small cell on 9x9: a little larger so they stay readable on a phone. */
-[data-theme="atlas"] .cb-board[data-size="9"] .cb-notes { font-size: 27cqw; }
+[data-theme="atlas"] .cb-board[data-size="9"] .cb-notes { font-size: 29cqw; }
 
 /* Clues. Hairlines stay one pixel wide on every board size. */
 [data-theme="atlas"] .cb-clue { transition: filter 0.35s ease; }
@@ -466,8 +468,8 @@
   letter-spacing: 0.06em;
 }
 [data-theme="atlas"] .cb-play .cb-chip.on { border-color: var(--at-gold); color: var(--at-gold); background: var(--cb-sel); }
-[data-theme="atlas"] .cb-rtext { font-size: 17px; line-height: 1.22; }
-[data-theme="atlas"] .cb-key { border: 0; min-height: 66px; gap: 3px; }
+[data-theme="atlas"] .cb-msg-text { font-size: 17.5px; font-style: italic; line-height: 1.25; }
+[data-theme="atlas"] .cb-key { border: 0; }
 [data-theme="atlas"] .cb-key-d {
   width: 46px;
   height: 46px;
@@ -486,7 +488,6 @@
 }
 [data-theme="atlas"] .cb-key:active:not(:disabled) .cb-key-d { background: var(--cb-sel); border-color: var(--at-gold); }
 [data-theme="atlas"] .cb-pad[data-notes="true"] .cb-key-d { border-style: dotted; }
-[data-theme="atlas"] .cb-key-left { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; color: var(--at-mist); }
-[data-theme="atlas"] .cb-key.spent { opacity: 0.35; border-style: none; }
-[data-theme="atlas"] .cb-tool { font-size: 13px; letter-spacing: 0.16em; color: var(--at-mist); }
-[data-theme="atlas"] .cb-tool.on { color: var(--at-gold); }
+[data-theme="atlas"] .cb-key.spent .cb-key-d { opacity: 0.35; }
+[data-theme="atlas"] .cb-key-done { top: 1px; right: calc(50% - 30px); }
+[data-theme="atlas"] .cb-tool { color: var(--at-ivory); }

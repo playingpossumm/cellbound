@@ -43,10 +43,11 @@ export default defineConfig({
   // metadata.form says which screen shape a project stands for; a few tests only make
   // sense on one of them.
   projects: [
-    // Edge (Chromium)
-    { name: 'phone', testIgnore: productionSpec, metadata: { form: 'phone' }, use: { channel, viewport: phone, hasTouch: true } },
+    // Edge (Chromium). The phone projects emulate a phone, not a narrow desktop window: a phone's
+    // scrollbars float over the page, so the board gets the full width, as it does on a real phone.
+    { name: 'phone', testIgnore: productionSpec, metadata: { form: 'phone' }, use: { channel, viewport: phone, hasTouch: true, isMobile: true } },
     { name: 'laptop', testIgnore: productionSpec, metadata: { form: 'laptop' }, use: { channel, viewport: laptop } },
-    { name: 'production', testMatch: productionSpec, use: { ...preview, channel, viewport: phone, hasTouch: true } },
+    { name: 'production', testMatch: productionSpec, use: { ...preview, channel, viewport: phone, hasTouch: true, isMobile: true } },
     // WebKit: an iPhone and an iPad with touch. Playwright's WebKit build for Windows runs
     // several times slower than Edge, so the WebKit and Firefox projects get more time.
     { name: 'webkit-phone', testIgnore: productionSpec, timeout: slow, metadata: { form: 'phone' }, use: { ...devices['iPhone 14'], viewport: phone } },

@@ -30,6 +30,26 @@ async function solve(page: Page) {
   });
 }
 
+test('a run ends on a 9x9 final board, and the track shows it', async ({ page }) => {
+  await openFresh(page);
+  await openScreen(page, 'Run');
+  // The home draws the run: four small boards, then the larger 9x9 final.
+  await expect(page.locator('.cb-run-shape .cb-run-pip-board')).toHaveCount(5);
+  await expect(page.locator('.cb-run-shape .cb-run-pip-board').last()).toHaveClass(/is-nine/);
+  await page.getByRole('button', { name: 'Start free run' }).click();
+  for (let board = 1; board <= 4; board++) {
+    await expect(page.locator('.cb-run-hud')).toContainText(`Board ${board} of 5`);
+    await expect(page.locator('.cb-board[data-size="6"]')).toBeVisible();
+    await solve(page);
+    await page.locator('.cb-run-panel').getByRole('button', { name: 'Choose a card' }).click();
+    await page.locator('.cb-run-offers .cb-run-card').first().click();
+    await page.getByRole('button', { name: /^Take / }).click();
+  }
+  await expect(page.locator('.cb-run-hud')).toContainText('Board 5 of 5');
+  await expect(page.locator('.cb-board[data-size="9"]')).toBeVisible();
+  await expect(page.locator('.cb-key')).toHaveCount(9);
+});
+
 test('a run goes from board to card to the next board, and the menu returns to the Run home', async ({ page }) => {
   await openFresh(page);
   await openScreen(page, 'Run');
@@ -51,11 +71,13 @@ test('a run goes from board to card to the next board, and the menu returns to t
   await expect(page.locator('.cb-run-hud')).toContainText('Board 2 of 5');
 });
 
-test('the New mark on a rule chip opens that lesson, and finishing it removes the mark', async ({ page }) => {
+test('a new rule chip leads to its lesson, and finishing the lesson takes its dot away', async ({ page }) => {
   await openFresh(page);
   const chip = page.locator('.cb-chip').first();
   const rule = (await chip.textContent())!.trim();
-  await page.locator('.cb-chip-new').first().click();
+  await expect(chip).toHaveClass(/is-new/);
+  await chip.click();
+  await page.getByRole('button', { name: `Open the ${rule} lesson` }).click();
   await expect(page.locator('.cb-learn-title')).toHaveText(rule);
   await page.getByRole('button', { name: 'Skip to practice' }).click();
   await expect(page.locator('.cb-board')).toBeVisible();
@@ -63,7 +85,7 @@ test('the New mark on a rule chip opens that lesson, and finishing it removes th
   await expect(page.locator('.cb-learn-panel')).toContainText('Lesson complete');
   await openScreen(page, 'Daily');
   await expect(page.locator('.cb-chip').first()).toHaveText(rule);
-  await expect(page.locator('.cb-chip-wrap').first().locator('.cb-chip-new')).toHaveCount(0);
+  await expect(page.locator('.cb-chip').first()).not.toHaveClass(/is-new/);
 });
 
 test('fog clears around a right digit and never around a wrong one', async ({ page }) => {

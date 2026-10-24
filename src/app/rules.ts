@@ -1,4 +1,4 @@
-// Rule chip names and one-line texts (spec section 3).
+// Rule chip names and the one-line text a chip shows while it is on (spec section 3).
 import type { ClueKind, Puzzle } from '../engine/types';
 
 export const RULE_NAMES: Record<ClueKind, string> = {
@@ -46,8 +46,4 @@ export function kindsIn(puzzle: Puzzle): ClueKind[] {
   const out: ClueKind[] = [];
   for (const c of puzzle.clues) if (!out.includes(c.kind)) out.push(c.kind);
   return out;
-}
-
-export function classicText(size: number): string {
-  return `Each row, column and box holds 1 to ${size} once. Tap a rule to read it.`;
 }

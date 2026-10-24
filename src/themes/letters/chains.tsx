@@ -1,7 +1,7 @@
 // Clues as chains of letters that spell the rule along each line: RISING up a
 // thermo, SUM around an arrow circle and ADD along its shaft, RUN along a renban,
 // APART along a whisper, dots around a cage with its total, and so on.
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import type { Clue } from '../../engine/types';
 import type { BoardGeometry, ClueLayerProps } from '../types';
 import { anyVisible, cellsLoops, cssVars, r1, simplify, unit } from '../shared/util';
@@ -176,19 +176,35 @@ function cellsOf(c: Clue): number[] {
   }
 }
 
-export function LettersClueLayer({ puzzle, geo, lit, hidden }: ClueLayerProps): ReactNode {
+/**
+ * True when a letter sits on the middle of a cell that holds a digit. Those letters recede, so a
+ * full 9x9 reads as digits first and the spelled rules stay legible between them. Totals and
+ * labels sit in a cell's corner and never recede.
+ */
+function underDigit(g: Glyph, geo: BoardGeometry, values: number[] | undefined): boolean {
+  if (!values || g.cls === 'lab') return false;
+  const u = geo.cell;
+  const c = Math.min(geo.size - 1, Math.max(0, Math.floor(g.x / u)));
+  const r = Math.min(geo.size - 1, Math.max(0, Math.floor(g.y / u)));
+  if (!values[r * geo.size + c]) return false;
+  return Math.abs(g.x - (c + 0.5) * u) < u * 0.3 && Math.abs(g.y - (r + 0.5) * u) < u * 0.34;
+}
+
+export function LettersClueLayer({ puzzle, geo, lit, hidden, values }: ClueLayerProps): ReactNode {
+  // The chains depend only on the clues and the board; which letters recede changes with the digits.
+  const chains = useMemo(() => puzzle.clues.map((c) => chainFor(c, geo)), [puzzle, geo]);
   return (
     <g className="cb-clue-root" style={cssVars({ '--u': `${geo.cell}px` })}>
       {puzzle.clues.map((c, k) => {
         if (c.kind === 'antiKnight' && lit !== 'antiKnight') return null;
         if (c.kind !== 'diagonal' && c.kind !== 'antiKnight' && !anyVisible(cellsOf(c), hidden)) return null;
-        const { glyphs, dots } = chainFor(c, geo);
+        const { glyphs, dots } = chains[k];
         return (
           <g key={k} className={'cb-clue' + (lit === c.kind ? ' is-lit' : '')} data-kind={c.kind}>
             {glyphs.map((g, i) => (
               <text
                 key={i}
-                className={'lt-cg' + (g.cls ? ` lt-${g.cls}` : '')}
+                className={'lt-cg' + (g.cls ? ` lt-${g.cls}` : '') + (underDigit(g, geo, values) ? ' lt-under' : '')}
                 transform={`translate(${r1(g.x)} ${r1(g.y)}) rotate(${Math.round(g.rot)})`}
                 textAnchor={g.anchor ?? 'middle'}
                 dominantBaseline="central"

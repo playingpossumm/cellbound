@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BASE_SCORE, PAR_MS } from './boards';
+import { BASE_SCORE, PAR_MS, baseFor } from './boards';
 import { HEART_BONUS, HINT_COST_SHARE, TIME_BONUS_SHARE, endBonus, formatMs, formatScore, scoreBoard } from './score';
 
 const input = (d: number, over: Partial<Parameters<typeof scoreBoard>[0]> = {}) => ({
@@ -12,6 +12,13 @@ const input = (d: number, over: Partial<Parameters<typeof scoreBoard>[0]> = {}) 
 });
 
 describe('scoreBoard', () => {
+  it('scales the base by board size: a 9x9 is worth 2.25 boards of 6x6', () => {
+    for (let d = 1; d <= 5; d++) expect(baseFor(6, d)).toBe(BASE_SCORE[d]);
+    expect(baseFor(9, 3)).toBe(540);
+    expect(scoreBoard(input(3, { size: 9 })).base).toBe(540);
+    expect(scoreBoard(input(3)).base).toBe(BASE_SCORE[3]);
+  });
+
   it('gives the base score and no time bonus at or over par', () => {
     const s = scoreBoard(input(2));
     expect(s).toMatchObject({ base: BASE_SCORE[2], timeBonus: 0, hintPenalty: 0, subtotal: BASE_SCORE[2], total: BASE_SCORE[2] });

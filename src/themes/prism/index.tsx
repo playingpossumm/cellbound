@@ -41,7 +41,7 @@ function Band({ title, subtitle, puzzle }: BandProps): ReactNode {
       <h2 className="pr-title" style={cssVars({ '--pr-len': Math.max(5, title.length) })}>
         {title}
       </h2>
-      <span className="pr-sub">{subtitle}</span>
+      {subtitle && <span className="pr-sub">{subtitle}</span>}
     </div>
   );
 }
@@ -55,6 +55,7 @@ export const prism: ThemeDef = {
   name: 'Prism',
   blurb: 'Dark glass cells and one spectrum colour for every digit.',
   defaultNight: true,
+  bandShowsTitle: true,
   loadFonts: () => Promise.all([import('@fontsource-variable/sora/index.css')]),
   Band,
   ClueLayer,

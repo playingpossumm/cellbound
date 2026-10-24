@@ -3,11 +3,20 @@
 import { makeRng } from '../../engine';
 import type { ClueKind, Difficulty, GenerateOptions } from '../../engine/types';
 import type { GameMods } from '../../game/types';
+import { roundTo, sizeScale } from './scale';
 
 export const START_HEARTS = 3;
 export const MAX_HEARTS = 5;
 export const MAX_SHIELD = 3;
+/** The Tight clock on a 6x6 board. */
 export const TIGHT_CLOCK_MS = 4 * 60 * 1000;
+
+/** The Tight clock for a board, scaled by its size to the whole minute: 4 minutes on a 6x6, 9 on a 9x9. */
+export function clockFor(size: number): number {
+  return roundTo(TIGHT_CLOCK_MS * sizeScale(size), 60_000);
+}
+
+const clockMinutes = (size: number) => clockFor(size) / 60_000;
 /** The hardest difficulty a Run board can reach. */
 export const MAX_RUN_DIFFICULTY: Difficulty = 4;
 
@@ -36,8 +45,10 @@ export interface BoardPlan {
 export interface Card {
   id: string;
   name: string;
-  /** One line, plain English. */
+  /** One line, plain English. True of every board the card can reach. */
   text: string;
+  /** The line for a board of a known size, when a number in it depends on the size. */
+  textFor?: (size: number) => string;
   rarity: Rarity;
   kind: CardKind;
   /** Added to the board's score multiplier (0.25 means plus 25 percent). Zero for boons. */
@@ -50,7 +61,7 @@ export interface Card {
   order: number;
   /** Two cards of one family are never offered together. */
   family: string;
-  /** Not offered before the final board, because it would do nothing there. */
+  /** Not offered before the final board. */
   skipOnFinal?: boolean;
   effect(plan: BoardPlan): BoardPlan;
 }
@@ -77,7 +88,7 @@ const reveal = (n: number) => (p: BoardPlan) => withMods(p, { reveal: (p.mods.re
 const fog = (p: BoardPlan) => withOptions(p, { fog: true });
 const noNotes = (p: BoardPlan) => withMods(p, { noNotes: true, autoNotes: false });
 const dim = (p: BoardPlan) => withMods(p, { noHighlights: true });
-const clock = (p: BoardPlan) => withMods(p, { timeLimitMs: TIGHT_CLOCK_MS });
+const clock = (p: BoardPlan) => withMods(p, { timeLimitMs: clockFor(p.options.size) });
 const autoNotes = (p: BoardPlan) => withMods(p, { autoNotes: true, noNotes: false });
 
 /** Cage totals hidden. A cage is forced into the rule list so the curse always bites. */
@@ -251,7 +262,8 @@ export const CARDS: Card[] = [
   {
     id: 'tight-clock',
     name: 'Tight clock',
-    text: 'You have 4 minutes to finish the next board. When time runs out the run ends.',
+    text: 'You have 4 minutes, or 9 on the final board. When time runs out the run ends.',
+    textFor: (size) => `You have ${clockMinutes(size)} minutes to finish the next board. When time runs out the run ends.`,
     rarity: 'uncommon',
     kind: 'curse',
     mult: 0.4,
@@ -294,6 +306,7 @@ export const CARDS: Card[] = [
     lasts: 'board',
     order: 0,
     family: 'difficulty',
+    // The final 9x9 is the longest board of the run; a harder one would not fit a sitting.
     skipOnFinal: true,
     effect: harder,
   },
@@ -338,7 +351,8 @@ export const CARDS: Card[] = [
   {
     id: 'sprint',
     name: 'Sprint',
-    text: 'Four minutes to finish the next board or the run ends, but you gain a heart.',
+    text: '4 minutes for the next board, 9 for the final, or the run ends. You gain a heart.',
+    textFor: (size) => `${clockMinutes(size)} minutes to finish the next board or the run ends, but you gain a heart.`,
     rarity: 'uncommon',
     kind: 'bargain',
     mult: 0.2,
@@ -375,6 +389,11 @@ export const CARDS: Card[] = [
 ];
 
 const byId = new Map(CARDS.map((c) => [c.id, c]));
+
+/** A card's line for a board of the given size, or its general line when the size is not known. */
+export function cardText(card: Card, size?: number): string {
+  return size !== undefined && card.textFor ? card.textFor(size) : card.text;
+}
 
 export function cardById(id: string): Card | undefined {
   return byId.get(id);

@@ -1,9 +1,21 @@
 // Player settings, persisted next to the game store.
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DEFAULT_THEME, themes } from '../themes';
+import { DEFAULT_THEME, LEGACY_DEFAULT_THEME, themes } from '../themes';
 import type { ThemeId } from '../themes/types';
 import { safeStorage } from './storage';
+
+/** Saves that only a player from before this version can have. The settings key is not one: it is written only on a change. */
+const PLAYER_KEYS = ['cellbound:v1', 'cellbound:v1:stats', 'cellbound:v1:free', 'cellbound:run:v1', 'cellbound:learn:v1'];
+
+/** True when this browser already holds a game, stats, a run or lessons: the player is not new. */
+export function hasPlayedBefore(storage: Pick<Storage, 'getItem'> | null = typeof localStorage === 'undefined' ? null : localStorage): boolean {
+  try {
+    return !!storage && PLAYER_KEYS.some((k) => storage.getItem(k) !== null);
+  } catch {
+    return false;
+  }
+}
 
 export type NightSetting = 'auto' | 'light' | 'dark';
 export type MistakeSetting = 'off' | 'conflicts' | 'strict';
@@ -54,6 +66,9 @@ export function sanitizeSettings(raw: unknown): Settings {
   };
 }
 
+/** The look to write down after loading, when nothing was saved yet. */
+let firstLook: ThemeId | null = null;
+
 export const useSettings = create<SettingsStore>()(
   persist(
     (set) => ({
@@ -67,10 +82,22 @@ export const useSettings = create<SettingsStore>()(
       storage: safeStorage,
       partialize: (s) => sanitizeSettings(s),
       migrate: (persisted) => sanitizeSettings(persisted),
-      merge: (persisted, current) => ({ ...current, ...sanitizeSettings(persisted) }),
+      merge: (persisted, current) => {
+        if (persisted == null) {
+          // Nothing saved yet. A new player gets the default look; a player who has played before
+          // the default changed never picked a look, so they keep the one they have been playing.
+          firstLook = hasPlayedBefore() ? LEGACY_DEFAULT_THEME : current.theme;
+          return { ...current, theme: firstLook };
+        }
+        return { ...current, ...sanitizeSettings(persisted) };
+      },
     },
   ),
 );
+
+// Write the starting look down at once. Otherwise a new player's first game would make the next
+// visit look like a player from before, and the look would change under them.
+if (firstLook) useSettings.setState({ theme: firstLook });
 
 export function getSettings(): Settings {
   return useSettings.getState();

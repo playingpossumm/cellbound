@@ -62,7 +62,7 @@ describe('keyboard play', () => {
     expect(g.notes[empty]).toBe(0);
     expect(g.mistakes).toBe(0);
     expect(g.notesMode).toBe(false);
-    expect(host.querySelector('.cb-rtext')?.textContent).toBe('Notes are off for this board.');
+    expect(host.querySelector('.cb-msg-text')?.textContent).toBe('Notes are off for this board.');
   });
 
   it('pauses and resumes with P', async () => {
@@ -72,5 +72,75 @@ describe('keyboard play', () => {
     expect(host.querySelector('.cb-pause')).not.toBeNull();
     await press('p', 'KeyP');
     expect(getGame()!.status).toBe('playing');
+  });
+});
+
+const click = async (el: Element | null | undefined) => {
+  if (!el) throw new Error('nothing to click');
+  await act(async () => {
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
+};
+
+describe('the play screen says only what the moment needs', () => {
+  it('shows no rule text and no band line until a chip is on', async () => {
+    await open();
+    expect(host.querySelector('.cb-msg')).toBeNull();
+    expect(host.textContent).not.toMatch(/Each row, column and box|Tap a rule/);
+    // The board's description ("Board" here) goes into a shared result, never into the band.
+    expect(host.querySelector('.cb-band-wrap')?.textContent).not.toContain('Board');
+  });
+
+  it('shows a rule with a way to its lesson while its chip is on, and hides it when it is off', async () => {
+    await open();
+    const chip = [...host.querySelectorAll('.cb-chip')].find((b) => b.textContent === 'Thermo')!;
+    await click(chip);
+    expect(chip.getAttribute('aria-pressed')).toBe('true');
+    expect(host.querySelector('.cb-msg-text')?.textContent).toBe('Digits rise from the round bulb to the far end of the line.');
+    expect(host.querySelector('.cb-msg-btn')?.getAttribute('aria-label')).toBe('Open the Thermo lesson');
+    // The same words reach screen readers through a live region.
+    expect([...host.querySelectorAll('[aria-live]')].some((n) => n.textContent === 'Digits rise from the round bulb to the far end of the line.')).toBe(true);
+    await click(chip);
+    expect(host.querySelector('.cb-msg')).toBeNull();
+  });
+
+  it('marks a rule with no lesson done with a dot, described for screen readers', async () => {
+    await open();
+    const chip = host.querySelector('.cb-chip')!;
+    expect(chip.classList.contains('is-new')).toBe(true);
+    const desc = document.getElementById(chip.getAttribute('aria-describedby')!);
+    expect(desc?.textContent).toBe('New rule');
+  });
+
+  it('gives every tool a name, and Notes a pressed state', async () => {
+    await open();
+    const tools = [...host.querySelectorAll('.cb-tool')];
+    expect(tools.map((t) => t.getAttribute('aria-label'))).toEqual(['Undo', 'Erase', 'Notes', 'Hint']);
+    expect(tools.every((t) => !t.textContent)).toBe(true);
+    const notes = tools[2];
+    expect(notes.getAttribute('aria-pressed')).toBe('false');
+    await click(notes);
+    expect(notes.getAttribute('aria-pressed')).toBe('true');
+    expect(notes.classList.contains('on')).toBe(true);
+  });
+
+  it('shows a finished digit as a spent key instead of a count', async () => {
+    await open();
+    const keys = () => [...host.querySelectorAll('.cb-key')];
+    expect(host.textContent).not.toMatch(/\d left/);
+    // Fill every 1 of the solution.
+    await act(async () => {
+      LYRA.solution.forEach((d, i) => {
+        if (d === 1 && !LYRA.givens[i]) {
+          actions.select(i);
+          actions.input(1);
+        }
+      });
+    });
+    const one = keys()[0];
+    expect(one.classList.contains('spent')).toBe(true);
+    expect(one.getAttribute('aria-label')).toBe('Enter 1, all placed');
+    expect(one.querySelector('.cb-key-done')).not.toBeNull();
+    expect(keys()[1].classList.contains('spent')).toBe(false);
   });
 });

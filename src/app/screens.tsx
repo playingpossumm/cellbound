@@ -1,20 +1,24 @@
 // Screens: Daily, Fog, Free play, Stats, Settings and About.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { dailyPuzzle, fogFor } from '../engine';
+import { dailyDate, dailyPuzzle, fogFor } from '../engine';
 import { generateAsync } from '../engine/client';
 import type { ClueKind, Difficulty, Size } from '../engine/types';
 import { actions, getGame, getSavedGame, lastGameKey, startGame, useGame } from '../game/store';
 import { formatDateLong, formatTime } from '../game/logic';
-import { useSettings, type MistakeSetting, type MotionSetting, type NightSetting } from '../game/settings';
+import { useSettings, type MistakeSetting, type NightSetting } from '../game/settings';
 import { bestStreak, currentStreak, useStats } from '../game/stats';
 import type { ModeId } from '../game/types';
 import { themes } from '../themes';
+import type { ThemeDef } from '../themes/types';
 import { APP_NAME } from './brand';
 import { GameView } from './GameView';
+import { NewBoardIcon, RulesIcon } from './icons';
+import { LookPreview } from './LookPreview';
 import { TopBar } from './TopBar';
 import { ALL_KINDS, RULE_NAMES } from './rules';
 import { appUrl, decodeFree, encodeFree, type FreeOptions } from './share';
 import { useShell } from './shell';
+import { useNightFor } from './theme';
 
 function randomSeed(): string {
   const a = new Uint32Array(2);
@@ -23,15 +27,16 @@ function randomSeed(): string {
 }
 
 /**
- * Frame for screens that are not a board: top bar with the menu and a title. With `back` it also
- * has a back arrow, as the Run and Learn pages do: it returns to the screen the player came from.
+ * Frame for screens that are not a board: top bar with the menu, and the title set large on the
+ * page (so the bar keeps its copy for screen readers only). With `back` it also has a back
+ * arrow, as the Run and Learn pages do: it returns to the screen the player came from.
  */
 export function Page({ title, children, back }: { title: string; children: ReactNode; back?: boolean }) {
   const shell = useShell();
   const onBack = back ? () => (history.state?.cbRoute && history.length > 1 ? history.back() : shell.go('daily')) : undefined;
   return (
     <div className="cb-page">
-      <TopBar title={title} onBack={onBack} />
+      <TopBar title={title} quietTitle onBack={onBack} />
       <main className="cb-page-body">
         <h1 className="cb-page-title">{title}</h1>
         {children}
@@ -40,13 +45,23 @@ export function Page({ title, children, back }: { title: string; children: React
   );
 }
 
-export function Loading({ title, text }: { title: string; text: string }) {
+/** While a board is made or loaded: the top bar and a quiet spinner. A failure says what happened. */
+export function Loading({ title, text, failed }: { title: string; text: string; failed?: boolean }) {
   return (
-    <Page title={title}>
-      <p className="cb-muted" role="status">
-        {text}
-      </p>
-    </Page>
+    <div className="cb-page">
+      <TopBar title={title} />
+      <main className="cb-page-body cb-loading">
+        {failed ? (
+          <p className="cb-error" role="alert">
+            {text}
+          </p>
+        ) : (
+          <p className="cb-spinner" role="status">
+            <span className="cb-sr">{text}</span>
+          </p>
+        )}
+      </main>
+    </div>
   );
 }
 
@@ -67,16 +82,43 @@ export function DailyScreen({ date }: { date: string }) {
       live = false;
     };
   }, [date, key]);
-  if (error) return <Loading title="Daily" text={error} />;
+  if (error) return <Loading title="Daily" text={error} failed />;
   if (!game || game.key !== key) return <Loading title="Daily" text="Opening the Daily." />;
   return (
     <GameView
       game={game}
       title="Daily"
       subtitle={formatDateLong(date)}
+      // Today's Daily needs no date; one from an earlier day shows it, so it is never taken for today's.
+      bandSubtitle={date === dailyDate() ? undefined : formatDateLong(date)}
       shareUrl={`${appUrl()}?daily=${date}`}
       next={{ label: 'Free play', run: () => shell.go('free') }}
     />
+  );
+}
+
+const SIZES: Size[] = [9, 6];
+const sizeName = (s: Size) => `${s}×${s}`;
+const sizeLabel = (s: Size) => `${s} by ${s}`;
+
+/** Two buttons for the board size, the current one pressed. */
+function SizeSwitch({ size, onPick, disabled }: { size: Size; onPick: (s: Size) => void; disabled?: boolean }) {
+  return (
+    <div className="cb-seg cb-size" role="group" aria-label="Board size">
+      {SIZES.map((s) => (
+        <button
+          key={s}
+          type="button"
+          className={size === s ? 'on' : ''}
+          aria-pressed={size === s}
+          aria-label={sizeLabel(s)}
+          onClick={() => size !== s && onPick(s)}
+          disabled={disabled}
+        >
+          {sizeName(s)}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -110,42 +152,42 @@ export function FogScreen() {
     const saved = last ? getSavedGame(last) : null;
     if (saved && saved.status !== 'solved' && saved.status !== 'failed') {
       startGame({ key: saved.key, mode: 'fog', puzzle: saved.puzzle, fog: saved.fog });
-    } else void newBoard(6);
+    } else void newBoard(9);
   }, [newBoard]);
 
-  if (!game || game.mode !== 'fog') return <Loading title="Fog" text={error ?? 'Making a fog board.'} />;
+  if (!game || game.mode !== 'fog') return <Loading title="Fog" text={error ?? 'Making a fog board.'} failed={!!error} />;
+  const size = game.puzzle.size;
   const controls = (
     <div className="cb-mode-bar" aria-busy={busy}>
-      {([6, 9] as Size[]).map((s) => (
-        <button
-          key={s}
-          type="button"
-          className="cb-btn"
-          onClick={() => void newBoard(s)}
-          disabled={busy}
-        >
-          New {s}x{s}
-        </button>
-      ))}
-      {busy && (
-        <span className="cb-muted" role="status">
-          Making a board
-        </span>
-      )}
+      <SizeSwitch size={size} onPick={(s) => void newBoard(s)} disabled={busy} />
+      <button type="button" className="cb-btn cb-mode-btn" onClick={() => void newBoard(size)} disabled={busy}>
+        <NewBoardIcon />
+        New board
+      </button>
+      <span className="cb-sr" role="status">
+        {busy ? 'Making a board.' : error ?? ''}
+      </span>
     </div>
   );
   return (
     <GameView
       game={game}
       title="Fog"
-      subtitle={`${game.puzzle.size} by ${game.puzzle.size}`}
+      subtitle={sizeLabel(size)}
       extra={controls}
-      next={{ label: 'New board', run: () => newBoard(game.puzzle.size) }}
+      next={{ label: 'New board', run: () => newBoard(size) }}
     />
   );
 }
 
-const DEFAULT_FREE: Omit<FreeOptions, 'seed'> = { size: 6, rules: ['thermo', 'arrow', 'cage', 'kropki'], difficulty: 2 };
+const DEFAULT_FREE: Omit<FreeOptions, 'seed'> = { size: 9, rules: ['thermo', 'arrow', 'cage', 'kropki'], difficulty: 2 };
+const LEVELS: [Difficulty, string][] = [
+  [1, 'Gentle'],
+  [2, 'Easy'],
+  [3, 'Medium'],
+  [4, 'Hard'],
+  [5, 'Fiendish'],
+];
 
 function readFreeSetup(): Omit<FreeOptions, 'seed'> {
   try {
@@ -207,28 +249,29 @@ export function FreeScreen({ code }: { code?: string | null }) {
   if (phase === 'setup' || !game || game.mode !== 'free') {
     const toggle = (k: ClueKind) =>
       setSetup((s) => ({ ...s, rules: s.rules.includes(k) ? s.rules.filter((x) => x !== k) : [...s.rules, k] }));
+    // The groups explain themselves: a size, rule chips, and named levels. Their legends stay for screen readers.
     return (
       <Page title="Free play" back>
         <form
-          className="cb-form"
+          className="cb-form cb-free"
           onSubmit={(e) => {
             e.preventDefault();
             void start({ ...setup, seed: randomSeed() }, false);
           }}
         >
           <fieldset>
-            <legend>Size</legend>
+            <legend className="cb-sr">Size</legend>
             <div className="cb-seg">
-              {([6, 9] as Size[]).map((s) => (
+              {SIZES.map((s) => (
                 <label key={s} className={setup.size === s ? 'on' : ''}>
-                  <input type="radio" name="size" checked={setup.size === s} onChange={() => setSetup({ ...setup, size: s })} />
-                  {s}x{s}
+                  <input type="radio" name="size" checked={setup.size === s} onChange={() => setSetup({ ...setup, size: s })} aria-label={sizeLabel(s)} />
+                  {sizeName(s)}
                 </label>
               ))}
             </div>
           </fieldset>
           <fieldset>
-            <legend>Rules</legend>
+            <legend className="cb-sr">Rules</legend>
             <div className="cb-checks">
               {ALL_KINDS.map((k) => (
                 <label key={k} className={setup.rules.includes(k) ? 'on' : ''}>
@@ -237,22 +280,20 @@ export function FreeScreen({ code }: { code?: string | null }) {
                 </label>
               ))}
             </div>
-            <p className="cb-muted">With no rules picked the board uses classic rules only.</p>
           </fieldset>
           <fieldset>
-            <legend>Difficulty</legend>
+            <legend className="cb-sr">Difficulty</legend>
             <div className="cb-seg">
-              {([1, 2, 3, 4, 5] as Difficulty[]).map((d) => (
+              {LEVELS.map(([d, name]) => (
                 <label key={d} className={setup.difficulty === d ? 'on' : ''}>
                   <input type="radio" name="difficulty" checked={setup.difficulty === d} onChange={() => setSetup({ ...setup, difficulty: d })} />
-                  {d}
+                  {name}
                 </label>
               ))}
             </div>
-            <p className="cb-muted">1 is gentle, 5 is fiendish.</p>
           </fieldset>
           {error && <p className="cb-error">{error}</p>}
-          <button type="submit" className="cb-btn primary">
+          <button type="submit" className="cb-btn primary cb-start">
             Start
           </button>
         </form>
@@ -261,28 +302,23 @@ export function FreeScreen({ code }: { code?: string | null }) {
   }
   const current = game.key.startsWith('free:') ? decodeFree(game.key.slice(5)) : null;
   const opts = current ?? { ...setup, seed: game.puzzle.seed };
-  // Some rule mixes cannot reach every level; the generator then gives the closest board.
-  const offLevel = opts.difficulty !== game.puzzle.difficulty;
   const controls = (
     <div className="cb-mode-bar">
-      <button type="button" className="cb-btn" onClick={() => setPhase('setup')}>
+      <button type="button" className="cb-btn cb-mode-btn" onClick={() => setPhase('setup')}>
+        <RulesIcon />
         Change rules
       </button>
-      <button type="button" className="cb-btn" onClick={() => start({ ...opts, seed: randomSeed() }, false)}>
+      <button type="button" className="cb-btn cb-mode-btn" onClick={() => start({ ...opts, seed: randomSeed() }, false)}>
+        <NewBoardIcon />
         New board
       </button>
-      {offLevel && (
-        <p className="cb-muted cb-mode-note">
-          These rules could not make a level {opts.difficulty} board, so this one is level {game.puzzle.difficulty}.
-        </p>
-      )}
     </div>
   );
   return (
     <GameView
       game={game}
       title="Free play"
-      subtitle={`${game.puzzle.size} by ${game.puzzle.size}, level ${game.puzzle.difficulty}`}
+      subtitle={`${sizeLabel(game.puzzle.size)}, level ${game.puzzle.difficulty}`}
       extra={controls}
       shareUrl={`${appUrl()}?free=${encodeFree(opts)}`}
       next={{ label: 'Next board', run: () => start({ ...opts, seed: randomSeed() }, false) }}
@@ -324,9 +360,10 @@ export function StatsScreen() {
           ))}
         </dl>
       </section>
-      <section className="cb-card">
-        <h2>Times</h2>
-        {timeRows.length ? (
+      {/* Times and history appear once there is something to show. */}
+      {timeRows.length > 0 && (
+        <section className="cb-card">
+          <h2>Times</h2>
           <table className="cb-table">
             <thead>
               <tr>
@@ -342,7 +379,7 @@ export function StatsScreen() {
                 const [size, level] = k.split(':');
                 return (
                   <tr key={k}>
-                    <td>{size}</td>
+                    <td>{size.replace('x', '×')}</td>
                     <td>{level}</td>
                     <td>{t.count}</td>
                     <td>{formatTime(t.bestMs)}</td>
@@ -352,13 +389,11 @@ export function StatsScreen() {
               })}
             </tbody>
           </table>
-        ) : (
-          <p className="cb-muted">Solve a board to see your times.</p>
-        )}
-      </section>
-      <section className="cb-card">
-        <h2>Daily history</h2>
-        {history.length ? (
+        </section>
+      )}
+      {history.length > 0 && (
+        <section className="cb-card">
+          <h2>Daily history</h2>
           <ul className="cb-history">
             {history.map(([date, e]) => (
               <li key={date}>
@@ -367,10 +402,8 @@ export function StatsScreen() {
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="cb-muted">No Dailies yet.</p>
-        )}
-      </section>
+        </section>
+      )}
     </Page>
   );
 }
@@ -400,20 +433,36 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   );
 }
 
+/** One look in the picker: a live preview, then its name. The description goes to screen readers. */
+function LookOption({ theme, on, onPick }: { theme: ThemeDef; on: boolean; onPick: () => void }) {
+  const night = useNightFor(theme);
+  const descId = `cb-look-${theme.id}`;
+  return (
+    <label className={`cb-look-opt${on ? ' on' : ''}`}>
+      <input type="radio" name="theme" checked={on} onChange={onPick} aria-describedby={descId} />
+      <LookPreview theme={theme} night={night} />
+      <span className="cb-look-name">{theme.name}</span>
+      <span id={descId} hidden>
+        {theme.blurb}
+      </span>
+    </label>
+  );
+}
+
 export function SettingsScreen() {
   const s = useSettings();
+  // Every look's fonts, so each preview is set in its own type.
+  useEffect(() => {
+    for (const t of themes) t.loadFonts().catch(() => undefined);
+  }, []);
   return (
     <Page title="Settings" back>
       <form className="cb-form" onSubmit={(e) => e.preventDefault()}>
         <fieldset>
-          <legend>Theme</legend>
-          <div className="cb-themes">
+          <legend>Look</legend>
+          <div className="cb-looks">
             {themes.map((t) => (
-              <label key={t.id} className={`cb-theme-opt${s.theme === t.id ? ' on' : ''}`}>
-                <input type="radio" name="theme" checked={s.theme === t.id} onChange={() => s.update({ theme: t.id })} />
-                <span className="cb-theme-name">{t.name}</span>
-                <span className="cb-theme-blurb">{t.blurb}</span>
-              </label>
+              <LookOption key={t.id} theme={t} on={s.theme === t.id} onPick={() => s.update({ theme: t.id })} />
             ))}
           </div>
         </fieldset>
@@ -428,41 +477,32 @@ export function SettingsScreen() {
           ]}
           onChange={(v) => s.update({ night: v })}
         />
+        {/* Fog and Run always check against the solution, whatever this says. */}
         <Choice<MistakeSetting>
-          legend="Mistake checking"
+          legend="Mistakes"
           name="mistakes"
           value={s.mistakes}
           options={[
             ['off', 'Off'],
-            ['conflicts', 'Conflicts'],
-            ['strict', 'Strict'],
+            ['conflicts', 'Rule breaks'],
+            ['strict', 'Wrong digits'],
           ]}
           onChange={(v) => s.update({ mistakes: v })}
         />
-        <p className="cb-muted">Conflicts shows rule breaks among placed digits. Strict marks digits that differ from the solution. Fog and Run always check against the solution.</p>
         <fieldset>
           <legend>Play</legend>
           <Toggle
-            label="Auto-notes: fill candidates and clear notes as you place digits"
+            label="Auto-notes"
             checked={s.autoNotes}
             onChange={(v) => {
               s.update({ autoNotes: v });
               if (v && getGame()?.status === 'playing') actions.fillNotes();
             }}
           />
-          <Toggle label="Highlight the selected cell's row, column and box, and equal digits" checked={s.highlights} onChange={(v) => s.update({ highlights: v })} />
-          <Toggle label="Hide the timer" checked={s.hideTimer} onChange={(v) => s.update({ hideTimer: v })} />
+          <Toggle label="Highlights" checked={s.highlights} onChange={(v) => s.update({ highlights: v })} />
+          <Toggle label="Timer" checked={!s.hideTimer} onChange={(v) => s.update({ hideTimer: !v })} />
+          <Toggle label="Reduce motion" checked={s.reducedMotion === 'on'} onChange={(v) => s.update({ reducedMotion: v ? 'on' : 'auto' })} />
         </fieldset>
-        <Choice<MotionSetting>
-          legend="Reduced motion"
-          name="motion"
-          value={s.reducedMotion}
-          options={[
-            ['auto', 'Follow device'],
-            ['on', 'On'],
-          ]}
-          onChange={(v) => s.update({ reducedMotion: v })}
-        />
       </form>
     </Page>
   );
@@ -472,11 +512,8 @@ export function AboutScreen() {
   return (
     <Page title="About" back>
       <section className="cb-card cb-prose">
-        <p>
-          {APP_NAME} is variant sudoku for short daily sessions. It has a shared Daily, roguelite runs, fog boards, free play and a short
-          lesson for each rule.
-        </p>
-        <p>Everything runs on your device. Puzzles are made in the browser and progress stays in local storage. There are no ads and no accounts.</p>
+        <p>{APP_NAME} is variant sudoku: a shared Daily, roguelite runs, fog boards, free play and a lesson for each rule.</p>
+        <p>Everything runs on your device and stays in this browser. There are no ads and no accounts.</p>
         <p>Released under the MIT licence.</p>
       </section>
     </Page>

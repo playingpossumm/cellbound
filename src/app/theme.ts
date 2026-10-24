@@ -1,6 +1,7 @@
 // Theme application: data-theme and data-night on <html>, fonts, reduced motion.
 import { useEffect, useSyncExternalStore } from 'react';
 import { getTheme } from '../themes';
+import type { ThemeDef } from '../themes/types';
 import { useSettings } from '../game/settings';
 
 function media(q: string): MediaQueryList | null {
@@ -29,14 +30,18 @@ function useDevicePrefersDark(): boolean | null {
   return dark ? true : light ? false : null;
 }
 
-/** Whether the night variant is on, from the setting, the device and the theme default. */
-export function useNight(): boolean {
+/** Whether a look shows its night variant, from the setting, the device and the look's default. */
+export function useNightFor(theme: ThemeDef): boolean {
   const setting = useSettings((s) => s.night);
-  const themeId = useSettings((s) => s.theme);
   const device = useDevicePrefersDark();
   if (setting === 'dark') return true;
   if (setting === 'light') return false;
-  return device ?? getTheme(themeId).defaultNight;
+  return device ?? theme.defaultNight;
+}
+
+/** Whether the night variant of the chosen look is on. */
+export function useNight(): boolean {
+  return useNightFor(getTheme(useSettings((s) => s.theme)));
 }
 
 export function useReducedMotion(): boolean {

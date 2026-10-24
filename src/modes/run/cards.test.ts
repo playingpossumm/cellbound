@@ -8,6 +8,8 @@ import {
   MAX_SHIELD,
   TIGHT_CLOCK_MS,
   applyCards,
+  cardText,
+  clockFor,
   cardById,
   cardPool,
   multiplierOf,
@@ -124,6 +126,22 @@ describe('curse effects', () => {
     expect(card('dim').effect(plan()).mods.noHighlights).toBe(true);
     expect(card('tight-clock').effect(plan()).mods.timeLimitMs).toBe(TIGHT_CLOCK_MS);
     expect(TIGHT_CLOCK_MS).toBe(240_000);
+  });
+
+  it('scales the Tight clock with the board: 4 minutes on a 6x6, 9 on the final 9x9', () => {
+    expect(clockFor(6)).toBe(240_000);
+    expect(clockFor(9)).toBe(540_000);
+    const final = plan(BOARD_SPECS.length - 1);
+    expect(final.options.size).toBe(9);
+    for (const id of ['tight-clock', 'sprint']) {
+      expect(card(id).effect(final).mods.timeLimitMs).toBe(540_000);
+      // The offer names the minutes of the board it is for; the Collection covers both.
+      expect(cardText(card(id), 6)).toContain('4 minutes');
+      expect(cardText(card(id), 9)).toContain('9 minutes');
+      expect(cardText(card(id))).toMatch(/4 minutes.*9/);
+      expect(cardText(card(id), 9)).toMatch(/run ends/);
+    }
+    expect(cardText(card('lantern'), 9)).toBe(card('lantern').text);
   });
 
   it('Crowded adds one more rule and is deterministic', () => {

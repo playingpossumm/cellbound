@@ -2,7 +2,7 @@
 // Digits and notes need 4.5:1 on the board, on the selected cell and on the
 // same-digit cell; interface text needs 4.5:1 on the page ground.
 import { describe, expect, it } from 'vitest';
-import { contrast, over, parseColor, resolve, rootVars, sizeVars, themeCss } from '../test/cssvars';
+import { contrast, oklabDistance, over, parseColor, resolve, rootVars, sizeVars, themeCss } from '../test/cssvars';
 import type { Rgba } from '../test/cssvars';
 
 const ids = ['atlas', 'paper', 'washi', 'swiss', 'prism', 'letters'] as const;
@@ -46,6 +46,16 @@ describe('contrast', () => {
             }
           }
           expect(contrast(colour(env, '--pr-err', ground), glass)).toBeGreaterThanOrEqual(4.5);
+        });
+        it(`${label}: every two digit hues on one board are clearly different`, () => {
+          for (const size of [4, 6, 9]) {
+            const hue = { ...env, ...sizeVars(src, id, night, size) };
+            const list = Array.from({ length: size }, (_, i) => colour(hue, `--h${i + 1}`));
+            let min = Infinity;
+            for (let i = 0; i < size; i++) for (let j = i + 1; j < size; j++) min = Math.min(min, oklabDistance(list[i], list[j]));
+            // 0.1 in OKLab is a difference anyone sees at a glance, even across a 9x9 board.
+            expect(min, `${label} ${size}x${size}`).toBeGreaterThanOrEqual(0.1);
+          }
         });
         continue;
       }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { APP_NAME } from '../../app/brand';
 import { BAD_COPY } from '../../test/copy';
-import { BOARD_COUNT, BOARD_SPECS, PAR_MS } from './boards';
+import { BOARD_COUNT, BOARD_SPECS, PAR_MS, parFor } from './boards';
 import { cardPool, cardById, START_HEARTS } from './cards';
 import {
   abandon,
@@ -51,16 +51,29 @@ describe('a new run', () => {
 });
 
 describe('the board ladder', () => {
-  it('rises from difficulty 1 to 3 over boards 1 to 4, all 6x6', () => {
+  it('rises from difficulty 1 to 3 over boards 1 to 4, all 6x6 for pace', () => {
     const ds = BOARD_SPECS.slice(0, 4).map((s) => s.difficulty);
     expect(ds[0]).toBe(1);
     expect(ds[3]).toBe(3);
     expect([...ds].sort()).toEqual(ds);
-    BOARD_SPECS.forEach((s) => expect(s.size).toBe(6));
+    BOARD_SPECS.slice(0, 4).forEach((s) => expect(s.size).toBe(6));
   });
 
-  it('ends on a difficulty 4 board with three kinds', () => {
-    expect(BOARD_SPECS[BOARD_COUNT - 1]).toMatchObject({ difficulty: 4, kinds: 3 });
+  it('ends on a 9x9 at difficulty 3 with three kinds', () => {
+    expect(BOARD_SPECS[BOARD_COUNT - 1]).toMatchObject({ size: 9, difficulty: 3, kinds: 3 });
+  });
+
+  it('gives the final 9x9 a par for its size, and scores it for its size', () => {
+    let r = newRun('t:final', null, 1);
+    for (let i = 0; i < BOARD_COUNT - 1; i++) r = playOn(r);
+    expect(r.setup.options.size).toBe(9);
+    expect(r.setup.parMs).toBe(parFor(9, r.setup.options.difficulty));
+    const done = finishBoard(r, { ...clean, elapsedMs: r.setup.parMs });
+    const last = done.results[BOARD_COUNT - 1];
+    expect(last.size).toBe(9);
+    // The base follows the slot (a 9x9 at difficulty 3): the 6x6 base of 240 times 2.25.
+    expect(last.score.base).toBe(540);
+    expect(last.score.base).toBeGreaterThan(done.results[3].score.base);
   });
 
   it('seeds board k as runSeed:k', () => {
@@ -308,5 +321,11 @@ describe('par times', () => {
   it('grow with difficulty', () => {
     for (let d = 2; d <= 5; d++) expect(PAR_MS[d]).toBeGreaterThan(PAR_MS[d - 1]);
     expect(cardById('tight-clock')!.mult).toBeGreaterThan(0);
+  });
+
+  it('grow with size: a 9x9 at difficulty 3 has 10 minutes, and a 6x6 keeps its par', () => {
+    for (let d = 1; d <= 5; d++) expect(parFor(6, d)).toBe(PAR_MS[d]);
+    expect(parFor(9, 3)).toBe(600_000);
+    expect(parFor(9, 2)).toBe(480_000);
   });
 });

@@ -7,7 +7,7 @@ import './run.css';
 import { fogOf, gameKey, loadBoard } from './board';
 import { BOARD_COUNT } from './boards';
 import { runActions, useRunStore } from './store';
-import { Hud } from './ui/Hud';
+import { Hud, Track } from './ui/Hud';
 import { Choose, Collection, Home, Page, formatDay } from './ui/Home';
 import { ResultPanel, Summary } from './ui/Panels';
 import type { RunState } from './state';
@@ -122,10 +122,10 @@ function BoardView({ run, GameViewComponent }: { run: RunState; GameViewComponen
             </div>
           </div>
         ) : (
-          <p className="cb-run-loading" role="status">
+          <div className="cb-run-loading" role="status">
+            <Track results={run.results} at={run.index} label={`Preparing board ${run.index + 1} of ${BOARD_COUNT}`} />
             <span className="cb-run-spinner" aria-hidden="true" />
-            Preparing board {run.index + 1} of {BOARD_COUNT}
-          </p>
+          </div>
         )}
       </Page>
     );

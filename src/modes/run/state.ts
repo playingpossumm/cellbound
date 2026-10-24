@@ -21,6 +21,8 @@ export interface BoardResult {
   status: 'solved' | 'failed';
   /** The difficulty of the board's slot, which the base score follows. */
   difficulty: number;
+  /** The board's size, which scales its base score. Results from before the 9x9 final have none: 6. */
+  size?: number;
   elapsedMs: number;
   /** The par time the time bonus was measured against. */
   parMs?: number;
@@ -132,6 +134,7 @@ export function finishBoard(run: RunState, end: BoardEnd): RunState {
     status === 'solved'
       ? scoreBoard({
           difficulty: BOARD_SPECS[run.index].difficulty,
+          size: setup.options.size,
           parMs: setup.parMs,
           elapsedMs: end.elapsedMs,
           hintsUsed: end.hintsUsed,
@@ -142,6 +145,7 @@ export function finishBoard(run: RunState, end: BoardEnd): RunState {
     index: run.index,
     status,
     difficulty: BOARD_SPECS[run.index].difficulty,
+    size: setup.options.size,
     elapsedMs: end.elapsedMs,
     parMs: setup.parMs,
     mistakes: end.mistakes,

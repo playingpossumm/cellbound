@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { EM_DASH } from '../test/copy';
 import { rootVars, themeCss } from '../test/cssvars';
-import { DEFAULT_THEME, getTheme, themes } from './index';
+import { DEFAULT_THEME, LEGACY_DEFAULT_THEME, getTheme, themes } from './index';
 import { buildItems, project } from './letters/cube';
 import { mastheadFor } from './paper';
 import { cellsLoops, cellsOutline, simplify, wavePath } from './shared/util';
 
-const ids = ['atlas', 'paper', 'washi', 'swiss', 'prism', 'letters'] as const;
+const ids = ['prism', 'letters', 'atlas', 'paper', 'washi', 'swiss'] as const;
 
 const REQUIRED = [
   'ground', 'board', 'ink', 'mine', 'hint', 'note', 'wrong', 'peer', 'same', 'sel', 'sel-ring', 'focus',
@@ -15,10 +15,11 @@ const REQUIRED = [
 ].map((n) => `--cb-${n}`);
 
 describe('theme registry', () => {
-  it('lists the six themes in picker order', () => {
+  it('lists the six themes in picker order, the two favourites first', () => {
     expect(themes.map((t) => t.id)).toEqual([...ids]);
-    expect(DEFAULT_THEME).toBe('atlas');
-    expect(getTheme('prism').id).toBe('prism');
+    expect(DEFAULT_THEME).toBe('prism');
+    expect(LEGACY_DEFAULT_THEME).toBe('atlas');
+    expect(getTheme('letters').id).toBe('letters');
   });
 
   it('describes each theme in one plain line', () => {
@@ -32,7 +33,7 @@ describe('theme registry', () => {
   });
 
   it('opens atlas and prism in night mode and the rest in day mode', () => {
-    expect(themes.filter((t) => t.defaultNight).map((t) => t.id)).toEqual(['atlas', 'prism']);
+    expect(themes.filter((t) => t.defaultNight).map((t) => t.id)).toEqual(['prism', 'atlas']);
   });
 });
 

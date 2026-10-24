@@ -72,6 +72,22 @@ export function LockIcon({ className }: { className?: string }) {
   );
 }
 
+export function ChevronIcon({ className }: { className?: string }) {
+  return (
+    <Svg className={className}>
+      <path d="M9.5 5.5 16 12l-6.5 6.5" />
+    </Svg>
+  );
+}
+
+export function BackIcon({ className }: { className?: string }) {
+  return (
+    <Svg className={className}>
+      <path d="M14.5 5.5 8 12l6.5 6.5" />
+    </Svg>
+  );
+}
+
 export function CheckIcon({ className }: { className?: string }) {
   return (
     <Svg className={className}>

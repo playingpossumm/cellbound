@@ -68,7 +68,7 @@ const DATE = /^[A-Z][a-z]+day \d{1,2} [A-Z][a-z]+$/;
 function Band({ title, subtitle, time, puzzle }: BandProps): ReactNode {
   const name = puzzle.name ?? title;
   return (
-    <div className="cb-band at-band">
+    <div className={subtitle ? 'cb-band at-band has-sub' : 'cb-band at-band'}>
       <svg className="at-grat" viewBox="0 0 360 120" preserveAspectRatio="none" aria-hidden="true">
         <path d="M-30 104 Q180 44 390 104" />
         <path d="M-30 124 Q180 70 390 124" />
@@ -78,7 +78,7 @@ function Band({ title, subtitle, time, puzzle }: BandProps): ReactNode {
       <h2 className="at-name" style={cssVars({ '--at-len': Math.max(6, name.length) })}>
         {name}
       </h2>
-      <span className={DATE.test(subtitle) ? 'at-sub is-date' : 'at-sub'}>{subtitle}</span>
+      {subtitle && <span className={DATE.test(subtitle) ? 'at-sub is-date' : 'at-sub'}>{subtitle}</span>}
       {time ? (
         <span className="at-time" aria-hidden="true">
           {time}

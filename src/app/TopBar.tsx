@@ -7,6 +7,11 @@ import { useShell } from './shell';
 
 export interface TopBarProps {
   title: string;
+  /**
+   * The screen shows its title large elsewhere (a heading or a theme band), so the bar keeps
+   * the title for screen readers only instead of saying it twice.
+   */
+  quietTitle?: boolean;
   /** Shows a back arrow that runs this. */
   onBack?: () => void;
   /** Accessible name of the back arrow. */
@@ -18,22 +23,22 @@ export interface TopBarProps {
   ref?: Ref<HTMLElement>;
 }
 
-export function TopBar({ title, onBack, backLabel = 'Back', children, right, ref }: TopBarProps) {
+export function TopBar({ title, quietTitle, onBack, backLabel = 'Back', children, right, ref }: TopBarProps) {
   const shell = useShell();
   return (
     <header className="cb-top" ref={ref}>
       <div className="cb-top-left">
-        <button type="button" className="cb-ib" aria-label="Menu" onClick={shell.openMenu}>
+        <button type="button" className="cb-ib" aria-label="Menu" title="Menu" onClick={shell.openMenu}>
           <MenuIcon />
         </button>
         {onBack && (
-          <button type="button" className="cb-ib" aria-label={backLabel} onClick={onBack}>
+          <button type="button" className="cb-ib" aria-label={backLabel} title={backLabel} onClick={onBack}>
             <BackIcon />
           </button>
         )}
       </div>
       <div className="cb-top-mid">
-        <span className="cb-top-title">{title}</span>
+        <span className={quietTitle ? 'cb-top-title cb-sr' : 'cb-top-title'}>{title}</span>
         {children}
       </div>
       <div className="cb-top-right">{right}</div>

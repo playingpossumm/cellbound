@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useState, type ComponentType, type Keyboard
 import { GameView, type GameViewProps } from '../../app/GameView';
 import { TopBar } from '../../app/TopBar';
 import { startGame, useGame } from '../../game/store';
-import { CheckIcon } from '../run/ui/icons';
+import { BackIcon, CheckIcon, ChevronIcon } from '../run/ui/icons';
 import { useScreenEntry } from '../screenEntry';
 import './learn.css';
 import { LESSONS, lessonById, practicePuzzle, type LessonId } from './lessons';
@@ -23,7 +23,7 @@ function Page({ title, onBack, backLabel, children }: { title?: string; onBack: 
   const ref = useScreenEntry<HTMLElement>();
   return (
     <div className="cb-learn">
-      <TopBar title="Learn" onBack={onBack} backLabel={backLabel} />
+      <TopBar title="Learn" quietTitle={title === 'Learn'} onBack={onBack} backLabel={backLabel} />
       <main className="cb-learn-page" ref={ref} tabIndex={-1}>
         {title && <h1 className="cb-learn-title">{title}</h1>}
         {children}
@@ -74,40 +74,37 @@ export function LearnApp({ onExit, GameViewComponent = GameView }: LearnAppProps
   );
 }
 
+/**
+ * The lessons in order. A finished one carries a tick and the next one stands out, so the list
+ * shows where the player is without saying it. Each rule's text waits in its lesson.
+ */
 function LessonList({ done, onExit, onOpen }: { done: Partial<Record<LessonId, number>>; onExit: () => void; onOpen: (id: LessonId) => void }) {
-  const finished = LESSONS.filter((l) => done[l.id] !== undefined).length;
   const next = LESSONS.find((l) => done[l.id] === undefined)?.id;
   return (
     <Page title="Learn" onBack={onExit}>
-      <p className="cb-learn-lead">One rule at a time. Each lesson takes about a minute and ends with a small puzzle.</p>
-      <p className="cb-learn-label" aria-live="polite">
-        {finished} of {LESSONS.length} lessons done
-      </p>
       <ol className="cb-learn-list">
         {LESSONS.map((l, k) => {
           const isDone = done[l.id] !== undefined;
           return (
             <li key={l.id}>
-              <button type="button" className={'cb-learn-row' + (isDone ? ' is-done' : '')} onClick={() => onOpen(l.id)}>
+              <button
+                type="button"
+                className={'cb-learn-row' + (isDone ? ' is-done' : '') + (l.id === next ? ' is-next' : '')}
+                aria-describedby={isDone || l.id === next ? `cb-learn-s-${l.id}` : undefined}
+                onClick={() => onOpen(l.id)}
+              >
                 <span className="cb-learn-num" aria-hidden="true">
                   {k + 1}
                 </span>
-                <span className="cb-learn-row-text">
-                  <span className="cb-learn-row-title">{l.title}</span>
-                  <span className="cb-learn-row-rule">{l.rule}</span>
+                <span className="cb-learn-row-title">{l.title}</span>
+                <span className="cb-learn-status" aria-hidden="true">
+                  {isDone ? <CheckIcon className="cb-learn-status-icon" /> : <ChevronIcon className="cb-learn-status-icon" />}
                 </span>
-                <span className="cb-learn-status">
-                  {isDone ? (
-                    <>
-                      <CheckIcon className="cb-learn-status-icon" />
-                      Done
-                    </>
-                  ) : l.id === next ? (
-                    'Next up'
-                  ) : (
-                    'Start'
-                  )}
-                </span>
+                {(isDone || l.id === next) && (
+                  <span id={`cb-learn-s-${l.id}`} hidden>
+                    {isDone ? 'Done' : 'Next'}
+                  </span>
+                )}
               </button>
             </li>
           );
@@ -126,7 +123,6 @@ function LessonView(p: {
   onPractice: () => void;
 }) {
   const lesson = lessonById(p.id);
-  const index = LESSONS.findIndex((l) => l.id === p.id);
   const last = p.step >= lesson.steps.length - 1;
   const step = lesson.steps[Math.min(p.step, lesson.steps.length - 1)];
   const onKey = (e: KeyboardEvent) => {
@@ -136,11 +132,15 @@ function LessonView(p: {
   return (
     <Page onBack={p.onList} backLabel="All lessons">
       <div className="cb-learn-lesson" onKeyDown={onKey}>
-        <p className="cb-learn-label">
-          Lesson {index + 1} of {LESSONS.length}
-          {p.done ? ', done' : ''}
-        </p>
-        <h1 className="cb-learn-title">{lesson.title}</h1>
+        <h1 className="cb-learn-title">
+          {lesson.title}
+          {p.done && (
+            <span className="cb-learn-title-done">
+              <CheckIcon className="cb-learn-status-icon" />
+              <span className="cb-learn-visually-hidden">, done</span>
+            </span>
+          )}
+        </h1>
         <p className="cb-learn-rule">{lesson.rule}</p>
         <figure className="cb-learn-figure">
           <MiniBoard art={step.art} />
@@ -214,8 +214,7 @@ function Practice(p: {
       </Page>
     );
   }
-  const index = LESSONS.findIndex((l) => l.id === p.id);
-  const following = LESSONS[index + 1];
+  const following = LESSONS[LESSONS.findIndex((l) => l.id === p.id) + 1];
   const GameViewComponent = p.GameViewComponent;
   return (
     <GameViewComponent
@@ -225,9 +224,9 @@ function Practice(p: {
       onExit={p.onLesson}
       extra={
         <div className="cb-learn-extra">
-          <span>{lesson.id === 'basics' ? 'Practice: fill the grid with the basic rules.' : `Practice: fill the grid using the ${lesson.title} rule.`}</span>
           <button type="button" className="cb-learn-btn is-small" onClick={p.onLesson}>
-            Lesson
+            <BackIcon className="cb-learn-btn-icon" />
+            {lesson.title}
           </button>
         </div>
       }
@@ -237,14 +236,11 @@ function Practice(p: {
             <h2 id="cb-learn-panel-h" className="cb-learn-panel-title">
               Lesson complete
             </h2>
-            <p>
-              You solved the {lesson.id === 'basics' ? 'basics' : lesson.title} practice puzzle.{' '}
-              {following ? `Next is ${following.title}.` : 'That was the last lesson.'}
-            </p>
             <div className="cb-learn-actions">
               {following && (
-                <button type="button" className="cb-learn-btn is-primary" onClick={() => p.onNext(following.id)} autoFocus>
-                  Next lesson
+                <button type="button" className="cb-learn-btn is-primary" onClick={() => p.onNext(following.id)} autoFocus aria-label={`Next lesson, ${following.title}`}>
+                  {following.title}
+                  <ChevronIcon className="cb-learn-btn-icon" />
                 </button>
               )}
               <button type="button" className={'cb-learn-btn' + (following ? '' : ' is-primary')} onClick={p.onList}>

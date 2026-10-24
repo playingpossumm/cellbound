@@ -48,57 +48,34 @@
   --pr-conflict: rgba(198, 40, 40, 0.12);
 }
 
-/* Digit hues, dark. */
-[data-theme="prism"][data-night="true"] :is(.cb-board, .pr-band)[data-size="6"] {
+/* Digit hues, per board size. They sit on the play screen's root, so the board, the band and the
+   pad share them; the board and the band carry data-size too, for boards drawn elsewhere (the theme
+   picker). The nine 9x9 hues were searched for the largest smallest difference between any two
+   (in OKLab, with and without red-green colour blindness), each kept near its place in the
+   spectrum and at 4.6:1 or better on its own tint, the selected cell and the peer cell. */
+[data-theme="prism"][data-night="true"] :is(.cb-game, .cb-board, .pr-band)[data-size="6"] {
   --h1: oklch(0.78 0.128 28); --h2: oklch(0.84 0.138 75); --h3: oklch(0.84 0.17 135);
   --h4: oklch(0.8 0.136 195); --h5: oklch(0.8 0.102 255); --h6: oklch(0.8 0.148 315);
 }
-[data-theme="prism"][data-night="true"] :is(.cb-board, .pr-band)[data-size="4"] {
+[data-theme="prism"][data-night="true"] :is(.cb-game, .cb-board, .pr-band)[data-size="4"] {
   --h1: oklch(0.78 0.128 28); --h2: oklch(0.84 0.17 95); --h3: oklch(0.8 0.136 195); --h4: oklch(0.8 0.104 285);
 }
-[data-theme="prism"][data-night="true"] :is(.cb-board, .pr-band)[data-size="9"] {
-  --h1: oklch(0.78 0.128 25); --h2: oklch(0.78 0.148 55); --h3: oklch(0.84 0.17 90);
-  --h4: oklch(0.84 0.17 135); --h5: oklch(0.8 0.158 170); --h6: oklch(0.8 0.136 205);
-  --h7: oklch(0.8 0.104 250); --h8: oklch(0.8 0.112 295); --h9: oklch(0.8 0.156 340);
+[data-theme="prism"][data-night="true"] :is(.cb-game, .cb-board, .pr-band)[data-size="9"] {
+  --h1: oklch(0.72 0.174 20); --h2: oklch(0.766 0.161 76); --h3: oklch(0.9 0.191 107);
+  --h4: oklch(0.878 0.218 155); --h5: oklch(0.721 0.127 179); --h6: oklch(0.9 0.1 200);
+  --h7: oklch(0.72 0.151 251); --h8: oklch(0.832 0.103 304); --h9: oklch(0.744 0.231 335);
 }
-/* Digit hues, light. */
-[data-theme="prism"][data-night="false"] :is(.cb-board, .pr-band)[data-size="6"] {
+[data-theme="prism"][data-night="false"] :is(.cb-game, .cb-board, .pr-band)[data-size="6"] {
   --h1: oklch(0.52 0.17 28); --h2: oklch(0.51 0.108 75); --h3: oklch(0.49 0.142 135);
   --h4: oklch(0.495 0.084 195); --h5: oklch(0.505 0.14 255); --h6: oklch(0.525 0.17 315);
 }
-[data-theme="prism"][data-night="false"] :is(.cb-board, .pr-band)[data-size="4"] {
+[data-theme="prism"][data-night="false"] :is(.cb-game, .cb-board, .pr-band)[data-size="4"] {
   --h1: oklch(0.52 0.17 28); --h2: oklch(0.505 0.104 95); --h3: oklch(0.495 0.084 195); --h4: oklch(0.515 0.15 285);
 }
-[data-theme="prism"][data-night="false"] :is(.cb-board, .pr-band)[data-size="9"] {
-  --h1: oklch(0.52 0.17 25); --h2: oklch(0.515 0.128 55); --h3: oklch(0.505 0.102 90);
-  --h4: oklch(0.49 0.142 135); --h5: oklch(0.49 0.096 170); --h6: oklch(0.495 0.084 205);
-  --h7: oklch(0.505 0.14 250); --h8: oklch(0.52 0.15 295); --h9: oklch(0.525 0.17 340);
-}
-
-/* The number pad is outside the board; it takes the same hues (data-cols stands for the size). */
-[data-theme="prism"][data-night="true"] .cb-pad[data-cols="six"] {
-  --h1: oklch(0.78 0.128 28); --h2: oklch(0.84 0.138 75); --h3: oklch(0.84 0.17 135);
-  --h4: oklch(0.8 0.136 195); --h5: oklch(0.8 0.102 255); --h6: oklch(0.8 0.148 315);
-}
-[data-theme="prism"][data-night="true"] .cb-pad[data-cols="four"] {
-  --h1: oklch(0.78 0.128 28); --h2: oklch(0.84 0.17 95); --h3: oklch(0.8 0.136 195); --h4: oklch(0.8 0.104 285);
-}
-[data-theme="prism"][data-night="true"] .cb-pad[data-cols="nine"] {
-  --h1: oklch(0.78 0.128 25); --h2: oklch(0.78 0.148 55); --h3: oklch(0.84 0.17 90);
-  --h4: oklch(0.84 0.17 135); --h5: oklch(0.8 0.158 170); --h6: oklch(0.8 0.136 205);
-  --h7: oklch(0.8 0.104 250); --h8: oklch(0.8 0.112 295); --h9: oklch(0.8 0.156 340);
-}
-[data-theme="prism"][data-night="false"] .cb-pad[data-cols="six"] {
-  --h1: oklch(0.52 0.17 28); --h2: oklch(0.51 0.108 75); --h3: oklch(0.49 0.142 135);
-  --h4: oklch(0.495 0.084 195); --h5: oklch(0.505 0.14 255); --h6: oklch(0.525 0.17 315);
-}
-[data-theme="prism"][data-night="false"] .cb-pad[data-cols="four"] {
-  --h1: oklch(0.52 0.17 28); --h2: oklch(0.505 0.104 95); --h3: oklch(0.495 0.084 195); --h4: oklch(0.515 0.15 285);
-}
-[data-theme="prism"][data-night="false"] .cb-pad[data-cols="nine"] {
-  --h1: oklch(0.52 0.17 25); --h2: oklch(0.515 0.128 55); --h3: oklch(0.505 0.102 90);
-  --h4: oklch(0.49 0.142 135); --h5: oklch(0.49 0.096 170); --h6: oklch(0.495 0.084 205);
-  --h7: oklch(0.505 0.14 250); --h8: oklch(0.52 0.15 295); --h9: oklch(0.525 0.17 340);
+[data-theme="prism"][data-night="false"] :is(.cb-game, .cb-board, .pr-band)[data-size="9"] {
+  --h1: oklch(0.457 0.156 9); --h2: oklch(0.519 0.145 46); --h3: oklch(0.42 0.087 78);
+  --h4: oklch(0.478 0.163 142); --h5: oklch(0.42 0.076 166); --h6: oklch(0.498 0.093 223);
+  --h7: oklch(0.498 0.17 264); --h8: oklch(0.457 0.158 304); --h9: oklch(0.525 0.216 347);
 }
 
 [data-theme="prism"] {
@@ -127,7 +104,7 @@
 /* Band: the prism splits a beam into one ray per digit. */
 [data-theme="prism"] .pr-band {
   position: relative;
-  height: 124px;
+  height: 104px;
   container-type: inline-size;
   font-family: var(--cb-font-ui);
   color: var(--pr-text);
@@ -162,10 +139,10 @@
 [data-theme="prism"] .pr-title {
   position: absolute;
   left: 0;
-  top: 0;
+  top: 2px;
   margin: 0;
   /* Long titles shrink to stay clear of the glass on narrow bands. */
-  font-size: min(34px, calc((100cqw - 230px) / (var(--pr-len, 5) * 0.46)));
+  font-size: min(40px, calc((100cqw - 200px) / (var(--pr-len, 5) * 0.55)));
   font-weight: 250;
   letter-spacing: -0.01em;
   line-height: 1;
@@ -173,9 +150,9 @@
 [data-theme="prism"] .pr-sub {
   position: absolute;
   left: 1px;
-  top: 42px;
-  /* The space left of the glass: the drawing keeps 250px of the band's right side. */
-  max-width: max(96px, calc(100cqw - 258px));
+  top: 50px;
+  /* The space left of the glass, which sits about 190px in from the band's left edge. */
+  max-width: max(96px, calc(100cqw - 220px));
   font-size: 12px;
   font-weight: 400;
   line-height: 1.35;
@@ -192,11 +169,17 @@
 [data-theme="prism"] .pr-r7 { --c: var(--h7); } [data-theme="prism"] .pr-r8 { --c: var(--h8); }
 [data-theme="prism"] .pr-r9 { --c: var(--h9); }
 
-/* Cells: glass tiles with a gap. */
+/* Cells: glass tiles with a gap, twice as wide between boxes, so the boxes read as groups of
+   glass even on a 9x9 board. The cell, the given's tint and the fog share the same insets. */
+[data-theme="prism"] :is(.cb-cell, .cb-slot, .cb-fog) { --gl: 2px; --gr: 2px; --gt: 2px; --gb: 2px; }
+[data-theme="prism"] :is(.cb-cell, .cb-slot, .cb-fog).edge-l { --gl: 4px; }
+[data-theme="prism"] :is(.cb-cell, .cb-slot, .cb-fog).edge-r { --gr: 4px; }
+[data-theme="prism"] :is(.cb-cell, .cb-slot, .cb-fog).edge-t { --gt: 4px; }
+[data-theme="prism"] :is(.cb-cell, .cb-slot, .cb-fog).edge-b { --gb: 4px; }
 [data-theme="prism"] .cb-cell {
-  width: calc(100% - 4px);
-  height: calc(100% - 4px);
-  margin: 2px;
+  width: calc(100% - var(--gl) - var(--gr));
+  height: calc(100% - var(--gt) - var(--gb));
+  margin: var(--gt) var(--gr) var(--gb) var(--gl);
   border-radius: 15%;
   background-color: var(--pr-glass);
   box-shadow: inset 0 0 0 1px var(--pr-edge);
@@ -225,7 +208,7 @@
 [data-theme="prism"] .cb-slot::before {
   content: "";
   position: absolute;
-  inset: 2px;
+  inset: var(--gt) var(--gr) var(--gb) var(--gl);
   border-radius: 15%;
   pointer-events: none;
 }
@@ -310,7 +293,7 @@
 }
 [data-theme="prism"] .cb-board[data-size="4"] .cb-notes { font-size: 18cqw; }
 /* Nine notes share a small cell on 9x9: a little larger so they stay readable on a phone. */
-[data-theme="prism"] .cb-board[data-size="9"] .cb-notes { font-size: 23cqw; }
+[data-theme="prism"] .cb-board[data-size="9"] .cb-notes { font-size: 26cqw; font-weight: 500; }
 
 /* Clues. */
 [data-theme="prism"] .cb-clue { transition: filter 0.35s ease; }
@@ -352,7 +335,7 @@
 [data-theme="prism"] .cb-clue[data-kind="cage"] .cb-cage-sum {
   fill: var(--pr-text);
   font-family: var(--cb-font-digit);
-  font-size: calc(var(--u) * var(--k) * 0.185);
+  font-size: calc(var(--u) * var(--k) * 0.21);
   font-weight: 600;
   paint-order: stroke;
   stroke: var(--cb-ground);
@@ -428,7 +411,7 @@
 [data-theme="prism"] .cb-fog::before {
   content: "";
   position: absolute;
-  inset: 2px;
+  inset: var(--gt) var(--gr) var(--gb) var(--gl);
   border-radius: 15%;
   background: var(--pr-fogc);
   backdrop-filter: blur(10px) saturate(1.3);
@@ -453,16 +436,17 @@
   border-color: var(--pr-text);
   background: color-mix(in srgb, var(--pr-text) 8%, transparent);
 }
-[data-theme="prism"] .cb-rtext { font-style: normal; font-size: 14.5px; font-weight: 300; line-height: 1.4; }
+[data-theme="prism"] .cb-msg { border-color: var(--pr-edge); border-radius: 14px; }
+[data-theme="prism"] .cb-msg-text { font-size: 15px; font-weight: 300; line-height: 1.45; }
+[data-theme="prism"] .cb-msg.is-hint .cb-msg-text { color: var(--pr-text); font-weight: 400; }
+[data-theme="prism"] .cb-msg-btn { border-color: var(--pr-edge); border-radius: 999px; font-weight: 500; }
 [data-theme="prism"] .cb-key {
   border: 0;
   border-radius: 12px;
   background: var(--pr-glass);
   box-shadow: inset 0 0 0 1px var(--pr-edge);
-  min-height: 62px;
-  gap: 3px;
 }
-[data-theme="prism"] .cb-key-d { font-size: 27px; font-weight: 500; }
+[data-theme="prism"] .cb-key-d { font-size: 28px; font-weight: 500; }
 [data-theme="prism"] .cb-pad .cb-key:nth-child(1) .cb-key-d { color: var(--h1); }
 [data-theme="prism"] .cb-pad .cb-key:nth-child(2) .cb-key-d { color: var(--h2); }
 [data-theme="prism"] .cb-pad .cb-key:nth-child(3) .cb-key-d { color: var(--h3); }
@@ -472,29 +456,24 @@
 [data-theme="prism"] .cb-pad .cb-key:nth-child(7) .cb-key-d { color: var(--h7); }
 [data-theme="prism"] .cb-pad .cb-key:nth-child(8) .cb-key-d { color: var(--h8); }
 [data-theme="prism"] .cb-pad .cb-key:nth-child(9) .cb-key-d { color: var(--h9); }
-[data-theme="prism"] .cb-key-left { font-size: 11px; color: var(--pr-dim); }
 [data-theme="prism"] .cb-key:active:not(:disabled) { background: var(--cb-sel); border-color: transparent; }
 @media (hover: hover) {
   [data-theme="prism"] .cb-key:hover:not(:disabled) { background: var(--cb-sel); border-color: transparent; }
 }
-[data-theme="prism"] .cb-key.spent { opacity: 0.35; border-style: none; }
-[data-theme="prism"] .cb-tool {
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  text-transform: none;
-  color: var(--pr-dim);
-}
-[data-theme="prism"] .cb-tool.on { color: var(--pr-text); }
+[data-theme="prism"] .cb-key.spent { background: transparent; }
+[data-theme="prism"] .cb-key.spent .cb-key-d { opacity: 0.32; }
+[data-theme="prism"] .cb-key-done { color: var(--pr-dim); }
+[data-theme="prism"] .cb-tool { border-radius: 12px; }
+[data-theme="prism"] .cb-tool.on { background: var(--pr-text); color: var(--cb-ground); }
 
 /* Page panels as glass tiles: the theme's thin lines are clear, so cards would have no edge. */
-[data-theme="prism"] :is(.cb-card, .cb-theme-opt, .cb-run-box:not(.is-warn), .cb-learn-row, .cb-learn-figure) {
+[data-theme="prism"] :is(.cb-card, .cb-look-opt, .cb-run-box:not(.is-warn), .cb-learn-row, .cb-learn-figure) {
   border-color: var(--pr-edge);
   border-radius: 12px;
   background: var(--pr-glass);
 }
-[data-theme="prism"] .cb-theme-opt.on {
+[data-theme="prism"] .cb-look-opt.on {
   border-color: var(--pr-text);
+  box-shadow: inset 0 0 0 1px var(--pr-text);
   background: var(--cb-sel);
 }

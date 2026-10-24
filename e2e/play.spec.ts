@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { nineByNine, openFresh, openScreen, shot } from './helpers';
+import { boardSize, nineByNine, openFresh, openScreen, shot } from './helpers';
 
 type Hook = { getGame(): { puzzle: { givens: number[]; solution: number[]; size: number } } | null };
 
@@ -37,13 +37,14 @@ test.describe('night', () => {
 
 test('keyboard play moves focus with the selection', async ({ page }) => {
   await openFresh(page);
+  const n = await boardSize(page);
   await page.locator('.cb-cell').first().focus();
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
-  await expect(page.locator('.cb-cell.is-sel')).toHaveAttribute('data-cell', '7');
-  await expect(page.locator('.cb-cell[data-cell="7"]')).toBeFocused();
+  await expect(page.locator('.cb-cell.is-sel')).toHaveAttribute('data-cell', String(n + 1));
+  await expect(page.locator(`.cb-cell[data-cell="${n + 1}"]`)).toBeFocused();
   await page.keyboard.press('d');
-  await expect(page.locator('.cb-cell.is-sel')).toHaveAttribute('data-cell', '8');
+  await expect(page.locator('.cb-cell.is-sel')).toHaveAttribute('data-cell', String(n + 2));
   await page.keyboard.press('Escape');
   await expect(page.locator('.cb-cell.is-sel')).toHaveCount(0);
   await page.keyboard.press('ArrowLeft');
@@ -102,13 +103,13 @@ test('settings persist and apply', async ({ page }) => {
   await openFresh(page);
   await openScreen(page, 'Settings');
   await page.getByRole('radio', { name: 'Dark', exact: true }).check();
-  await page.getByRole('checkbox', { name: 'Hide the timer' }).check();
+  await page.getByRole('checkbox', { name: 'Timer', exact: true }).uncheck();
   await expect(page.locator('html')).toHaveAttribute('data-night', 'true');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-night', 'true');
   await openScreen(page, 'Settings');
   await expect(page.getByRole('radio', { name: 'Dark', exact: true })).toBeChecked();
-  await expect(page.getByRole('checkbox', { name: 'Hide the timer' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Timer', exact: true })).not.toBeChecked();
   await openScreen(page, 'Daily');
   await expect(page.locator('.cb-board')).toBeVisible();
   // No time anywhere: neither in the top bar nor in the theme band.

@@ -128,7 +128,7 @@
 /* Band: the enso, a title in ink, a season seal. */
 [data-theme="washi"] .wa-band {
   position: relative;
-  height: 122px;
+  height: 98px;
   container-type: inline-size;
   font-family: var(--cb-font-ui);
   color: var(--wa-sumi);
@@ -169,32 +169,6 @@
   font-size: 15px;
   font-weight: 500;
 }
-[data-theme="washi"] .wa-meta {
-  position: absolute;
-  left: 4px;
-  top: 90px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: 0.7em;
-  /* Stay left of the enso, which sits at the right edge and shrinks with a narrow band. */
-  max-width: calc(max(100cqw - 157px, 56cqw) - 10px);
-  font-size: 12.5px;
-  line-height: 1.3;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--wa-grey);
-  font-weight: 600;
-}
-[data-theme="washi"] .wa-meta > span { white-space: nowrap; }
-/* A band under 300 px (a 320 px phone) has room for less: set the small line a little tighter. */
-@container (max-width: 300px) {
-  [data-theme="washi"] .wa-meta { font-size: 11px; letter-spacing: 0.1em; }
-}
-[data-theme="washi"] .wa-sep::before { content: "\00b7"; }
-/* The name and the season do not fit side by side: one under the other, no dot. */
-[data-theme="washi"] .wa-meta.is-stacked { flex-direction: column; }
-[data-theme="washi"] .wa-meta.is-stacked .wa-sep { display: none; }
 
 /* Cells. */
 [data-theme="washi"] .cb-cell.is-peer { background: var(--cb-peer); }
@@ -266,7 +240,7 @@
 }
 [data-theme="washi"] .cb-board[data-size="4"] .cb-notes { font-size: 19cqw; }
 /* Nine notes share a small cell on 9x9: a little larger so they stay readable on a phone. */
-[data-theme="washi"] .cb-board[data-size="9"] .cb-notes { font-size: 25cqw; }
+[data-theme="washi"] .cb-board[data-size="9"] .cb-notes { font-size: 27.5cqw; }
 
 /* Seals stamped on finished boxes. */
 [data-theme="washi"] .wa-seals { position: absolute; inset: 0; pointer-events: none; }
@@ -415,10 +389,11 @@
   letter-spacing: 0.04em;
 }
 [data-theme="washi"] .cb-play .cb-chip.on { background: var(--wa-sumi); color: var(--wa-paper); border-color: var(--wa-sumi); }
-[data-theme="washi"] .cb-rtext { font-style: normal; font-size: 15.5px; line-height: 1.35; }
-[data-theme="washi"] .cb-key { border: 0; border-bottom: 1px solid var(--wa-rule); border-radius: 0; min-height: 64px; gap: 3px; }
-[data-theme="washi"] .cb-key-d { font-size: 30px; font-weight: 600; }
-[data-theme="washi"] .cb-key-left { font-size: 12px; font-weight: 500; color: var(--wa-grey); }
-[data-theme="washi"] .cb-key.spent { opacity: 0.38; border-bottom-style: solid; }
-[data-theme="washi"] .cb-tool { font-size: 13.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: none; color: var(--wa-grey); }
-[data-theme="washi"] .cb-tool.on { color: var(--wa-shu-text); }
+[data-theme="washi"] .cb-msg { border-color: var(--wa-rule); border-radius: 0; }
+[data-theme="washi"] .cb-msg-text { font-size: 16px; line-height: 1.4; }
+[data-theme="washi"] .cb-msg-btn { border-radius: 0; }
+[data-theme="washi"] .cb-key { border: 0; border-bottom: 1px solid var(--wa-rule); border-radius: 0; }
+[data-theme="washi"] .cb-key-d { font-size: 31px; font-weight: 600; }
+[data-theme="washi"] .cb-key.spent .cb-key-d { opacity: 0.32; }
+[data-theme="washi"] .cb-key-done { color: var(--wa-shu-text); }
+[data-theme="washi"] .cb-tool { border-radius: 0; color: var(--wa-sumi); }

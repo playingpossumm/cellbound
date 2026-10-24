@@ -11,13 +11,11 @@ import './theme.css';
 const CH = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789#%+=<>';
 const randomGlyph = (): string => CH.charAt(Math.floor(Math.random() * CH.length));
 
-function Band({ title, subtitle, puzzle, values }: BandProps): ReactNode {
-  const n = puzzle.size;
+function Band({ subtitle, puzzle, values }: BandProps): ReactNode {
   return (
-    <div className="cb-band lt-band">
-      <Cube values={values} size={n} />
-      <span className="lt-corner lt-tl">{subtitle.toUpperCase()}</span>
-      <span className="lt-corner lt-tr">{`${n} × ${n} ${title.toUpperCase()}`}</span>
+    <div className="cb-band lt-band" data-size={puzzle.size}>
+      <Cube values={values} size={puzzle.size} />
+      {subtitle && <span className="lt-corner lt-tl">{subtitle.toUpperCase()}</span>}
     </div>
   );
 }

@@ -79,8 +79,13 @@ export function buildItems(values: number[], n: number): Item[] {
 }
 
 const D = 10;
-const S = 13.5;
 const PH = -0.42;
+/**
+ * Scale of the figure, and of its letters, by board size. A 9x9 puts 81 digits in the cube, so the
+ * figure is drawn a little larger and its letters a little smaller, and the layers stay apart.
+ */
+const SCALE: Record<number, number> = { 4: 13.5, 6: 13.5, 9: 14.6 };
+const glyphScale = (n: number) => Math.max(0.72, Math.pow(6 / n, n >= 9 ? 0.8 : 0.5));
 
 /** Where one letter sits and how it looks at time t (seconds) and pointer offset px. */
 export function project(it: Item, n: number, t: number, px: number): { tx: number; ty: number; fs: number; o: number; z: number; hot: boolean } {
@@ -97,7 +102,8 @@ export function project(it: Item, n: number, t: number, px: number): { tx: numbe
   const p = D / (D + z2);
   const hotness = it.layer < 0 ? 0 : Math.exp(-Math.pow(it.layer - band, 2) / 0.45);
   const near = Math.max(0, Math.min(1, (4.8 - z2) / 9.6));
-  const size = (it.big ? 13 : 8.5) * Math.max(0.8, Math.pow(6 / n, 0.5)) * p * (1 + 0.35 * hotness);
+  const size = (it.big ? 13 : 8.5) * glyphScale(n) * p * (1 + 0.35 * hotness);
+  const S = SCALE[n] ?? 13.5;
   return {
     tx: x1 * S * p,
     ty: -y2 * S * p,

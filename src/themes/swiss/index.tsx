@@ -16,7 +16,7 @@ function Band({ title, subtitle, time }: BandProps): ReactNode {
         {word}
       </h2>
       <span className="sw-disc" aria-hidden="true" />
-      <span className="sw-meta">{subtitle}</span>
+      {subtitle && <span className="sw-meta">{subtitle}</span>}
       {time ? (
         <span className="sw-time" aria-hidden="true">
           {time}
@@ -37,6 +37,7 @@ export const swiss: ThemeDef = {
   blurb: 'Flat red, blue and yellow, heavy type and a thick rule.',
   defaultNight: false,
   bandShowsTime: true,
+  bandShowsTitle: true,
   loadFonts: () => Promise.all([import('@fontsource-variable/archivo/wdth.css')]),
   Band,
   ClueLayer,

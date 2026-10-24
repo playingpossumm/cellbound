@@ -22,7 +22,10 @@ export interface BoardGeometry {
 export interface BandProps {
   /** Mode title, for example "Daily". */
   title: string;
-  /** For example "Friday 23 October". */
+  /**
+   * Usually empty. Only a Daily from an earlier day passes its date, for example "Friday 23
+   * October", so the player can tell it from today's. A band must look complete without it.
+   */
   subtitle: string;
   /** Formatted timer, empty string when hidden. */
   time: string;
@@ -39,6 +42,8 @@ export interface ClueLayerProps {
   lit: ClueKind | null;
   /** Cells currently hidden by fog; clues fully inside fog should not be drawn. */
   hidden?: boolean[];
+  /** Full grid (givens plus entries). A clue layer may let its marks recede where a digit stands. */
+  values?: Digit[];
 }
 
 export interface DigitProps {
@@ -51,12 +56,17 @@ export interface DigitProps {
 export interface ThemeDef {
   id: ThemeId;
   name: string;
-  /** One line shown in the theme picker. */
+  /**
+   * One line describing the look. The theme picker shows a preview of the look instead, and
+   * gives this line to screen readers.
+   */
   blurb: string;
   /** Mode used when the setting is Auto and the device has no preference. */
   defaultNight: boolean;
   /** True when the band draws the timer itself, so the app can hide its own copy. */
   bandShowsTime?: boolean;
+  /** True when the band sets the screen title large, so the top bar keeps its copy for screen readers only. */
+  bandShowsTitle?: boolean;
   /** Loads the theme's fonts (dynamic import of @fontsource CSS). */
   loadFonts: () => Promise<unknown>;
   /** Signature header band above the board. */

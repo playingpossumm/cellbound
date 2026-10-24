@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openFresh, shot } from './helpers';
+import { boardSize, openFresh, shot } from './helpers';
 
 async function emptyCell(page: Page) {
   const cells = page.locator('.cb-cell:not(.is-given)');
@@ -9,8 +9,14 @@ async function emptyCell(page: Page) {
 test('opens into the Daily', async ({ page }) => {
   await openFresh(page);
   await expect(page.locator('.cb-top-title')).toHaveText('Daily');
-  await expect(page.locator('.cb-cell')).toHaveCount(36);
+  const n = await boardSize(page);
+  expect([6, 9]).toContain(n);
+  await expect(page.locator('.cb-cell')).toHaveCount(n * n);
+  await expect(page.locator('.cb-key')).toHaveCount(n);
   await expect(page.locator('.cb-chip').first()).toBeVisible();
+  // Today's Daily carries no date, and the play screen no rule line or helper text.
+  await expect(page.locator('.cb-band-wrap')).not.toContainText(/day \d{1,2} [A-Z]/);
+  await expect(page.locator('body')).not.toContainText(/Tap a rule|Each row, column and box|\d left/);
   await shot(page, 'daily');
 });
 
@@ -55,7 +61,8 @@ test('hint ladder and rule chips', async ({ page }) => {
   await page.locator('.cb-chip').first().click();
   await expect(page.locator('.cb-clue.is-lit').first()).toBeAttached();
   await page.getByRole('button', { name: 'Hint', exact: true }).click();
-  await expect(page.locator('.cb-rtext')).toHaveClass(/is-hint/);
+  // A hint step takes the band's place, over the band, so nothing below it moves.
+  await expect(page.locator('.cb-msg.is-hint')).toBeVisible();
   await page.getByRole('button', { name: 'Hint', exact: true }).click();
   await page.getByRole('button', { name: 'Hint', exact: true }).click();
   await expect(page.locator('.cb-digit.is-hint')).toHaveCount(1);
@@ -116,8 +123,11 @@ for (const [w, h] of [
     await openFresh(page);
     const sideways = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(sideways).toBe(false);
-    const cell = await page.locator('.cb-cell').first().boundingBox();
-    expect(cell!.width).toBeGreaterThanOrEqual(w < 390 ? 50 : 52);
+    // The cell's share of the board: some looks inset each cell's tile inside it.
+    const board = await page.locator('.cb-board-wrap').boundingBox();
+    const n = await boardSize(page);
+    // A 9x9 on a small 360x640 phone gives up a little width so its pad fits, and keeps 34 px cells.
+    expect(board!.width / n).toBeGreaterThanOrEqual(n === 9 ? (w < 390 ? 34 : 40) : w < 390 ? 50 : 52);
     await shot(page, `daily-${w}`);
   });
 }

@@ -1,14 +1,13 @@
 // The board result (shown over the solved board), and the run summary and failure screen.
 import { useState } from 'react';
 import { APP_NAME } from '../../../app/brand';
-import { formatDateLong } from '../../../game/logic';
-import { DIFFICULTY_NAMES } from '../../names';
 import { shareResult, type ShareOutcome } from '../../share';
 import { BOARD_COUNT } from '../boards';
 import { cardById, type UnlockId } from '../cards';
 import { HEART_BONUS, formatMs, formatScore } from '../score';
 import { boardsCleared, cardsOf, shareText, type BoardResult, type RunState } from '../state';
 import { cardsUnlockedBy } from '../stats';
+import { Hearts, Track } from './Hud';
 
 function curseNames(r: BoardResult): string {
   return r.cardIds
@@ -59,23 +58,19 @@ export function ResultPanel({ run, onNext }: { run: RunState; onNext: () => void
       </h2>
       <dl className="cb-run-rows">
         <div>
-          <dt>Base, {DIFFICULTY_NAMES[r.difficulty].toLowerCase()}</dt>
+          <dt>Base</dt>
           <dd>{formatScore(s.base)}</dd>
         </div>
         <div>
           <dt>
-            Time bonus{' '}
-            <span className="cb-run-dim">
-              ({formatMs(r.elapsedMs)}
-              {r.parMs ? `, par ${formatMs(r.parMs)}` : ''})
-            </span>
+            Time <span className="cb-run-dim">{formatMs(r.elapsedMs)}{r.parMs ? ` of ${formatMs(r.parMs)}` : ''}</span>
           </dt>
           <dd>+{formatScore(s.timeBonus)}</dd>
         </div>
         {s.hintPenalty > 0 && (
           <div>
             <dt>
-              Hints <span className="cb-run-dim">({r.hintsUsed})</span>
+              Hints <span className="cb-run-dim">{r.hintsUsed}</span>
             </dt>
             <dd>-{formatScore(s.hintPenalty)}</dd>
           </div>
@@ -83,7 +78,7 @@ export function ResultPanel({ run, onNext }: { run: RunState; onNext: () => void
         {s.mult > 1 && (
           <div>
             <dt>
-              Curses <span className="cb-run-dim">({names})</span>
+              Curses <span className="cb-run-dim">{names}</span>
             </dt>
             <dd>x{s.mult.toFixed(2)}</dd>
           </div>
@@ -95,7 +90,7 @@ export function ResultPanel({ run, onNext }: { run: RunState; onNext: () => void
         {last && (
           <div>
             <dt>
-              Hearts left <span className="cb-run-dim">({run.hearts} x {HEART_BONUS})</span>
+              Hearts left <span className="cb-run-dim">{run.hearts} x {HEART_BONUS}</span>
             </dt>
             <dd>+{formatScore(run.endBonus)}</dd>
           </div>
@@ -112,15 +107,10 @@ export function ResultPanel({ run, onNext }: { run: RunState; onNext: () => void
   );
 }
 
-function headline(run: RunState): { title: string; lead: string } {
-  const last = run.results[run.results.length - 1];
-  if (run.outcome === 'finished') return { title: 'Run complete', lead: `You cleared all ${BOARD_COUNT} boards with ${run.hearts} ${run.hearts === 1 ? 'heart' : 'hearts'} left.` };
-  if (run.outcome === 'failed' && last)
-    return {
-      title: 'Run over',
-      lead: `${last.reason === 'time' ? 'The clock ran out' : 'You ran out of hearts'} on board ${last.index + 1} of ${BOARD_COUNT}.`,
-    };
-  return { title: 'Run ended', lead: `You stopped on board ${run.index + 1} of ${BOARD_COUNT}.` };
+function title(run: RunState): string {
+  if (run.outcome === 'finished') return 'Run complete';
+  if (run.outcome === 'failed') return 'Run over';
+  return 'Run ended';
 }
 
 export interface SummaryProps {
@@ -134,28 +124,36 @@ export interface SummaryProps {
 
 export function Summary({ run, dailyBest, fresh, onFree, onHome }: SummaryProps) {
   const [sent, setSent] = useState<ShareOutcome | null>(null);
-  const { title, lead } = headline(run);
   const text = shareText(run);
   const isReplay = !!run.replay && dailyBest !== null;
   const opened = cardsUnlockedBy(fresh);
+  const last = run.results[run.results.length - 1];
+  // How the run went, in words, for screen readers; the track and the hearts show it.
+  const how =
+    run.outcome === 'finished'
+      ? `All ${BOARD_COUNT} boards cleared, ${run.hearts} ${run.hearts === 1 ? 'heart' : 'hearts'} left.`
+      : run.outcome === 'failed' && last
+        ? `${last.reason === 'time' ? 'Out of time' : 'Out of hearts'} on board ${last.index + 1} of ${BOARD_COUNT}.`
+        : `Stopped on board ${run.index + 1} of ${BOARD_COUNT}.`;
   return (
     <>
-      <h1 className="cb-run-title">{title}</h1>
-      <p className="cb-run-lead">{lead}</p>
+      <h1 className="cb-run-title">{title(run)}</h1>
+      <div className="cb-run-hud-row cb-run-summary-status">
+        <Track results={run.results} at={run.outcome ? -1 : run.index} label={how} />
+        <Hearts now={run.hearts} slots={Math.max(3, run.hearts)} shield={run.shield} />
+      </div>
       <p className="cb-run-bigscore" aria-label={`Score ${run.score}`}>
         <span className="cb-run-label">Score</span>
         <span className="cb-run-bignum">{formatScore(run.score)}</span>
       </p>
-      {run.daily && (
+      {isReplay && (
         <p className="cb-run-note">
-          {isReplay
-            ? `Daily run, ${formatDateLong(run.daily)}. Your first attempt set the daily best at ${formatScore(dailyBest!)}, so this replay does not change it.`
-            : `Daily run, ${formatDateLong(run.daily)}. This first attempt sets your daily best.`}
+          Daily best <strong>{formatScore(dailyBest!)}</strong>
         </p>
       )}
 
       <table className="cb-run-table">
-        <caption className="cb-run-label">Boards</caption>
+        <caption className="cb-run-visually-hidden">Boards</caption>
         <thead>
           <tr>
             <th scope="col">Board</th>
@@ -186,7 +184,7 @@ export function Summary({ run, dailyBest, fresh, onFree, onHome }: SummaryProps)
           <tfoot>
             <tr>
               <th scope="row" colSpan={3}>
-                Hearts left bonus ({run.hearts} x {HEART_BONUS})
+                Hearts left <span className="cb-run-dim">{run.hearts} x {HEART_BONUS}</span>
               </th>
               <td className="is-num">+{formatScore(run.endBonus)}</td>
             </tr>
@@ -200,18 +198,13 @@ export function Summary({ run, dailyBest, fresh, onFree, onHome }: SummaryProps)
           <ul>
             {opened.map((c) => (
               <li key={c.id}>
-                <strong>{c.name}</strong> is now in your collection.
+                <strong>{c.name}</strong>
               </li>
             ))}
           </ul>
-          <p className="cb-run-note">Unlocked cards appear in free runs. Daily runs use the starter cards so everyone sees the same offers.</p>
         </div>
       )}
 
-      <h2 className="cb-run-h2">Share</h2>
-      <pre className="cb-run-share" tabIndex={0} aria-label="Result text">
-        {text}
-      </pre>
       <div className="cb-run-actions">
         <button
           type="button"
@@ -228,8 +221,14 @@ export function Summary({ run, dailyBest, fresh, onFree, onHome }: SummaryProps)
         </button>
       </div>
       <p className="cb-run-status" role="status" aria-live="polite">
-        {sent === 'copied' ? 'Copied to the clipboard.' : sent === 'shared' ? 'Shared.' : sent === 'failed' ? 'Could not share. Select the text above to copy it.' : ''}
+        {sent === 'copied' ? 'Copied to the clipboard.' : sent === 'shared' ? 'Shared.' : sent === 'failed' ? 'Sharing is not available here. Copy the text below.' : ''}
       </p>
+      {/* Shown only when sharing failed, so the result can still be copied by hand. */}
+      {sent === 'failed' && (
+        <pre className="cb-run-share" tabIndex={0} aria-label="Result text">
+          {text}
+        </pre>
+      )}
     </>
   );
 }

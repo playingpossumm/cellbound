@@ -78,12 +78,15 @@ async function until(cond: () => boolean, what: string, ms = 3000) {
 describe('Learn screen', () => {
   const learn = () => mount(<LearnApp onExit={() => undefined} GameViewComponent={FakeGameView} />);
 
-  it('lists the ten lessons with their rule lines', async () => {
+  it('lists the ten lessons by name, with the first one marked as next', async () => {
     await learn();
-    expect(host.querySelectorAll('.cb-learn-row')).toHaveLength(10);
-    expect(text()).toContain('0 of 10 lessons done');
-    expect(text()).toContain('Digits rise from the round bulb to the far end of the line.');
-    expect(text()).toContain('Next up');
+    const rows = host.querySelectorAll('.cb-learn-row');
+    expect(rows).toHaveLength(10);
+    expect(rows[0].classList.contains('is-next')).toBe(true);
+    expect(host.querySelectorAll('.cb-learn-row.is-next')).toHaveLength(1);
+    // The rule text waits in the lesson: the list names the rules only.
+    expect(text()).not.toContain('Digits rise from the round bulb');
+    expect(text()).not.toMatch(/lessons done|Next up/);
   });
 
   it('walks a lesson step by step and on to the practice puzzle, then marks it done', async () => {
@@ -106,8 +109,9 @@ describe('Learn screen', () => {
     await until(() => text().includes('Lesson complete'), 'the lesson panel');
     expect(isLessonDone('thermo')).toBe(true);
     await click(button('All lessons'));
-    expect(text()).toContain('1 of 10 lessons done');
     expect(host.querySelectorAll('.cb-learn-row.is-done')).toHaveLength(1);
+    // Thermo is done, so the basics is still the next lesson.
+    expect(host.querySelector('.cb-learn-row.is-next')?.textContent).toContain('The basics');
   });
 
   it('opens at the lesson a rule chip asked for, and clears the request', async () => {
@@ -152,13 +156,18 @@ describe('Run screen', () => {
     expect(document.activeElement).toBe(host.querySelector('.cb-run-page'));
   });
 
-  it('opens on the home with the daily and the free run', async () => {
+  it('opens on the home with the daily and the free run, and draws the shape of a run', async () => {
     await run();
-    expect(text()).toContain('Daily run');
-    expect(text()).toContain('Free run');
     expect(button('Start daily run')).toBeDefined();
+    expect(button('Start free run')).toBeDefined();
     expect(text()).toContain('Not played');
-    expect(text()).toContain('16 of 21 cards');
+    expect(button(/^Collection/)?.textContent).toContain('16 of 21');
+    // Five boards, the last one larger (the 9x9 final), and three hearts.
+    expect(host.querySelectorAll('.cb-run-shape .cb-run-pip-board')).toHaveLength(5);
+    expect(host.querySelectorAll('.cb-run-shape .cb-run-pip-board.is-nine')).toHaveLength(1);
+    expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('3 hearts');
+    // No explanations: the home is the two ways to start and the scores.
+    expect(text()).not.toMatch(/How a run works|Everyone gets the same boards/);
   });
 
   it('plays a board, takes a card and starts the next board with it', async () => {
@@ -178,7 +187,8 @@ describe('Run screen', () => {
     expect(host.querySelectorAll('.cb-run-offers button')).toHaveLength(3);
     expect(button(/^Pick a card/)?.disabled).toBe(true);
     await click(host.querySelector('.cb-run-offers button') ?? undefined);
-    expect(host.querySelector('.cb-run-picked')?.textContent).toContain('Selected');
+    expect(host.querySelector('.cb-run-offers button')?.getAttribute('aria-pressed')).toBe('true');
+    expect(host.querySelectorAll('.cb-run-offers .cb-run-picked-icon')).toHaveLength(1);
     const taken = useRunStore.getState().run!.offer[0];
     await click(button(/^Take /));
     await until(() => !!host.querySelector('.cb-run-hud') && text().includes('Board 2 of 5'), 'the second board');
@@ -203,6 +213,10 @@ describe('Run screen', () => {
     expect(text()).toContain('out of hearts on board 1 of 5');
     await click(button('See summary'));
     expect(text()).toContain('Run over');
+    // The result text shows only when sharing fails, so it can be copied by hand. Here there is no share sheet and no clipboard.
+    expect(host.querySelector('.cb-run-share')).toBeNull();
+    await click(button('Share result'));
+    await until(() => !!host.querySelector('.cb-run-share'), 'the result text');
     expect(host.querySelector('.cb-run-share')?.textContent).toContain('Out of hearts on board 1 of 5');
     expect(useRunStore.getState().data.stats.failed).toBe(1);
     await click(button('Run home'));

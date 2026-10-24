@@ -25,6 +25,17 @@ export async function openFresh(page: Page, seed?: unknown, path = '/') {
   await expect(page.locator('.cb-board')).toBeVisible();
 }
 
+/** The size of the board on screen, read from the page: tests never assume a Daily's size. */
+export async function boardSize(page: Page): Promise<number> {
+  return Number(await page.locator('.cb-board').first().getAttribute('data-size'));
+}
+
+/** Today's local date as the app writes it, YYYY-MM-DD. */
+export function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export async function openScreen(page: Page, name: string) {
   await page.getByRole('button', { name: 'Menu' }).first().click();
   const menu = page.locator('dialog.cb-menu');

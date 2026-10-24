@@ -225,112 +225,204 @@ button {
   opacity: 0.4;
 }
 
-/* Play layout: phone stack first. */
+/* Play layout: phone stack first. Each part has its own row: band, mode panel, rule chips,
+   board, then room to spare, then the pad and the tools, so on a tall phone the pad sits at the
+   bottom of the screen, under the thumbs. A part that is not there takes no room: the spacing is
+   each part's top margin, not a row gap. The message panel shares the band's row and covers it.
+   The board is as wide as the screen allows, less a small gutter that keeps it clear of the edge
+   (and of a theme's outer frame). */
 .cb-play {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas:
-    'band'
-    'extra'
-    'chips'
-    'rtext'
-    'board'
-    'pad'
-    'tools';
+  grid-template-rows: auto 1fr auto auto auto auto auto 1fr;
   justify-items: center;
-  row-gap: 8px;
-  padding: 0 16px 20px;
+  /* The play area fills the window under the top bar. */
+  min-height: calc(100svh - 56px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  padding: 0 6px 12px;
   max-width: 600px;
   margin: 0 auto;
 }
 
-.cb-band-wrap {
-  grid-area: band;
+.cb-band-wrap,
+.cb-msg {
+  grid-row: 1;
+  grid-column: 1;
   width: 100%;
-  max-width: var(--cb-side, 360px);
+  max-width: var(--cb-side, 378px);
   min-width: 0;
 }
 
-.cb-side {
-  display: contents;
+/* A past Daily's date under a band drawn small. */
+.cb-band-line {
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cb-text-dim);
+}
+
+.cb-band-wrap {
+  position: relative;
+  /* Its own stacking context, so nothing in a band (the Letters cube sets z-index on every
+     letter) can rise above the message panel that covers it. */
+  z-index: 0;
 }
 
 .cb-extra {
-  grid-area: extra;
-  width: 100%;
-  max-width: var(--cb-side, 360px);
+  grid-row: 3;
+  margin-top: 8px;
 }
 
 .cb-chips {
-  grid-area: chips;
-}
-
-.cb-rtext {
-  grid-area: rtext;
+  grid-row: 4;
+  margin-top: 8px;
 }
 
 .cb-stage {
-  grid-area: board;
-}
-
-.cb-pad {
-  grid-area: pad;
-}
-
-.cb-tools {
-  grid-area: tools;
-}
-
-.cb-chips,
-.cb-rtext,
-.cb-pad,
-.cb-tools {
-  width: 100%;
-  max-width: var(--cb-side, 360px);
-}
-
-.cb-stage {
+  grid-row: 5;
+  margin-top: 8px;
   display: flex;
   justify-content: center;
   width: 100%;
 }
 
+.cb-pad {
+  grid-row: 6;
+  margin-top: 10px;
+}
+
+.cb-tools {
+  grid-row: 7;
+  margin-top: 6px;
+}
+
+.cb-extra,
+.cb-chips,
+.cb-pad,
+.cb-tools {
+  width: 100%;
+  max-width: var(--cb-side, 378px);
+}
+
 /* Two columns from 900 px wide, and on a phone held sideways (700 px wide and at most 520 px
-   tall), where one stacked column would be three screens high. */
+   tall), where one stacked column would be three screens high. The board takes the whole
+   height on the left. On the right the band heads the column of controls, which sits level
+   with the middle of the board. */
 @media (min-width: 900px), (min-width: 700px) and (max-height: 520px) {
   .cb-play {
     max-width: 1280px;
-    grid-template-columns: var(--cb-side, 480px) minmax(300px, 380px);
-    grid-template-rows: auto 1fr;
-    grid-template-areas:
-      'band side'
-      'board side';
+    min-height: 0;
+    grid-template-columns: var(--cb-side, 480px) 360px;
+    grid-template-rows: 1fr repeat(5, auto) 1fr;
     justify-content: center;
-    align-items: start;
-    column-gap: 48px;
-    row-gap: 10px;
-    padding: 4px 32px 16px;
+    column-gap: 40px;
+    padding: 8px 32px 16px;
+    --cb-key-h: 60px;
   }
 
-  .cb-side {
-    grid-area: side;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: 100%;
-    align-self: center;
+  .cb-stage {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    align-self: start;
+    justify-content: flex-start;
+    margin-top: 0;
   }
 
+  .cb-band-wrap,
+  .cb-msg {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .cb-extra,
   .cb-chips,
-  .cb-rtext,
   .cb-pad,
-  .cb-tools,
-  .cb-extra {
+  .cb-tools {
+    grid-column: 2;
     max-width: none;
   }
 
-  .cb-band-wrap {
+  .cb-extra {
+    grid-row: 3;
+    margin-top: 12px;
+  }
+
+  .cb-chips {
+    grid-row: 4;
+    margin-top: 12px;
+  }
+
+  .cb-pad {
+    grid-row: 5;
+    margin-top: 14px;
+  }
+
+  .cb-tools {
+    grid-row: 6;
+    margin-top: 10px;
+  }
+
+  .cb-band-wrap,
+  .cb-msg {
     max-width: none;
+  }
+}
+
+/* A phone held sideways: the side column has to fit beside a board under 300 px high. */
+@media (min-width: 700px) and (max-height: 520px) {
+  .cb-play {
+    --cb-key-h: 46px;
+  }
+
+  .cb-band-wrap > .cb-band {
+    zoom: 0.6;
+  }
+}
+
+/* A short phone screen (a browser with its toolbars showing, or a small phone): the band is drawn
+   at 60 percent, a strip that keeps the look, so the board and the pad still fit. The message
+   panel over it uses smaller type to match. */
+@media (max-width: 699px) and (max-height: 799px) {
+  .cb-top {
+    height: 50px;
+    padding-top: 3px;
+  }
+
+  .cb-play {
+    --cb-key-h: 50px;
+    padding-bottom: 10px;
+  }
+
+  .cb-band-wrap > .cb-band {
+    zoom: 0.6;
+  }
+
+  .cb-extra,
+  .cb-chips,
+  .cb-stage {
+    margin-top: 6px;
+  }
+
+  .cb-pad {
+    margin-top: 8px;
+  }
+
+  .cb-tool {
+    min-height: 44px;
+  }
+
+  .cb-msg {
+    padding: 6px 10px;
+  }
+
+  .cb-msg-text {
+    font-size: 14px;
+    line-height: 1.3;
+  }
+
+  .cb-msg-btn {
+    min-height: 40px;
   }
 }
 
@@ -345,12 +437,17 @@ button {
   align-items: center;
 }
 
-.cb-mode-note {
-  flex: 1 1 100%;
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.3;
-  text-wrap: pretty;
+.cb-mode-btn {
+  flex: 1 1 auto;
+}
+
+.cb-size {
+  flex-wrap: nowrap;
+}
+
+.cb-size > button {
+  justify-content: center;
+  min-width: 64px;
 }
 
 .cb-hearts {
@@ -358,30 +455,20 @@ button {
   font-weight: 600;
 }
 
-/* Rule chips and rule text */
+/* Rule chips. A chip lights its rule on the board and shows the rule's text in the band's place.
+   A dot marks a rule the player has not had the lesson for yet. */
 .cb-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-/* Room above the chips for the New marks' touch area, so it never reaches a control above. */
-.cb-chips:has(.cb-chip-new) {
-  padding-top: 20px;
-  row-gap: 28px;
-}
-
-.cb-chip-wrap {
+.cb-chip {
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
-  display: flex;
-}
-
-.cb-chip {
-  flex: 1;
   min-height: 44px;
-  padding: 0 9px;
+  padding: 0 12px;
   border: 1px solid color-mix(in srgb, var(--cb-accent) 45%, transparent);
   border-radius: 2px;
   background: transparent;
@@ -398,43 +485,74 @@ button {
   background: var(--cb-sel);
 }
 
-.cb-chip-new {
-  position: absolute;
-  top: -8px;
-  right: -4px;
-  min-height: 24px;
-  min-width: 24px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--cb-accent);
-  color: var(--cb-ground);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-/* A 44 by 44 touch area around the small mark, reaching up into the room above the chips and
-   stopping short of the middle of the chip, so a tap on a narrow chip still lights its rule. */
-.cb-chip-new::after {
+.cb-chip.is-new::after {
   content: '';
   position: absolute;
-  inset: -20px -5px -2px;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cb-accent);
 }
 
-.cb-rtext {
-  margin: 0;
-  min-height: 2.5em;
-  font-style: italic;
-  font-size: 16.5px;
-  line-height: 1.25;
+/* The message panel: a rule's text, a hint step or a notice, laid over the band so nothing
+   below it moves. contain: size keeps it from growing the band's row; it takes the row's height. */
+.cb-msg {
+  z-index: 2;
+  contain: size;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  overflow-y: auto;
+  border: 1px solid var(--cb-line-box);
+  /* The board colour over the ground: solid even where a theme's board is see-through. */
+  background: linear-gradient(var(--cb-board), var(--cb-board)), var(--cb-ground);
   color: var(--cb-text);
+  animation: cb-msg-in 0.18s ease-out;
+}
+
+@keyframes cb-msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.cb-msg-text {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.35;
   text-wrap: pretty;
 }
 
-.cb-rtext.is-hint {
+.cb-msg.is-hint .cb-msg-text {
   color: var(--cb-accent);
+}
+
+.cb-msg-btn {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--cb-accent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--cb-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@media (hover: hover) {
+  .cb-msg-btn:hover {
+    background: var(--cb-peer);
+  }
+}
+
+.cb-msg-btn:active {
+  background: var(--cb-sel);
 }
 
 /* Board */
@@ -805,6 +923,11 @@ button {
   color: var(--cb-note);
 }
 
+/* Nine notes share a small cell on 9x9: they use more of it. */
+.cb-board[data-size='9'] .cb-notes {
+  inset: 4%;
+}
+
 .cb-note {
   display: flex;
   align-items: center;
@@ -847,7 +970,7 @@ button {
   }
 }
 
-/* Number pad */
+/* Number pad. A phone puts a 9x9 pad in two rows, the second centred under the first. */
 .cb-pad {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -855,7 +978,15 @@ button {
 }
 
 .cb-pad[data-cols='nine'] {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+}
+
+.cb-pad[data-cols='nine'] > .cb-key {
+  grid-column: span 2;
+}
+
+.cb-pad[data-cols='nine'] > .cb-key:nth-child(6) {
+  grid-column: 2 / span 2;
 }
 
 .cb-pad[data-cols='four'] {
@@ -868,23 +999,28 @@ button {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .cb-pad[data-cols='nine'] > .cb-key,
+  .cb-pad[data-cols='nine'] > .cb-key:nth-child(6) {
+    grid-column: auto;
+  }
+
   .cb-pad[data-cols='four'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 .cb-key {
-  min-height: 56px;
-  padding: 4px 0;
+  position: relative;
+  /* The play layout sets the height: --cb-key-h is smaller on a short phone, larger in two columns. */
+  min-height: var(--cb-key-h, 56px);
+  padding: 0;
   border: 1px solid color-mix(in srgb, var(--cb-accent) 40%, transparent);
   border-radius: 6px;
   background: transparent;
   color: var(--cb-text);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
 }
 
 @media (hover: hover) {
@@ -900,18 +1036,13 @@ button {
 
 .cb-key-d {
   font-family: var(--cb-font-digit);
-  font-size: 28px;
+  font-size: 30px;
   line-height: 1;
   font-variant-numeric: lining-nums;
 }
 
-.cb-key-left {
-  font-size: 12px;
-  color: var(--cb-text-dim);
-}
-
 .cb-pad[data-notes='true'] .cb-key-d {
-  font-size: 20px;
+  font-size: 22px;
   font-style: italic;
   color: var(--cb-note);
 }
@@ -920,19 +1051,35 @@ button {
   border-style: dotted;
 }
 
+/* A digit that is on the board in full: the key fades and a tick marks its corner. It still
+   works, so the digit can be moved. */
 .cb-key.spent {
-  border-style: dashed;
+  border-color: color-mix(in srgb, var(--cb-accent) 18%, transparent);
 }
 
 .cb-key.spent .cb-key-d {
-  color: var(--cb-text-dim);
+  opacity: 0.3;
+}
+
+.cb-key-done {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: flex;
+  color: var(--cb-accent);
+}
+
+.cb-key-done .cb-icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.4;
 }
 
 .cb-key:disabled {
   opacity: 0.45;
 }
 
-/* Tools */
+/* Tools: icons with names for screen readers and tooltips. Notes is a toggle that fills when on. */
 .cb-tools {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -940,21 +1087,20 @@ button {
 }
 
 .cb-tool {
-  min-height: 54px;
+  min-height: 46px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
-  color: var(--cb-text-dim);
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  color: var(--cb-text);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+}
+
+.cb-tool .cb-icon {
+  width: 24px;
+  height: 24px;
 }
 
 @media (hover: hover) {
@@ -963,12 +1109,20 @@ button {
   }
 }
 
-.cb-tool.on {
-  color: var(--cb-accent);
+.cb-tool.on,
+.cb-tool.on:active:not(:disabled) {
+  background: var(--cb-accent);
+  color: var(--cb-ground);
+}
+
+@media (hover: hover) {
+  .cb-tool.on:hover:not(:disabled) {
+    background: var(--cb-accent);
+  }
 }
 
 .cb-tool:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
 /* Pause and result */
@@ -985,11 +1139,15 @@ button {
   padding: 16px;
 }
 
-.cb-pause-title {
-  margin: 0;
-  font-family: var(--cb-font-digit);
-  font-size: 32px;
-  color: var(--cb-text);
+.cb-resume {
+  min-height: 56px;
+  padding: 0 28px;
+  font-size: 18px;
+}
+
+.cb-resume .cb-icon {
+  width: 22px;
+  height: 22px;
 }
 
 .cb-result {
@@ -1123,15 +1281,14 @@ button {
 }
 
 .cb-seg input,
-.cb-checks input,
-.cb-theme-opt input {
+.cb-checks input {
   accent-color: var(--cb-accent);
   margin: 0;
 }
 
 .cb-seg label:has(input:focus-visible),
 .cb-checks label:has(input:focus-visible),
-.cb-theme-opt:has(input:focus-visible),
+.cb-look-opt:has(input:focus-visible),
 .cb-toggle:has(input:focus-visible) {
   outline: 2px solid var(--cb-accent);
   outline-offset: 2px;
@@ -1246,6 +1403,38 @@ button {
   color: var(--cb-wrong);
 }
 
+/* While a board is being made: a quiet spinner in the middle of the screen. */
+.cb-loading {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+}
+
+.cb-spinner {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  border: 2px solid var(--cb-line-box);
+  border-top-color: var(--cb-accent);
+  border-radius: 50%;
+  animation: cb-spin 0.9s linear infinite;
+}
+
+@keyframes cb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The Free play setup: the groups stand apart, with Start at the end. */
+.cb-free fieldset {
+  margin-bottom: 24px;
+}
+
+.cb-start {
+  min-width: 160px;
+}
+
 .cb-form fieldset {
   margin: 0 0 18px;
   padding: 0;
@@ -1271,34 +1460,91 @@ button {
   margin-bottom: 0;
 }
 
-.cb-themes {
+/* The look picker: a live preview of every look, with its name under it. */
+.cb-looks {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.cb-theme-opt {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 10px;
-  align-items: center;
-  padding: 12px;
+@media (min-width: 560px) {
+  .cb-looks {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.cb-look-opt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 6px 10px;
   border: 1px solid var(--cb-line-thin);
+  border-radius: 6px;
   cursor: pointer;
 }
 
-.cb-theme-opt.on {
+.cb-look-opt.on {
   border-color: var(--cb-accent);
+  box-shadow: inset 0 0 0 1px var(--cb-accent);
   background: var(--cb-sel);
 }
 
-.cb-theme-name {
-  font-weight: 700;
+/* The radio stays in the page for the keyboard and screen readers; the frame shows its state. */
+.cb-look-opt input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
-.cb-theme-blurb {
-  grid-column: 2;
-  font-size: 14px;
-  color: var(--cb-text-dim);
+.cb-look {
+  display: block;
+  aspect-ratio: 4 / 3;
+  border-radius: 3px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.cb-look-name {
+  padding: 0 4px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.cb-look-opt.on .cb-look-name::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 8px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--cb-accent);
+}
+
+/* Inside a preview's shadow root: the look's ground, and a small board on it. */
+.cb-look-root,
+.cb-look-in {
+  width: 100%;
+  height: 100%;
+}
+
+.cb-look-in {
+  display: grid;
+  place-items: center;
+  background: var(--cb-ground);
+  color: var(--cb-text);
+  font-family: var(--cb-font-ui);
+  font-variant-numeric: lining-nums;
+}
+
+.cb-look-board {
+  height: 82%;
+  aspect-ratio: 1;
 }
 
 .cb-toggle {
@@ -1377,15 +1623,30 @@ button {
 
 .cb-menu-item {
   width: 100%;
-  min-height: 48px;
+  min-height: 52px;
   padding: 8px 10px;
   border: 0;
   border-radius: 4px;
   background: transparent;
   color: var(--cb-text);
   text-align: left;
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cb-menu-item .cb-icon {
+  color: var(--cb-accent);
+}
+
+.cb-menu-list.small .cb-menu-item {
+  min-height: 46px;
+}
+
+.cb-menu-list.small .cb-menu-item .cb-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--cb-text-dim);
 }
 
 @media (hover: hover) {
@@ -1399,23 +1660,13 @@ button {
 }
 
 .cb-menu-item-name {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 600;
-}
-
-.cb-menu-item-blurb {
-  font-size: 14px;
-  color: var(--cb-text-dim);
-}
-
-/* On the selected tint the dim colour can fall short of 4.5:1, so the blurb takes the text colour. */
-.cb-menu-item.on .cb-menu-item-blurb,
-.cb-theme-opt.on .cb-theme-blurb {
-  color: var(--cb-text);
 }
 
 .cb-menu-list.small .cb-menu-item-name {
   font-size: 16px;
+  font-weight: 500;
 }
 
 /* Reduced motion, from the device or the setting. */

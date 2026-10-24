@@ -2,7 +2,6 @@
 import type { ReactNode } from 'react';
 import type { BandProps, BoardGeometry, ClueLayerProps, ThemeDef } from '../types';
 import { ClueSvg } from '../shared/clues';
-import { MetaLine } from '../shared/MetaLine';
 import { r1, rng } from '../shared/util';
 import '../shared/common.css';
 import './theme.css';
@@ -15,22 +14,10 @@ function Backdrop(_props: { night: boolean }): ReactNode {
   return <div className="wa-fibre" aria-hidden="true" />;
 }
 
-const SEASONS: { kanji: string; name: string }[] = [
-  { kanji: '冬', name: 'Winter' },
-  { kanji: '冬', name: 'Winter' },
-  { kanji: '春', name: 'Spring' },
-  { kanji: '春', name: 'Spring' },
-  { kanji: '春', name: 'Spring' },
-  { kanji: '夏', name: 'Summer' },
-  { kanji: '夏', name: 'Summer' },
-  { kanji: '夏', name: 'Summer' },
-  { kanji: '秋', name: 'Autumn' },
-  { kanji: '秋', name: 'Autumn' },
-  { kanji: '秋', name: 'Autumn' },
-  { kanji: '冬', name: 'Winter' },
-];
+/** The season's seal for each month, January first. */
+const SEASONS = ['冬', '冬', '春', '春', '春', '夏', '夏', '夏', '秋', '秋', '秋', '冬'];
 
-function Band({ title, subtitle, puzzle }: BandProps): ReactNode {
+function Band({ title, subtitle }: BandProps): ReactNode {
   const season = SEASONS[new Date().getMonth()];
   return (
     <div className="cb-band wa-band">
@@ -40,13 +27,12 @@ function Band({ title, subtitle, puzzle }: BandProps): ReactNode {
         <g className="wa-hanko" transform="translate(316 92) rotate(-4)">
           <rect className="wa-hanko-box" x="-16" y="-16" width="32" height="32" rx="3" />
           <text className="wa-hanko-glyph" x="0" y="0" textAnchor="middle" dominantBaseline="central">
-            {season.kanji}
+            {season}
           </text>
         </g>
       </svg>
       <h2 className="wa-title">{title}</h2>
-      <span className="wa-date">{subtitle}</span>
-      <MetaLine className="wa-meta" sepClass="wa-sep" items={[puzzle.name ?? 'Puzzle', season.name]} />
+      {subtitle && <span className="wa-date">{subtitle}</span>}
     </div>
   );
 }
@@ -153,6 +139,7 @@ export const washi: ThemeDef = {
   name: 'Washi and sumi',
   blurb: 'Rice paper, brushed box lines and a vermilion seal for every finished box.',
   defaultNight: false,
+  bandShowsTitle: true,
   loadFonts: () =>
     Promise.all([
       import('@fontsource/shippori-mincho/latin-500.css'),

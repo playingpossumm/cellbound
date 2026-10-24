@@ -6,7 +6,7 @@ import type { ModeId } from '../game/types';
 export interface ModeEntry {
   id: ModeId;
   name: string;
-  /** One line for the mode menu. */
+  /** One line describing the mode. The menu shows the name, and gives this line to screen readers. */
   blurb: string;
   /** Full-screen mode UI. onExit returns to the previous screen. */
   Screen: ComponentType<{ onExit: () => void }>;

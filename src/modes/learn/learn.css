@@ -132,7 +132,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-height: 64px;
+  min-height: 56px;
   padding: 10px 14px;
   text-align: left;
   border: 1px solid var(--cb-line-thin);
@@ -149,41 +149,54 @@
   font-variant-numeric: lining-nums tabular-nums;
   color: var(--cb-text-dim);
 }
-.cb-learn-row-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
 .cb-learn-row-title {
+  min-width: 0;
   font-size: 19px;
   font-weight: 600;
   line-height: 1.2;
   color: var(--cb-ink);
 }
-.cb-learn-row-rule {
-  font-size: 14px;
-  line-height: 1.35;
-  color: var(--cb-text-dim);
-  text-wrap: pretty;
-}
 .cb-learn-status {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--cb-text);
-  white-space: nowrap;
-}
-.cb-learn-row.is-done .cb-learn-status {
   color: var(--cb-text-dim);
 }
+.cb-learn-row.is-done .cb-learn-status {
+  color: var(--cb-accent);
+}
+/* The next lesson to take stands out from the list. */
+.cb-learn-row.is-next {
+  border-color: var(--cb-accent);
+  box-shadow: inset 3px 0 0 var(--cb-accent);
+}
+.cb-learn-row.is-next .cb-learn-num,
+.cb-learn-row.is-next .cb-learn-status {
+  color: var(--cb-accent);
+}
 .cb-learn-status-icon {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
+}
+.cb-learn-title-done {
+  display: inline-flex;
+  margin-left: 10px;
+  vertical-align: middle;
+  color: var(--cb-accent);
+}
+.cb-learn-title-done .cb-learn-status-icon {
+  width: 26px;
+  height: 26px;
+}
+.cb-learn-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.cb-learn-btn-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
 }
 
 /* One lesson */
@@ -407,9 +420,8 @@
 .cb-learn-extra {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
-  padding: 4px 12px;
+  padding: 0;
   color: var(--cb-text);
   font-family: var(--cb-font-ui);
   font-size: 15px;

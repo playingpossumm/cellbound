@@ -95,7 +95,6 @@
   pointer-events: none;
 }
 [data-theme="letters"] .lt-tl { left: 0; }
-[data-theme="letters"] .lt-tr { right: 0; }
 
 /* Cells. */
 [data-theme="letters"] .cb-cell.is-peer { background: var(--cb-peer); }
@@ -161,7 +160,7 @@
 }
 [data-theme="letters"] .cb-board[data-size="4"] .cb-notes { font-size: 16cqw; }
 /* Nine notes share a small cell on 9x9: a little larger so they stay readable on a phone. */
-[data-theme="letters"] .cb-board[data-size="9"] .cb-notes { font-size: 21cqw; }
+[data-theme="letters"] .cb-board[data-size="9"] .cb-notes { font-size: 24cqw; font-weight: 600; }
 
 /* Clues: glyph chains. */
 [data-theme="letters"] .cb-clue { transition: none; }
@@ -176,8 +175,11 @@
 [data-theme="letters"] .cb-board[data-size="9"] .lt-cg { font-size: calc(var(--u) * 0.2); }
 [data-theme="letters"] .lt-cg.lt-big { font-size: calc(var(--u) * 0.25); }
 [data-theme="letters"] .lt-cg.lt-lab { font-size: calc(var(--u) * 0.175); font-weight: 600; fill: var(--lt-dim); }
-[data-theme="letters"] .cb-board[data-size="9"] .lt-cg.lt-lab { font-size: calc(var(--u) * 0.2); }
+[data-theme="letters"] .cb-board[data-size="9"] .lt-cg.lt-lab { font-size: calc(var(--u) * 0.24); }
 [data-theme="letters"] .cb-clue.is-lit .lt-cg { fill: var(--lt-blue); font-weight: 600; }
+/* Letters on the middle of a filled cell step back behind its digit. */
+[data-theme="letters"] .lt-cg.lt-under { fill-opacity: 0.32; }
+[data-theme="letters"] .cb-clue.is-lit .lt-cg.lt-under { fill-opacity: 0.5; }
 [data-theme="letters"] .lt-dot {
   stroke: var(--lt-faint);
   stroke-width: 1.4px;
@@ -231,10 +233,11 @@
   text-transform: uppercase;
 }
 [data-theme="letters"] .cb-play .cb-chip.on { background: var(--lt-onbg); color: var(--lt-onfg); border-color: var(--lt-onbg); }
-[data-theme="letters"] .cb-rtext { font-style: normal; font-size: 12.5px; line-height: 1.5; }
-[data-theme="letters"] .cb-key { border: 1px solid var(--lt-rule); border-radius: 0; min-height: 62px; gap: 4px; }
-[data-theme="letters"] .cb-key-d { font-size: 26px; font-weight: 500; }
-[data-theme="letters"] .cb-key-left { font-size: 10.5px; color: var(--lt-dim); }
-[data-theme="letters"] .cb-key.spent { opacity: 0.35; }
-[data-theme="letters"] .cb-tool { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; color: var(--lt-dim); }
-[data-theme="letters"] .cb-tool.on { color: var(--lt-blue); }
+[data-theme="letters"] .cb-msg { border-radius: 0; border-color: var(--lt-box); }
+[data-theme="letters"] .cb-msg-text { font-size: 14px; line-height: 1.5; }
+[data-theme="letters"] .cb-msg-btn { border-radius: 0; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+[data-theme="letters"] .cb-key { border: 1px solid var(--lt-rule); border-radius: 0; }
+[data-theme="letters"] .cb-key-d { font-size: 27px; font-weight: 500; }
+[data-theme="letters"] .cb-key.spent { border-color: transparent; }
+[data-theme="letters"] .cb-key.spent .cb-key-d { opacity: 0.3; }
+[data-theme="letters"] .cb-tool { border-radius: 0; }

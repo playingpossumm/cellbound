@@ -1,6 +1,7 @@
-// The playing surface: top bar, theme band, rule chips, rule text, board,
-// number pad and tools, with the pause overlay and the result card.
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+// The playing surface: top bar, theme band, rule chips, board, number pad and tools,
+// with the pause overlay and the result card. Nothing here explains itself in words: a
+// rule's text shows only while its chip is on, and hints and notices take the band's place.
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { conflicts as engineConflicts } from '../engine';
 import type { ClueKind } from '../engine/types';
 import { Board } from '../board/Board';
@@ -12,8 +13,8 @@ import { currentStreak, useStats } from '../game/stats';
 import { useLessonDone } from '../modes';
 import { getTheme } from '../themes';
 import { APP_NAME } from './brand';
-import { EraseIcon, HintIcon, NotesIcon, PauseIcon, PlayIcon, ShareIcon, StatsIcon, UndoIcon } from './icons';
-import { classicText, kindsIn, RULE_NAMES, ruleText } from './rules';
+import { CheckIcon, EraseIcon, HintIcon, NotesIcon, PauseIcon, PlayIcon, ShareIcon, StatsIcon, UndoIcon } from './icons';
+import { kindsIn, RULE_NAMES, ruleText } from './rules';
 import { appUrl, shareResult } from './share';
 import { useShell } from './shell';
 import { useNight } from './theme';
@@ -23,8 +24,16 @@ export interface GameViewProps {
   game: GameState;
   /** Shown in the theme band, for example "Daily". */
   title: string;
-  /** For example "Friday 23 October". */
+  /**
+   * What the board is, for the shared result, for example "Friday 23 October". The band does
+   * not show it: see bandSubtitle.
+   */
   subtitle: string;
+  /**
+   * A line under the band's title. Leave it out unless the player needs it to tell this board
+   * from another one, as with a Daily from an earlier day.
+   */
+  bandSubtitle?: string;
   onExit?: () => void;
   /** Mode-specific panel (hearts, run progress), rendered between the band and the board. */
   extra?: ReactNode;
@@ -39,9 +48,31 @@ export interface GameViewProps {
 
 /** The two-column layout: a wide window, or a phone held sideways. Keep in step with base.css. */
 const WIDE = '(min-width: 900px), (min-width: 700px) and (max-height: 520px)';
+/** Where base.css draws the band small, at 60 percent: a short phone screen, or a phone held sideways. */
+const SMALL_BAND = '(max-width: 699px) and (max-height: 799px), (min-width: 700px) and (max-height: 520px)';
+
+/** True while a media query matches. */
+function useMedia(query: string): boolean {
+  const [on, setOn] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(query).matches);
+  useEffect(() => {
+    const m = window.matchMedia?.(query);
+    if (!m) return;
+    const update = () => setOn(m.matches);
+    update();
+    m.addEventListener('change', update);
+    return () => m.removeEventListener('change', update);
+  }, [query]);
+  return on;
+}
 const NO_NOTES = 'Notes are off for this board.';
 /** Smallest cell, in CSS pixels, that the stacked layout shrinks the board to when that avoids scrolling. */
-const MIN_CELL: Record<number, number> = { 4: 56, 6: 52, 9: 40 };
+const MIN_CELL: Record<number, number> = { 4: 56, 6: 50, 9: 35 };
+/** Largest board edge in the two-column layout, and stacked (an upright tablet). */
+const MAX_SIDE = 720;
+const MAX_STACKED_SIDE = 640;
+/** Width of the side column in the two-column layout, and the gap before it. Keep in step with base.css. */
+const SIDE_COLUMN = 360;
+const SIDE_GAP = 40;
 
 /**
  * The smallest height the window takes, with a phone browser's toolbars showing. The board is
@@ -57,49 +88,47 @@ function smallViewportHeight(): number {
   return h || window.innerHeight;
 }
 
+/** The stacked parts other than the board, whose heights decide how much room the board has. */
+const STACKED_PARTS = ['.cb-band-wrap', '.cb-extra', '.cb-chips', '.cb-stage', '.cb-pad', '.cb-tools'];
+
 /**
- * Board edge in CSS pixels: as large as fits. From 900 px the board fits the window height
- * under the top bar and band. Below that it uses the column width, and when the whole page
- * would then be a little too tall for the window (a tablet held upright), it gives up a few
- * pixels instead, as long as the cells stay playable. A window too short for that scrolls.
+ * Board edge in CSS pixels: as large as fits. In two columns the board takes the whole height
+ * under the top bar, and the band sits in the side column. Stacked, it takes the column width
+ * (a phone) or the height left over by the other parts (a tablet), whichever is less. When the
+ * page would still be too tall, it gives up a few pixels, as long as the cells stay playable;
+ * a window too short for that scrolls.
  */
-function useBoardSide(
-  playRef: React.RefObject<HTMLDivElement | null>,
-  bandRef: React.RefObject<HTMLDivElement | null>,
-  topRef: React.RefObject<HTMLElement | null>,
-  size: number,
-) {
-  const [side, setSide] = useState(358);
+function useBoardSide(playRef: React.RefObject<HTMLDivElement | null>, topRef: React.RefObject<HTMLElement | null>, size: number) {
+  const [side, setSide] = useState(378);
   useLayoutEffect(() => {
     const wide = window.matchMedia?.(WIDE);
     const measure = () => {
       const play = playRef.current;
       if (!play) return;
       const cs = getComputedStyle(play);
-      const inner = play.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const px = (v: string) => parseFloat(v) || 0;
+      const inner = play.clientWidth - px(cs.paddingLeft) - px(cs.paddingRight);
+      const top = topRef.current?.offsetHeight ?? 0;
+      const app = play.closest<HTMLElement>('.cb-app');
+      const as = app ? getComputedStyle(app) : null;
+      const chrome = top + px(cs.paddingTop) + px(cs.paddingBottom) + (as ? px(as.paddingTop) + px(as.paddingBottom) : 0);
       let next: number;
       if (wide?.matches) {
-        const band = bandRef.current?.offsetHeight ?? 0;
-        const top = topRef.current?.offsetHeight ?? 0;
-        const availH = smallViewportHeight() - top - band - 36;
-        const availW = inner - 380 - 48;
-        next = Math.max(280, Math.min(availH, availW, 680));
+        const availH = smallViewportHeight() - chrome;
+        const availW = inner - SIDE_COLUMN - SIDE_GAP;
+        next = Math.max(260, Math.min(availH, availW, MAX_SIDE));
       } else {
-        const cap = Math.max(240, Math.min(inner, 560));
-        next = cap;
-        const wrap = play.querySelector<HTMLElement>('.cb-board-wrap');
-        const app = play.closest<HTMLElement>('.cb-app');
-        if (wrap && app) {
-          const as = getComputedStyle(app);
-          // A long hint or notice must not resize the board, so the rule line counts at its usual height.
-          const line = play.querySelector<HTMLElement>('.cb-rtext');
-          const extra = line ? Math.max(0, line.offsetHeight - (parseFloat(getComputedStyle(line).minHeight) || 0)) : 0;
-          const rest =
-            (topRef.current?.offsetHeight ?? 0) + play.offsetHeight - wrap.offsetHeight - extra + (parseFloat(as.paddingTop) || 0) + (parseFloat(as.paddingBottom) || 0);
-          const room = smallViewportHeight() - rest;
-          const floor = Math.min(cap, size * (MIN_CELL[size] ?? 52));
-          if (room >= floor && room < cap) next = room;
+        // Everything but the board itself: the other parts at their own height, and every margin.
+        let rest = chrome;
+        for (const sel of STACKED_PARTS) {
+          const el = play.querySelector<HTMLElement>(`:scope > ${sel}`);
+          if (!el) continue;
+          rest += px(getComputedStyle(el).marginTop) + (sel === '.cb-stage' ? 0 : el.offsetHeight);
         }
+        const room = Math.floor(smallViewportHeight() - rest);
+        const cap = Math.max(240, Math.min(inner, MAX_STACKED_SIDE));
+        const floor = Math.min(cap, size * (MIN_CELL[size] ?? 52));
+        next = Math.max(floor, Math.min(cap, room));
       }
       next = Math.floor(next);
       setSide((s) => (s === next ? s : next));
@@ -108,20 +137,20 @@ function useBoardSide(
     window.addEventListener('resize', measure);
     wide?.addEventListener('change', measure);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
-    if (ro) {
-      if (playRef.current) ro.observe(playRef.current);
-      if (bandRef.current) ro.observe(bandRef.current);
-    }
+    if (ro && playRef.current) ro.observe(playRef.current);
     return () => {
       window.removeEventListener('resize', measure);
       wide?.removeEventListener('change', measure);
       ro?.disconnect();
     };
-  }, [playRef, bandRef, topRef, size]);
+  }, [playRef, topRef, size]);
   return side;
 }
 
-export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, endPanel, next, shareUrl }: GameViewProps) {
+/** What the band gives way to: a notice, a hint step, or the rule of the chip that is on. */
+type Message = { kind: 'notice' | 'hint'; text: string } | { kind: 'rule'; text: string; rule: ClueKind };
+
+export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, extra, hideRuleChips, endPanel, next, shareUrl }: GameViewProps) {
   const settings = useSettings();
   const theme = getTheme(settings.theme);
   const night = useNight();
@@ -129,12 +158,14 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
   const fx = useFx();
   const [lit, setLit] = useState<ClueKind | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const bandRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLElement>(null);
   const playRef = useRef<HTMLDivElement>(null);
+  const newRuleId = useId();
   const p = game.puzzle;
   const n = p.size;
-  const side = useBoardSide(playRef, bandRef, topRef, n);
+  const side = useBoardSide(playRef, topRef, n);
+  // A small band would set its line too small to read, so the line moves out under it.
+  const smallBand = useMedia(SMALL_BAND);
 
   useEffect(() => startClock(), []);
   useEffect(() => {
@@ -339,6 +370,7 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
           actions.select(null);
           actions.dismissHint();
           setLit(null);
+          setNotice(null);
           return;
       }
     };
@@ -349,13 +381,21 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
   const Band = theme.Band;
   const padCols = n === 9 ? 'nine' : n === 4 ? 'four' : 'six';
   const hearts = heartsLeft(game);
-  const ruleLine = notice ?? fx.hint?.text ?? (lit ? ruleText(lit, p) : classicText(n));
+  const message: Message | null = notice
+    ? { kind: 'notice', text: notice }
+    : fx.hint
+      ? { kind: 'hint', text: fx.hint.text }
+      : lit
+        ? { kind: 'rule', text: ruleText(lit, p), rule: lit }
+        : null;
+  const toolsOff = ended || paused;
 
   return (
-    <div className="cb-game" data-mode={game.mode} style={{ ['--cb-side' as string]: `${side}px` }}>
+    <div className="cb-game" data-mode={game.mode} data-size={n} style={{ ['--cb-side' as string]: `${side}px` }}>
       <TopBar
         ref={topRef}
         title={title}
+        quietTitle={theme.bandShowsTitle}
         onBack={onExit}
         backLabel="Leave this board"
         right={
@@ -364,12 +404,13 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
               type="button"
               className="cb-ib"
               aria-label={paused ? 'Resume' : 'Pause'}
+              title={paused ? 'Resume (P)' : 'Pause (P)'}
               onClick={() => (paused ? actions.resume() : actions.pause())}
               disabled={ended}
             >
               {paused ? <PlayIcon /> : <PauseIcon />}
             </button>
-            <button type="button" className="cb-ib" aria-label="Stats" onClick={() => shell.go('stats')}>
+            <button type="button" className="cb-ib" aria-label="Stats" title="Stats" onClick={() => shell.go('stats')}>
               <StatsIcon />
             </button>
           </>
@@ -388,13 +429,15 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
         )}
       </TopBar>
 
+      {/* Grid areas place each part: stacked on a phone, and in two columns (the board, then the
+          band over the controls) on a wide screen. The board comes before the controls in the
+          page, so Tab and screen readers reach it first. */}
       <div className="cb-play" ref={playRef}>
-        <div className="cb-band-wrap" ref={bandRef}>
-          <Band title={title} subtitle={subtitle} time={time} puzzle={p} values={full} night={night} />
+        <div className="cb-band-wrap">
+          <Band title={title} subtitle={smallBand ? '' : bandSubtitle} time={time} puzzle={p} values={full} night={night} />
+          {smallBand && bandSubtitle && <p className="cb-band-line">{bandSubtitle}</p>}
         </div>
 
-        {/* The board comes before the side panel in the page, so Tab and screen readers
-            reach it first; grid areas still place the panel above, beside or below it. */}
         <div className="cb-stage">
           <div className={`cb-board-wrap${paused ? ' is-paused' : ''}`} style={{ width: side, height: side }}>
             <Board
@@ -421,13 +464,14 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
             />
             {paused && (
               <div className="cb-pause">
-                <p className="cb-pause-title">Paused</p>
-                <button type="button" className="cb-btn primary" onClick={actions.resume} autoFocus>
+                <button type="button" className="cb-btn primary cb-resume" onClick={actions.resume} autoFocus>
+                  <PlayIcon />
                   Resume
                 </button>
               </div>
             )}
-            {ended && showEnd &&
+            {ended &&
+              showEnd &&
               (endPanel ? (
                 <div className="cb-result cb-end-panel">{endPanel}</div>
               ) : (
@@ -436,106 +480,121 @@ export function GameView({ game, title, subtitle, onExit, extra, hideRuleChips, 
           </div>
         </div>
 
-        <div className="cb-side">
-          {(extra || hearts !== null) && (
-            <div className="cb-extra">
-              {extra ?? (
-                <p className="cb-hearts" aria-label={`${hearts} hearts left`}>
-                  Hearts: {hearts}
-                </p>
-              )}
-            </div>
-          )}
+        {(extra || hearts !== null) && (
+          <div className="cb-extra">
+            {extra ?? (
+              <p className="cb-hearts" aria-label={`${hearts} hearts left`}>
+                Hearts: {hearts}
+              </p>
+            )}
+          </div>
+        )}
 
-          {!hideRuleChips && kinds.length > 0 && (
-            <div className="cb-chips" role="group" aria-label="Rules">
-              {kinds.map((k) => {
-                return (
-                  <span key={k} className="cb-chip-wrap">
-                    <button
-                      type="button"
-                      className={`cb-chip${lit === k ? ' on' : ''}`}
-                      aria-pressed={lit === k}
-                      onClick={() => {
-                        setNotice(null);
-                        actions.dismissHint();
-                        setLit(lit === k ? null : k);
-                      }}
-                    >
-                      {RULE_NAMES[k]}
-                    </button>
-                    <NewMark kind={k} onOpen={() => shell.openLesson(k)} />
+        {!hideRuleChips && kinds.length > 0 && (
+          <div className="cb-chips" role="group" aria-label="Rules">
+            {kinds.map((k) => (
+              <RuleChip
+                key={k}
+                kind={k}
+                on={lit === k}
+                newRuleId={newRuleId}
+                onToggle={() => {
+                  setNotice(null);
+                  actions.dismissHint();
+                  setLit(lit === k ? null : k);
+                }}
+              />
+            ))}
+            <span id={newRuleId} hidden>
+              New rule
+            </span>
+          </div>
+        )}
+
+        {/* Spoken lines. The panel below shows the same text, for the eyes only. */}
+        <p className="cb-sr" aria-live="polite">
+          {said}
+        </p>
+        <p className="cb-sr" aria-live="polite">
+          {message?.text ?? ''}
+        </p>
+        {message && (
+          <div className={`cb-msg is-${message.kind}`}>
+            <p className="cb-msg-text" aria-hidden="true">
+              {message.text}
+            </p>
+            {message.kind === 'rule' && (
+              <button type="button" className="cb-msg-btn" aria-label={`Open the ${RULE_NAMES[message.rule]} lesson`} onClick={() => shell.openLesson(message.rule)}>
+                Lesson
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="cb-pad" data-cols={padCols} data-notes={game.notesMode} role="group" aria-label={game.notesMode ? 'Number pad, notes' : 'Number pad'}>
+          {Array.from({ length: n }, (_, k) => {
+            const d = k + 1;
+            // A digit that is on the board n times is finished: its key says so by looking spent.
+            const done = counts[d] >= n;
+            return (
+              <button
+                key={d}
+                type="button"
+                className={`cb-key${done ? ' spent' : ''}`}
+                aria-label={`${game.notesMode ? 'Note' : 'Enter'} ${d}${done ? ', all placed' : ''}`}
+                onClick={() => enter(d)}
+                disabled={toolsOff}
+              >
+                <span className="cb-key-d">{d}</span>
+                {done && (
+                  <span className="cb-key-done" aria-hidden="true">
+                    <CheckIcon />
                   </span>
-                );
-              })}
-            </div>
-          )}
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-          <p className="cb-sr" aria-live="polite">
-            {said}
-          </p>
-          <p className={`cb-rtext${fx.hint ? ' is-hint' : ''}`} aria-live="polite">
-            {ruleLine}
-          </p>
-
-          <div className="cb-pad" data-cols={padCols} data-notes={game.notesMode} role="group" aria-label={game.notesMode ? 'Number pad, notes' : 'Number pad'}>
-            {Array.from({ length: n }, (_, k) => {
-              const d = k + 1;
-              const left = Math.max(0, n - counts[d]);
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  className={`cb-key${left ? '' : ' spent'}`}
-                  aria-label={`${game.notesMode ? 'Note' : 'Enter'} ${d}, ${left} left`}
-                  onClick={() => enter(d)}
-                  disabled={ended || paused}
-                >
-                  <span className="cb-key-d">{d}</span>
-                  <span className="cb-key-left">{left} left</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="cb-tools" role="group" aria-label="Tools">
-            <button type="button" className="cb-tool" onClick={actions.undo} disabled={ended || paused || !game.undo.length}>
-              <UndoIcon />
-              <span>Undo</span>
-            </button>
-            <button type="button" className="cb-tool" onClick={actions.erase} disabled={ended || paused}>
-              <EraseIcon />
-              <span>Erase</span>
-            </button>
-            <button
-              type="button"
-              className={`cb-tool${game.notesMode ? ' on' : ''}`}
-              aria-pressed={game.notesMode}
-              onClick={actions.toggleNotes}
-              disabled={ended || paused || !!game.mods?.noNotes}
-              title={game.mods?.noNotes ? NO_NOTES : undefined}
-            >
-              <NotesIcon />
-              <span>Notes</span>
-            </button>
-            <button type="button" className="cb-tool" onClick={doHint} disabled={ended || paused}>
-              <HintIcon />
-              <span>Hint</span>
-            </button>
-          </div>
+        <div className="cb-tools" role="group" aria-label="Tools">
+          <button type="button" className="cb-tool" aria-label="Undo" title="Undo (Z)" onClick={actions.undo} disabled={toolsOff || !game.undo.length}>
+            <UndoIcon />
+          </button>
+          <button type="button" className="cb-tool" aria-label="Erase" title="Erase (Backspace)" onClick={actions.erase} disabled={toolsOff}>
+            <EraseIcon />
+          </button>
+          <button
+            type="button"
+            className={`cb-tool is-toggle${game.notesMode ? ' on' : ''}`}
+            aria-label="Notes"
+            aria-pressed={game.notesMode}
+            title={game.mods?.noNotes ? NO_NOTES : 'Notes (N)'}
+            onClick={actions.toggleNotes}
+            disabled={toolsOff || !!game.mods?.noNotes}
+          >
+            <NotesIcon />
+          </button>
+          <button type="button" className="cb-tool" aria-label="Hint" title="Hint (H)" onClick={doHint} disabled={toolsOff}>
+            <HintIcon />
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-/** The New mark on a rule chip, until the player finishes that rule's lesson. */
-function NewMark({ kind, onOpen }: { kind: ClueKind; onOpen: () => void }) {
-  const done = useLessonDone(kind);
-  if (done) return null;
+/** A rule chip: lights its clues and shows the rule. A dot marks a rule whose lesson is not done yet. */
+function RuleChip({ kind, on, newRuleId, onToggle }: { kind: ClueKind; on: boolean; newRuleId: string; onToggle: () => void }) {
+  const fresh = !useLessonDone(kind);
   return (
-    <button type="button" className="cb-chip-new" aria-label={`New rule: open the ${RULE_NAMES[kind]} lesson`} onClick={onOpen}>
-      New
+    <button
+      type="button"
+      className={`cb-chip${on ? ' on' : ''}${fresh ? ' is-new' : ''}`}
+      aria-pressed={on}
+      aria-describedby={fresh ? newRuleId : undefined}
+      onClick={onToggle}
+    >
+      {RULE_NAMES[kind]}
     </button>
   );
 }
@@ -604,6 +663,7 @@ function ResultCard({ game, title, subtitle, next, shareUrl }: { game: GameState
             Share
           </button>
           <button type="button" className="cb-btn" onClick={() => shell.go('stats')}>
+            <StatsIcon />
             Stats
           </button>
         </div>

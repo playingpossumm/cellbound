@@ -1,6 +1,6 @@
 // App shell: opens straight into today's Daily, a menu one tap away, the
 // theme on <html>, challenge links, and the extra modes from src/modes.
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { dailyDate } from '../engine';
 import type { ClueKind } from '../engine/types';
 import { closeGame, onGameEnd } from '../game/store';
@@ -10,10 +10,22 @@ import { useSettings } from '../game/settings';
 import { extraModes, learn } from '../modes';
 import { getTheme } from '../themes';
 import { APP_NAME } from './brand';
-import { CloseIcon } from './icons';
+import { AboutIcon, CloseIcon, DailyIcon, FogIcon, FreeIcon, LearnIcon, RunIcon, SettingsIcon, StatsIcon } from './icons';
 import { AboutScreen, DailyScreen, FogScreen, FreeScreen, Loading, SettingsScreen, StatsScreen } from './screens';
 import { OPEN_EVENT, ShellContext, type ScreenId, type Shell } from './shell';
 import { useApplyTheme, useNight } from './theme';
+
+/** An icon for each screen in the menu, so the list reads at a glance. */
+const MENU_ICONS: Partial<Record<ScreenId, ReactNode>> = {
+  daily: <DailyIcon />,
+  'mode:run': <RunIcon />,
+  'mode:learn': <LearnIcon />,
+  fog: <FogIcon />,
+  free: <FreeIcon />,
+  stats: <StatsIcon />,
+  settings: <SettingsIcon />,
+  about: <AboutIcon />,
+};
 
 /** Names for the page title; the Daily uses the app's name alone. */
 const SCREEN_NAMES: Partial<Record<ScreenId, string>> = { fog: 'Fog', free: 'Free play', stats: 'Stats', settings: 'Settings', about: 'About' };
@@ -175,6 +187,7 @@ export default function App() {
     document.title = screenName ? `${screenName} · ${APP_NAME}` : APP_NAME;
   }, [screenName]);
 
+  // The menu shows names and icons; each mode's one-line description goes to screen readers.
   const items: { screen: ScreenId; name: string; blurb: string }[] = [
     { screen: 'daily', name: 'Daily', blurb: 'One shared puzzle a day.' },
     ...extraModes.map((m) => ({ screen: `mode:${m.id}` as ScreenId, name: m.name, blurb: m.blurb })),
@@ -216,11 +229,15 @@ export default function App() {
                     type="button"
                     className={`cb-menu-item${route.screen === it.screen ? ' on' : ''}`}
                     aria-current={route.screen === it.screen ? 'page' : undefined}
+                    aria-describedby={`cb-menu-d-${it.screen.replace(':', '-')}`}
                     onClick={() => go(it.screen)}
                   >
+                    {MENU_ICONS[it.screen]}
                     <span className="cb-menu-item-name">{it.name}</span>
-                    <span className="cb-menu-item-blurb">{it.blurb}</span>
                   </button>
+                  <span id={`cb-menu-d-${it.screen.replace(':', '-')}`} hidden>
+                    {it.blurb}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -233,6 +250,7 @@ export default function App() {
                     aria-current={route.screen === it.screen ? 'page' : undefined}
                     onClick={() => go(it.screen)}
                   >
+                    {MENU_ICONS[it.screen]}
                     <span className="cb-menu-item-name">{it.name}</span>
                   </button>
                 </li>

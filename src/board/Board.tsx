@@ -61,6 +61,24 @@ function shownClues(puzzle: Puzzle, hidden: boolean[] | undefined): Puzzle {
   return clues.length === puzzle.clues.length ? puzzle : { ...puzzle, clues };
 }
 
+/**
+ * For every cell, the sides that face another box (or region): ' edge-l', ' edge-r', ' edge-t'
+ * and ' edge-b'. The board's outer edges do not count. A theme can use them to set boxes apart.
+ */
+function boxEdges(n: number, regionOf: (i: number) => number): string[] {
+  return Array.from({ length: n * n }, (_, i) => {
+    const r = Math.floor(i / n);
+    const c = i % n;
+    const b = regionOf(i);
+    let out = '';
+    if (c > 0 && regionOf(i - 1) !== b) out += ' edge-l';
+    if (c < n - 1 && regionOf(i + 1) !== b) out += ' edge-r';
+    if (r > 0 && regionOf(i - n) !== b) out += ' edge-t';
+    if (r < n - 1 && regionOf(i + n) !== b) out += ' edge-b';
+    return out;
+  });
+}
+
 function BoardImpl(props: BoardProps) {
   const {
     puzzle, values, notes, selected, hinted, fogCleared, highlights, wrong, conflict, focus, lit,
@@ -68,6 +86,7 @@ function BoardImpl(props: BoardProps) {
   } = props;
   const n = puzzle.size;
   const geo = useMemo(() => makeGeometry(puzzle), [puzzle]);
+  const edges = useMemo(() => boxEdges(n, geo.regionOf), [n, geo]);
   const cellsRef = useRef<HTMLDivElement>(null);
   const maskId = `cb-fogmask-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const full = useMemo(() => puzzle.givens.map((d, i) => d || values[i] || 0), [puzzle, values]);
@@ -114,7 +133,7 @@ function BoardImpl(props: BoardProps) {
     const noteList: number[] = [];
     if (!d && !isHidden) for (let k = 1; k <= n; k++) if (notes[i] & (1 << k)) noteList.push(k);
 
-    let cls = 'cb-cell';
+    let cls = 'cb-cell' + edges[i];
     if (i === selected) cls += ' is-sel';
     else if (highlights && selected !== null && (r === selR || c === selC || b === selB)) cls += ' is-peer';
     if (highlights && selD && d === selD && i !== selected) cls += ' is-same';
@@ -141,7 +160,7 @@ function BoardImpl(props: BoardProps) {
       />,
     );
 
-    let slotCls = 'cb-slot';
+    let slotCls = 'cb-slot' + edges[i];
     if (inFlash) slotCls += ` ${flashCls}`;
     if (done.has(b)) slotCls += ` box-done bd-${b}`;
     if (i === selected) slotCls += ' is-sel';
@@ -177,7 +196,7 @@ function BoardImpl(props: BoardProps) {
 
     if (fogCleared) {
       const fs: VarStyle = { '--d': (r + c) % 3 };
-      fogs.push(<div key={i} className={isHidden ? 'cb-fog is-on' : 'cb-fog'} style={fs} data-glyphs={fogGlyphs(puzzle.seed, i)} />);
+      fogs.push(<div key={i} className={(isHidden ? 'cb-fog is-on' : 'cb-fog') + edges[i]} style={fs} data-glyphs={fogGlyphs(puzzle.seed, i)} />);
     }
   }
 
@@ -205,11 +224,11 @@ function BoardImpl(props: BoardProps) {
               </mask>
             </defs>
             <g mask={`url(#${maskId})`}>
-              <Clues puzzle={cluePuzzle} geo={geo} lit={lit} hidden={hidden} />
+              <Clues puzzle={cluePuzzle} geo={geo} lit={lit} hidden={hidden} values={full} />
             </g>
           </>
         ) : (
-          <Clues puzzle={puzzle} geo={geo} lit={lit} hidden={hidden} />
+          <Clues puzzle={puzzle} geo={geo} lit={lit} hidden={hidden} values={full} />
         )}
       </svg>
       <div className="cb-digits" aria-hidden="true">

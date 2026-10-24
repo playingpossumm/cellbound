@@ -1,5 +1,5 @@
 // Run scoring. Pure functions, so the breakdown on screen is the same arithmetic the tests check.
-import { BASE_SCORE } from './boards';
+import { baseFor } from './boards';
 
 /** Points per heart left when a run is finished. */
 export const HEART_BONUS = 150;
@@ -25,6 +25,8 @@ export interface ScoreInput {
    * board easier or harder change the multiplier and the par time, never the base.
    */
   difficulty: number;
+  /** Board size; a 9x9 has a larger base. Defaults to 6. */
+  size?: number;
   /** Par time of the board as generated. */
   parMs: number;
   elapsedMs: number;
@@ -34,8 +36,7 @@ export interface ScoreInput {
 }
 
 export function scoreBoard(input: ScoreInput): BoardScore {
-  const d = Math.max(1, Math.min(5, Math.round(input.difficulty)));
-  const base = BASE_SCORE[d];
+  const base = baseFor(input.size ?? 6, input.difficulty);
   const par = Math.max(1, input.parMs);
   const left = Math.max(0, Math.min(1, (par - input.elapsedMs) / par));
   const timeBonus = Math.floor(base * TIME_BONUS_SHARE * left);

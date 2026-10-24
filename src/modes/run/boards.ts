@@ -3,6 +3,7 @@ import { makeRng } from '../../engine';
 import type { ClueKind, Difficulty, GenerateOptions, Size } from '../../engine/types';
 import type { GameMods } from '../../game/types';
 import { ALL_KINDS, applyCards, type BoardPlan, type Card } from './cards';
+import { roundTo, sizeScale } from './scale';
 
 export const BOARD_COUNT = 5;
 
@@ -16,24 +17,37 @@ export interface BoardSpec {
 }
 
 /**
- * Boards 1 to 4 are 6x6 and rise from difficulty 1 to 3. The final board stays 6x6 at
- * difficulty 4 with three kinds: a 9x9 would take far longer than a five minute session
- * and would make the Tight clock curse meaningless.
+ * Boards 1 to 4 are 6x6 for pace and rise from difficulty 1 to 3. The final board is a 9x9 at
+ * difficulty 3 with three kinds: the test of the run. Its par, base score and Tight clock grow
+ * with its size (see scale.ts), and Hard turn is never offered before it, so it stays one
+ * sitting long.
  */
 export const BOARD_SPECS: readonly BoardSpec[] = [
   { size: 6, difficulty: 1, kinds: 2, allowGlobal: false },
   { size: 6, difficulty: 2, kinds: 2, allowGlobal: false },
   { size: 6, difficulty: 2, kinds: 3, allowGlobal: true },
   { size: 6, difficulty: 3, kinds: 3, allowGlobal: true },
-  { size: 6, difficulty: 4, kinds: 3, allowGlobal: true },
+  { size: 9, difficulty: 3, kinds: 3, allowGlobal: true },
 ];
 
 const GLOBAL: ClueKind[] = ['diagonal', 'antiKnight'];
 
-/** Base score by difficulty (index 0 unused). */
+/** Base score of a 6x6 board by difficulty (index 0 unused). */
 export const BASE_SCORE = [0, 100, 160, 240, 340, 480] as const;
-/** Par time in milliseconds by difficulty (index 0 unused). */
+/** Par time in milliseconds of a 6x6 board by difficulty (index 0 unused). */
 export const PAR_MS = [0, 150_000, 210_000, 270_000, 330_000, 420_000] as const;
+
+const level = (d: number) => Math.max(1, Math.min(5, Math.round(d)));
+
+/** Par time for a board of a size and difficulty, to the half minute: 10:00 for a 9x9 at difficulty 3. */
+export function parFor(size: number, difficulty: number): number {
+  return roundTo(PAR_MS[level(difficulty)] * sizeScale(size), 30_000);
+}
+
+/** Base score for a board of a size and difficulty, to the ten: 540 for a 9x9 at difficulty 3. */
+export function baseFor(size: number, difficulty: number): number {
+  return Math.round((BASE_SCORE[level(difficulty)] * sizeScale(size)) / 10) * 10;
+}
 
 export function boardSeed(runSeed: string, boardIndex: number): string {
   return runSeed + ':' + boardIndex;
@@ -96,6 +110,6 @@ export function setupBoard(
     mods: plan.mods,
     cardIds: cards.map((c) => c.id),
     mult,
-    parMs: PAR_MS[plan.options.difficulty],
+    parMs: parFor(plan.options.size, plan.options.difficulty),
   };
 }
