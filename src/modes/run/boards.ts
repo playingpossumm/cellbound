@@ -18,16 +18,16 @@ export interface BoardSpec {
 
 /**
  * Boards 1 to 4 are 6x6 for pace and rise from difficulty 1 to 3. The final board is a 9x9 at
- * difficulty 3 with three kinds: the test of the run. Its par, base score and Tight clock grow
- * with its size (see scale.ts), and Hard turn is never offered before it, so it stays one
- * sitting long.
+ * difficulty 2 with three kinds: the biggest board of the run, at about a quarter of an hour,
+ * so a whole run stays near forty minutes. Its par, base score and Tight clock grow with its
+ * size (see scale.ts), and Hard turn is never offered before it, so it stays one sitting long.
  */
 export const BOARD_SPECS: readonly BoardSpec[] = [
   { size: 6, difficulty: 1, kinds: 2, allowGlobal: false },
   { size: 6, difficulty: 2, kinds: 2, allowGlobal: false },
   { size: 6, difficulty: 2, kinds: 3, allowGlobal: true },
   { size: 6, difficulty: 3, kinds: 3, allowGlobal: true },
-  { size: 9, difficulty: 3, kinds: 3, allowGlobal: true },
+  { size: 9, difficulty: 2, kinds: 3, allowGlobal: true },
 ];
 
 const GLOBAL: ClueKind[] = ['diagonal', 'antiKnight'];

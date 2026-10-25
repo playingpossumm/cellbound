@@ -8,15 +8,15 @@ Play it at [cellbound-sudoku.vercel.app](https://cellbound-sudoku.vercel.app).
 
 ## Modes
 
-The Daily is one puzzle a day, the same for everyone. Monday to Saturday bring a 6x6 board and Sunday a 9x9, and the difficulty climbs from a gentle Monday to a hard Saturday. Each Daily is named after a constellation, and solving it on its own day keeps your streak going.
+The Daily is one 9x9 puzzle a day, the same for everyone. It climbs from a gentle Monday with one rule to a hard Saturday, and Sunday brings a longer board with three rules. Each Daily is named after a constellation, and solving it on its own day keeps your streak going.
 
-Run is a short roguelite. You play five boards in a row with three hearts, and every wrong digit costs a heart. Between boards you take one of three cards. A boon helps on the next board, a curse makes it harder and raises its score, and a bargain does a little of both. There is a daily run with the same boards and offers for everyone, free runs that are new every time, and five more cards to unlock by reaching milestones.
+Run is a roguelite. You play five boards in a row, four quick 6x6 boards and a 9x9 to finish, with three hearts, and every wrong digit costs a heart. Between boards you take one of three cards. A boon helps on the next board, a curse makes it harder and raises its score, and a bargain does a little of both. There is a daily run with the same boards and offers for everyone, free runs that are new every time, and five more cards to unlock by reaching milestones.
 
-Fog hides most of the board. A correct digit clears the cells around it and shows the givens and clues underneath, while a wrong digit clears nothing.
+Fog opens on a 9x9 and hides most of the board. A correct digit clears the cells around it and shows the givens and clues underneath, while a wrong digit clears nothing.
 
-Free play lets you pick 6x6 or 9x9, any mix of rules and a difficulty from 1 to 5, then plays an endless stream of boards. Sharing a result shares a link to that exact board.
+Free play opens on a 9x9, with 6x6 a tap away, and lets you pick any mix of rules and a difficulty from 1 to 5, then plays an endless stream of boards. Sharing a result shares a link to that exact board.
 
-Learn has a short lesson for the basics and for each rule, and every lesson ends with a small practice puzzle. Until you have done a rule's lesson, its chip on the board carries a New mark that opens it.
+Learn has a short lesson for the basics and for each rule, and every lesson ends with a small practice puzzle. Until you have done a rule's lesson, its chip on the board shows a dot, and tapping the chip offers the lesson.
 
 ## Rules
 
@@ -44,14 +44,14 @@ A hint comes in three steps for the same deduction. The first shows where to loo
 
 ## Looks
 
-Cellbound has six looks, each with a light and a dark version. On Auto it follows your device.
+Cellbound has six looks, each with a light and a dark version. Prism is the default, and on Auto the light or dark version follows your device.
 
+- Prism sets digits on dark glass, with one spectrum colour for every digit.
+- Letters in space is a monospaced grid with rules spelled along the lines and the board drawn as a turning cube of letters.
 - Star atlas puts gold hairlines on ink-blue chart paper under a slow star field, with each Daily's constellation in the band.
 - Paper and ink is newsprint with graphite pencil and a blue pen under a newspaper masthead.
 - Washi and sumi has rice paper, brushed box lines and a vermilion seal for every finished box.
 - Swiss poster uses flat red, blue and yellow, heavy type and a thick rule, and turns finished boxes into blocks of colour.
-- Prism sets digits on dark glass, with one spectrum colour for every digit.
-- Letters in space is a monospaced grid with rules spelled along the lines and the board drawn above it as a turning cube of letters.
 
 Every look honours reduced motion, from the device or from Settings.
 

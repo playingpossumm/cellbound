@@ -40,7 +40,9 @@ test('Stats, Settings and About have a back arrow, like Run and Learn', async ({
     await openScreen(page, name);
     await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Back', exact: true }).click();
-    await expect(page.locator('.cb-board')).toBeVisible();
+    // Settings draws small preview boards, so wait for the page to leave and match the play board only.
+    await expect(page.locator('.cb-page-title')).toHaveCount(0);
+    await expect(page.locator('.cb-play .cb-board')).toBeVisible();
     await expect(page.locator('.cb-top-title')).toHaveText('Daily');
   }
   // It goes back to where the player came from, here a Fog board.

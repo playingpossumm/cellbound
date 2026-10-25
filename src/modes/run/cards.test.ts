@@ -155,8 +155,10 @@ describe('curse effects', () => {
   });
 
   it('Hard turn raises difficulty and stops at 4', () => {
-    expect(card('hard-turn').effect(plan(1)).options.difficulty).toBe(BOARD_SPECS[1].difficulty + 1);
-    expect(card('hard-turn').effect(plan(4)).options.difficulty).toBe(4);
+    const hard = card('hard-turn');
+    expect(hard.effect(plan(1)).options.difficulty).toBe(BOARD_SPECS[1].difficulty + 1);
+    expect(hard.effect(plan(4)).options.difficulty).toBe(BOARD_SPECS[4].difficulty + 1);
+    expect(hard.effect(hard.effect(plan(3))).options.difficulty).toBe(4);
   });
 });
 

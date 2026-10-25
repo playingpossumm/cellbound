@@ -59,8 +59,8 @@ describe('the board ladder', () => {
     BOARD_SPECS.slice(0, 4).forEach((s) => expect(s.size).toBe(6));
   });
 
-  it('ends on a 9x9 at difficulty 3 with three kinds', () => {
-    expect(BOARD_SPECS[BOARD_COUNT - 1]).toMatchObject({ size: 9, difficulty: 3, kinds: 3 });
+  it('ends on a 9x9 at difficulty 2 with three kinds', () => {
+    expect(BOARD_SPECS[BOARD_COUNT - 1]).toMatchObject({ size: 9, difficulty: 2, kinds: 3 });
   });
 
   it('gives the final 9x9 a par for its size, and scores it for its size', () => {
@@ -71,8 +71,8 @@ describe('the board ladder', () => {
     const done = finishBoard(r, { ...clean, elapsedMs: r.setup.parMs });
     const last = done.results[BOARD_COUNT - 1];
     expect(last.size).toBe(9);
-    // The base follows the slot (a 9x9 at difficulty 3): the 6x6 base of 240 times 2.25.
-    expect(last.score.base).toBe(540);
+    // The base follows the slot (a 9x9 at difficulty 2): the 6x6 base of 160 times 2.25.
+    expect(last.score.base).toBe(360);
     expect(last.score.base).toBeGreaterThan(done.results[3].score.base);
   });
 
