@@ -13,16 +13,6 @@ export function polyline(points: Pt[], close = false): string {
   );
 }
 
-/** Park-Miller generator, same family the studies used, so layouts are stable. */
-export function rng(seed: number): () => number {
-  let s = Math.floor(seed) % 2147483647;
-  if (s <= 0) s += 2147483646;
-  return () => {
-    s = (s * 16807) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
-
 /** CSS custom properties in a style object. */
 export function cssVars(vars: Record<string, string | number>): CSSProperties {
   return vars as unknown as CSSProperties;

@@ -1,7 +1,6 @@
 // Card offers between boards. Pure and seeded: the same run seed and board give the
 // same three cards on every device, whatever the player did before.
 import { makeRng } from '../../engine';
-import { BOARD_COUNT } from './boards';
 import type { Card, Rarity } from './cards';
 
 export const OFFER_SIZE = 3;
@@ -26,9 +25,8 @@ function pickWeighted(rng: () => number, list: Card[]): Card | undefined {
  */
 export function offerFor(runSeed: string, nextIndex: number, pool: Card[]): Card[] {
   const rng = makeRng(`${runSeed}:offer:${nextIndex}`);
-  const final = nextIndex >= BOARD_COUNT - 1;
   // Sort by id so the result does not depend on the order of the pool.
-  const usable = pool.filter((c) => !(final && c.skipOnFinal)).sort((a, b) => (a.id < b.id ? -1 : 1));
+  const usable = pool.slice().sort((a, b) => (a.id < b.id ? -1 : 1));
   const chosen: Card[] = [];
   const free = () => usable.filter((c) => !chosen.some((x) => x.id === c.id || x.family === c.family));
 

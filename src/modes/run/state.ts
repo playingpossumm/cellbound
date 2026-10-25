@@ -2,7 +2,7 @@
 // next, so it can be saved, resumed and tested without a browser.
 import { APP_NAME } from '../../app/brand';
 import { formatDateLong } from '../../game/logic';
-import { BOARD_COUNT, BOARD_SPECS, setupBoard, type BoardSetup } from './boards';
+import { BOARD_COUNT, BOARD_SPECS, baseFor, setupBoard, type BoardSetup } from './boards';
 import { cardById, isCursed, multiplierOf, START_HEARTS, type Card } from './cards';
 import { offerFor } from './offers';
 import { endBonus, formatScore, scoreBoard, type BoardScore } from './score';
@@ -19,9 +19,9 @@ export type RunOutcome = 'finished' | 'failed' | 'abandoned';
 export interface BoardResult {
   index: number;
   status: 'solved' | 'failed';
-  /** The difficulty of the board's slot, which the base score follows. */
+  /** The level of the board's slot. */
   difficulty: number;
-  /** The board's size, which scales its base score. Results from before the 9x9 final have none: 6. */
+  /** The board's size. Results from before the 9x9 final have none, and were 6x6. */
   size?: number;
   elapsedMs: number;
   /** The par time the time bonus was measured against. */
@@ -133,8 +133,7 @@ export function finishBoard(run: RunState, end: BoardEnd): RunState {
   const score =
     status === 'solved'
       ? scoreBoard({
-          difficulty: BOARD_SPECS[run.index].difficulty,
-          size: setup.options.size,
+          base: setup.base ?? baseFor(run.index),
           parMs: setup.parMs,
           elapsedMs: end.elapsedMs,
           hintsUsed: end.hintsUsed,

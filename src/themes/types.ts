@@ -2,7 +2,7 @@
 import type { ComponentType } from 'react';
 import type { CellIndex, Clue, ClueKind, Digit, Puzzle } from '../engine/types';
 
-export type ThemeId = 'atlas' | 'paper' | 'washi' | 'swiss' | 'prism' | 'letters';
+export type ThemeId = 'prism' | 'letters';
 
 /** Board geometry in board pixels; the board SVG uses viewBox 0 0 px px. */
 export interface BoardGeometry {
@@ -63,21 +63,17 @@ export interface ThemeDef {
   blurb: string;
   /** Mode used when the setting is Auto and the device has no preference. */
   defaultNight: boolean;
-  /** True when the band draws the timer itself, so the app can hide its own copy. */
-  bandShowsTime?: boolean;
   /** True when the band sets the screen title large, so the top bar keeps its copy for screen readers only. */
   bandShowsTitle?: boolean;
   /** Loads the theme's fonts (dynamic import of @fontsource CSS). */
   loadFonts: () => Promise<unknown>;
   /** Signature header band above the board. */
   Band: ComponentType<BandProps>;
-  /** Full-page decoration behind everything (stars, grain, fibres). */
-  Backdrop?: ComponentType<{ night: boolean }>;
   /** Replaces the default grid lines. */
   GridLayer?: ComponentType<{ geo: BoardGeometry }>;
   /** Replaces the default clue drawing. */
   ClueLayer?: ComponentType<ClueLayerProps>;
-  /** Drawn above the digits for finished boxes (for example seals). */
+  /** Drawn in the board's overlay, above the digits, for the finished boxes (ids in completion order). */
   BoxDoneLayer?: ComponentType<{ geo: BoardGeometry; done: number[] }>;
   /** Replaces the plain digit span (for example a decoding effect). */
   Digit?: ComponentType<DigitProps>;

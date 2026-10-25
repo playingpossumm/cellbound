@@ -1,55 +1,56 @@
 /* Base layout and default look. Uses only the --cb-* variables from the spec,
    so any theme works; themes scope their own rules with html[data-theme]. The
-   defaults below sit in :where() so every theme rule wins over them. */
+   defaults below follow Prism, the default look, and sit in :where() so every
+   theme rule wins over them. */
 
 :where(:root) {
-  --cb-ground: #ece2cc;
-  --cb-board: #f7f0e0;
-  --cb-ink: #6f4f0d;
-  --cb-mine: #1b2a4e;
-  --cb-hint: #4a5570;
-  --cb-note: #4a5570;
-  --cb-wrong: #b3261e;
-  --cb-peer: rgba(27, 42, 78, 0.05);
-  --cb-same: rgba(27, 42, 78, 0.09);
-  --cb-sel: rgba(125, 90, 18, 0.16);
-  --cb-sel-ring: #7d5a12;
-  --cb-focus: rgba(125, 90, 18, 0.32);
-  --cb-line-thin: rgba(27, 42, 78, 0.16);
-  --cb-line-box: rgba(125, 90, 18, 0.7);
-  --cb-frame: #7d5a12;
-  --cb-clue: rgba(27, 42, 78, 0.5);
-  --cb-clue-strong: #7d5a12;
-  --cb-clue-fill: rgba(125, 90, 18, 0.14);
-  --cb-text: #1b2a4e;
-  --cb-text-dim: #4a5570;
-  --cb-accent: #7d5a12;
+  --cb-ground: #eceef3;
+  --cb-board: #f8f9fb;
+  --cb-ink: #12151c;
+  --cb-mine: #2f55b8;
+  --cb-hint: #555d6b;
+  --cb-note: #555d6b;
+  --cb-wrong: #c62828;
+  --cb-peer: rgba(10, 12, 17, 0.035);
+  --cb-same: rgba(10, 12, 17, 0.06);
+  --cb-sel: rgba(10, 12, 17, 0.09);
+  --cb-sel-ring: #12151c;
+  --cb-focus: rgba(47, 85, 184, 0.32);
+  --cb-line-thin: rgba(10, 12, 17, 0.12);
+  --cb-line-box: rgba(10, 12, 17, 0.32);
+  --cb-frame: rgba(10, 12, 17, 0.32);
+  --cb-clue: rgba(18, 21, 28, 0.5);
+  --cb-clue-strong: #12151c;
+  --cb-clue-fill: rgba(255, 255, 255, 0.72);
+  --cb-text: #12151c;
+  --cb-text-dim: #555d6b;
+  --cb-accent: #2f55b8;
   --cb-font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --cb-font-digit: 'Palatino Linotype', Palatino, 'Book Antiqua', 'Iowan Old Style', Georgia, serif;
+  --cb-font-digit: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 :where(:root[data-night='true']) {
-  --cb-ground: #0c1730;
-  --cb-board: #0f1f3f;
-  --cb-ink: #d8b766;
-  --cb-mine: #efe7d2;
-  --cb-hint: #a6b4d0;
-  --cb-note: #a6b4d0;
-  --cb-wrong: #ff9d8c;
-  --cb-peer: rgba(216, 183, 102, 0.07);
-  --cb-same: rgba(239, 231, 210, 0.1);
-  --cb-sel: rgba(216, 183, 102, 0.18);
-  --cb-sel-ring: #d8b766;
-  --cb-focus: rgba(216, 183, 102, 0.4);
-  --cb-line-thin: rgba(239, 231, 210, 0.14);
-  --cb-line-box: rgba(216, 183, 102, 0.6);
-  --cb-frame: #d8b766;
-  --cb-clue: rgba(216, 183, 102, 0.55);
-  --cb-clue-strong: #d8b766;
-  --cb-clue-fill: rgba(216, 183, 102, 0.16);
-  --cb-text: #efe7d2;
-  --cb-text-dim: #a6b4d0;
-  --cb-accent: #d8b766;
+  --cb-ground: #0a0c11;
+  --cb-board: #11141b;
+  --cb-ink: #eef1f6;
+  --cb-mine: #8fb4ff;
+  --cb-hint: #9aa3b2;
+  --cb-note: #9aa3b2;
+  --cb-wrong: #ff7a7a;
+  --cb-peer: rgba(255, 255, 255, 0.045);
+  --cb-same: rgba(255, 255, 255, 0.08);
+  --cb-sel: rgba(255, 255, 255, 0.13);
+  --cb-sel-ring: #eef1f6;
+  --cb-focus: rgba(143, 180, 255, 0.4);
+  --cb-line-thin: rgba(255, 255, 255, 0.1);
+  --cb-line-box: rgba(255, 255, 255, 0.3);
+  --cb-frame: rgba(255, 255, 255, 0.3);
+  --cb-clue: rgba(238, 241, 246, 0.55);
+  --cb-clue-strong: #eef1f6;
+  --cb-clue-fill: rgba(255, 255, 255, 0.035);
+  --cb-text: #eef1f6;
+  --cb-text-dim: #9aa3b2;
+  --cb-accent: #8fb4ff;
 }
 
 *,
@@ -126,14 +127,6 @@ button {
 :focus-visible {
   outline: 2px solid var(--cb-accent);
   outline-offset: 2px;
-}
-
-.cb-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
 }
 
 .cb-app {

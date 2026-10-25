@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LYRA } from '../engine/fixtures';
+import { generate } from '../engine';
 import type { FogSpec } from '../engine/types';
 import { actions, getGame, heartsLeft, onGameEnd, resetStoreForTesting, sanitizeSaved, solveForTesting, startGame, tickClock, useFx } from './store';
 import { addResult, bestStreak, currentStreak } from './stats';
@@ -173,6 +174,27 @@ describe('game store', () => {
     const clean = sanitizeSaved({ games: { a: { key: 'a' }, t7: getGame() }, lastKey: { free: 'a' } });
     expect(Object.keys(clean.games)).toEqual(['t7']);
     expect(clean.lastKey.free).toBeUndefined();
+  });
+
+  it('resumes a save only on the same board, so a Daily that became a 9x9 opens as the 9x9', () => {
+    // A 6x6 saved under the key and id of a day whose Daily is now a 9x9.
+    const key = 'daily:2026-10-24';
+    startGame({ key, mode: 'daily', puzzle: { ...LYRA, id: 'daily-2026-10-24' } });
+    play(empty[0], LYRA.solution[empty[0]]);
+    tickClock(2000);
+    const nine = { ...generate({ size: 9, seed: 'store:nine', rules: [], difficulty: 1 }), id: 'daily-2026-10-24' };
+    startGame({ key, mode: 'daily', puzzle: nine });
+    const g = getGame()!;
+    expect(g.puzzle.size).toBe(9);
+    expect(g.values.every((v) => v === 0)).toBe(true);
+    expect(g.elapsedMs).toBe(0);
+    // The same board resumes; a board of the same size with other givens does not.
+    play(nine.givens.indexOf(0), nine.solution[nine.givens.indexOf(0)]);
+    startGame({ key, mode: 'daily', puzzle: nine });
+    expect(getGame()!.values.some((v) => v !== 0)).toBe(true);
+    const other = { ...nine, givens: nine.givens.map((d, i) => (i === nine.givens.indexOf(0) ? nine.solution[i] : d)) };
+    startGame({ key, mode: 'daily', puzzle: other });
+    expect(getGame()!.values.every((v) => v === 0)).toBe(true);
   });
 });
 

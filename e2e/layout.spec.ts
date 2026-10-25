@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { boardSize, nineByNine, openFresh, openScreen, shot } from './helpers';
 
-const THEMES = ['Prism', 'Letters in space', 'Star atlas', 'Paper and ink', 'Washi and sumi', 'Swiss poster'];
+const THEMES = ['Prism', 'Letters in space'];
 
 /** A Daily from before every Daily was 9x9 (a 6x6 Friday), and a 9x9 one (a Sunday). Past Dailies never change. */
 const SIX = '/?daily=2026-10-23';
@@ -42,28 +42,6 @@ test('a rule with no lesson done carries a dot, and its text opens the lesson', 
   await chip.click();
   await page.getByRole('button', { name: 'Open the Thermo lesson' }).click();
   await expect(page.locator('.cb-learn-title')).toHaveText('Thermo');
-});
-
-test('Paper names every mode like a newspaper', async ({ page }) => {
-  const errors: string[] = [];
-  page.on('pageerror', (e) => errors.push(e.message));
-  await openFresh(page);
-  await useTheme(page, 'Paper and ink');
-  await openScreen(page, 'Daily');
-  await expect(page.locator('.pp-title')).toHaveText('The Daily Puzzle');
-  await openScreen(page, 'Fog');
-  await expect(page.locator('.pp-title')).toHaveText('The Fog Report');
-  await openScreen(page, 'Free play');
-  await page.getByRole('button', { name: 'Start' }).click();
-  await expect(page.locator('.pp-title')).toHaveText('The Free Play Edition');
-  await openScreen(page, 'Run');
-  await page.getByRole('button', { name: 'Start free run' }).click();
-  await expect(page.locator('.pp-title')).toHaveText('The Run Gazette');
-  await openScreen(page, 'Learn');
-  await page.locator('.cb-learn-row').first().click();
-  await page.getByRole('button', { name: 'Skip to practice' }).click();
-  await expect(page.locator('.pp-title')).toHaveText('The Learning Column');
-  expect(errors).toEqual([]);
 });
 
 test('every band shows a date only on a Daily from an earlier day', async ({ page }) => {

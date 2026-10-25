@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { APP_NAME } from '../../app/brand';
 import { BAD_COPY } from '../../test/copy';
-import { BOARD_COUNT, BOARD_SPECS, PAR_MS, parFor } from './boards';
+import { BOARD_COUNT, BOARD_SPECS, baseFor } from './boards';
 import { cardPool, cardById, START_HEARTS } from './cards';
+import { clockOf, parOf } from './scale';
 import {
   abandon,
   advance,
@@ -33,8 +34,9 @@ describe('a new run', () => {
     const r = newRun('t:new', null, 1);
     expect(r).toMatchObject({ phase: 'board', index: 0, hearts: START_HEARTS, shield: 0, score: 0, outcome: null });
     expect(r.setup.options.seed).toBe('t:new:0');
-    expect(r.setup.options.size).toBe(6);
+    expect(r.setup.options.size).toBe(9);
     expect(r.setup.options.difficulty).toBe(1);
+    expect(r.setup.options.minutes).toEqual(BOARD_SPECS[0].minutes);
     expect(r.setup.mods).toMatchObject({ hearts: 3, shield: 0 });
   });
 
@@ -51,29 +53,55 @@ describe('a new run', () => {
 });
 
 describe('the board ladder', () => {
-  it('rises from difficulty 1 to 3 over boards 1 to 4, all 6x6 for pace', () => {
-    const ds = BOARD_SPECS.slice(0, 4).map((s) => s.difficulty);
-    expect(ds[0]).toBe(1);
-    expect(ds[3]).toBe(3);
-    expect([...ds].sort()).toEqual(ds);
-    BOARD_SPECS.slice(0, 4).forEach((s) => expect(s.size).toBe(6));
+  it('is five 9x9 boards', () => {
+    expect(BOARD_SPECS).toHaveLength(BOARD_COUNT);
+    for (const s of BOARD_SPECS) expect(s.size).toBe(9);
   });
 
-  it('ends on a 9x9 at difficulty 2 with three kinds', () => {
-    expect(BOARD_SPECS[BOARD_COUNT - 1]).toMatchObject({ size: 9, difficulty: 2, kinds: 3 });
+  it('rises from board to board: level, rules and time never fall, and the time always grows', () => {
+    expect(BOARD_SPECS[0]).toMatchObject({ difficulty: 1, kinds: 1 });
+    expect(BOARD_SPECS[BOARD_COUNT - 1]).toMatchObject({ difficulty: 3, kinds: 3 });
+    for (let i = 1; i < BOARD_COUNT; i++) {
+      const [a, b] = [BOARD_SPECS[i - 1], BOARD_SPECS[i]];
+      expect(b.difficulty, `board ${i + 1}`).toBeGreaterThanOrEqual(a.difficulty);
+      expect(b.kinds, `board ${i + 1}`).toBeGreaterThanOrEqual(a.kinds);
+      expect(b.minutes[0], `board ${i + 1}`).toBeGreaterThanOrEqual(a.minutes[1] - 0.5);
+      expect(b.minutes[1], `board ${i + 1}`).toBeGreaterThan(a.minutes[1]);
+    }
   });
 
-  it('gives the final 9x9 a par for its size, and scores it for its size', () => {
+  it('plans a run of about 45 minutes for an experienced player', () => {
+    const mid = BOARD_SPECS.reduce((sum, s) => sum + (s.minutes[0] + s.minutes[1]) / 2, 0);
+    expect(mid).toBeGreaterThanOrEqual(42);
+    expect(mid).toBeLessThanOrEqual(48);
+  });
+
+  it('gives every board a par from its time window and the base of its slot', () => {
     let r = newRun('t:final', null, 1);
-    for (let i = 0; i < BOARD_COUNT - 1; i++) r = playOn(r);
+    for (let i = 0; i < BOARD_COUNT - 1; i++) {
+      expect(r.setup.parMs).toBe(parOf(BOARD_SPECS[i].minutes));
+      expect(r.setup.base).toBe(baseFor(i));
+      // Lantern leaves the board's time window as it is.
+      r = advance(finishBoard(r, clean), pool);
+      r = choose({ ...r, offer: ['lantern'] }, 'lantern');
+    }
     expect(r.setup.options.size).toBe(9);
-    expect(r.setup.parMs).toBe(parFor(9, r.setup.options.difficulty));
+    expect(r.setup.parMs).toBe(parOf(BOARD_SPECS[BOARD_COUNT - 1].minutes));
     const done = finishBoard(r, { ...clean, elapsedMs: r.setup.parMs });
     const last = done.results[BOARD_COUNT - 1];
     expect(last.size).toBe(9);
-    // The base follows the slot (a 9x9 at difficulty 2): the 6x6 base of 160 times 2.25.
-    expect(last.score.base).toBe(360);
+    expect(last.score.base).toBe(baseFor(BOARD_COUNT - 1));
     expect(last.score.base).toBeGreaterThan(done.results[3].score.base);
+  });
+
+  it('scores a board set up before the time windows with the base of its slot', () => {
+    // A run in progress when every board became a 9x9: its board was a 6x6 with no window and no base.
+    const r = newRun('t:old', null, 1);
+    const { minutes: _gone, ...options } = r.setup.options as typeof r.setup.options & { minutes?: unknown };
+    const old: RunState = { ...r, setup: { ...r.setup, options: { ...options, size: 6 }, base: undefined, parMs: 150_000 } };
+    const done = finishBoard(old, { ...clean, elapsedMs: 150_000 });
+    expect(done.results[0]).toMatchObject({ status: 'solved', size: 6, parMs: 150_000 });
+    expect(done.results[0].score.base).toBe(baseFor(0));
   });
 
   it('seeds board k as runSeed:k', () => {
@@ -100,7 +128,7 @@ describe('finishing a board', () => {
 
   it('keeps the par time a board was measured against', () => {
     const r = finishBoard(newRun('t:par', null, 1), clean);
-    expect(r.results[0].parMs).toBe(PAR_MS[1]);
+    expect(r.results[0].parMs).toBe(parOf(BOARD_SPECS[0].minutes));
   });
 
   it('charges a heart per mistake', () => {
@@ -134,8 +162,9 @@ describe('finishing a board', () => {
   it('ends the run on a time out and says so', () => {
     let r = advance(finishBoard(newRun('t:e', null, 1), clean), pool);
     r = choose({ ...r, offer: ['tight-clock'] }, 'tight-clock');
-    expect(r.setup.mods.timeLimitMs).toBe(240_000);
-    const out = finishBoard(r, { status: 'failed', mistakes: 1, hintsUsed: 0, elapsedMs: 240_000 });
+    const clock = clockOf(BOARD_SPECS[1].minutes);
+    expect(r.setup.mods.timeLimitMs).toBe(clock);
+    const out = finishBoard(r, { status: 'failed', mistakes: 1, hintsUsed: 0, elapsedMs: clock });
     expect(out.outcome).toBe('failed');
     expect(out.results[1].reason).toBe('time');
     expect(out.hearts).toBe(2);
@@ -232,7 +261,7 @@ describe('between boards', () => {
     r = choose({ ...r, offer: ['lantern'] }, 'lantern');
     expect(r.setup.cardIds).toEqual(['lantern', 'steady-hand']);
     expect(r.setup.mods.shield).toBe(1);
-    expect(r.setup.mods.reveal).toBe(3);
+    expect(r.setup.mods.reveal).toBe(4);
     // A board card does not stay.
     r = advance(finishBoard(r, clean), pool);
     r = choose({ ...r, offer: ['shield'] }, 'shield');
@@ -318,14 +347,20 @@ describe('share text', () => {
 });
 
 describe('par times', () => {
-  it('grow with difficulty', () => {
-    for (let d = 2; d <= 5; d++) expect(PAR_MS[d]).toBeGreaterThan(PAR_MS[d - 1]);
-    expect(cardById('tight-clock')!.mult).toBeGreaterThan(0);
+  it('grow along the run, from 6 minutes to 12', () => {
+    const pars = BOARD_SPECS.map((s) => parOf(s.minutes));
+    for (let i = 1; i < pars.length; i++) expect(pars[i]).toBeGreaterThan(pars[i - 1]);
+    expect(pars[0]).toBe(360_000);
+    expect(pars[pars.length - 1]).toBe(720_000);
   });
 
-  it('grow with size: a 9x9 at difficulty 3 has 10 minutes, and a 6x6 keeps its par', () => {
-    for (let d = 1; d <= 5; d++) expect(parFor(6, d)).toBe(PAR_MS[d]);
-    expect(parFor(9, 3)).toBe(600_000);
-    expect(parFor(9, 2)).toBe(480_000);
+  it('follow a card that changes the board: Easy road shortens par and Hard turn lengthens it', () => {
+    const parWith = (id: string) => {
+      const r = advance(finishBoard(newRun('t:steps', null, 1), clean), pool);
+      return choose({ ...r, offer: [id] }, id).setup.parMs;
+    };
+    expect(parWith('easy-road')).toBeLessThan(parWith('lantern'));
+    expect(parWith('hard-turn')).toBeGreaterThan(parWith('lantern'));
+    expect(cardById('tight-clock')!.mult).toBeGreaterThan(0);
   });
 });

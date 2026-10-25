@@ -1,6 +1,7 @@
-// Crafted 9x9 boards for the Daily from 2026-10-24 on. The free generator in
-// generator.ts is left as it was, so challenge links and earlier Dailies keep
-// their boards. Compared with it, this module:
+// Crafted 9x9 boards: the Daily from 2026-10-24 on, and every Run board
+// (craftPuzzle, for generator options with a time window). The free generator
+// in generator.ts is left as it was, so challenge links and earlier Dailies
+// keep their boards. Compared with it, this module:
 // - draws lines as clean shapes: no knots, no crossings, no turn sharper
 //   than a right angle and at most two bends;
 // - spreads the clues over the board and keeps them from crowding together;
@@ -12,12 +13,14 @@
 // Every 9x9 Daily comes from this module, effort.ts and the short
 // contradiction test in logic.ts. A change to any of them changes the
 // Dailies, so make it behind a new cut-over date (see NINE_FROM in daily.ts).
+// Run boards are not stored: a change gives new runs new boards.
 import { estimateEffort } from './effort';
-import { fillSolution, GLOBAL_KINDS, LOCAL_KINDS, whisperDiff } from './generator';
+import { gradeFog } from './fog';
+import { ALL_KINDS, boxDims, fillSolution, fogFit, GLOBAL_KINDS, LOCAL_KINDS, nameFor, whisperDiff } from './generator';
 import { gradeShape, Logic, type Tech } from './logic';
 import { buildModel, clueCells, type Model } from './model';
-import { makeRng, randInt, shuffle, type Rng } from './rng';
-import type { Clue, ClueKind, Difficulty } from './types';
+import { hashString, makeRng, randInt, shuffle, type Rng } from './rng';
+import type { Clue, ClueKind, Difficulty, FogSpec, GeneratedPuzzle, GenerateOptions } from './types';
 
 const n = 9;
 const N = 81;
@@ -28,6 +31,8 @@ export interface CraftSpec {
   kinds: ClueKind[];
   /** Estimated solving time in seconds, low and high end. */
   seconds: [number, number];
+  /** Hide every cage total, as a Run curse does. The Dailies never do. */
+  hiddenCageTotals?: boolean;
 }
 
 export interface Crafted {
@@ -334,7 +339,8 @@ export function craftBoard(seed: string, spec: CraftSpec): Crafted | null {
   const globals = GLOBAL_KINDS.filter((k) => spec.kinds.includes(k)).map((k) => ({ kind: k }) as Clue);
   const sol = fillSolution(9, 3, 3, globals, rng);
   if (!sol) return null;
-  const clues = [...globals, ...layout(sol, spec.kinds, rng)];
+  const laid = [...globals, ...layout(sol, spec.kinds, rng)];
+  const clues = spec.hiddenCageTotals ? laid.map((c): Clue => (c.kind === 'cage' ? { ...c, sum: null } : c)) : laid;
   const drawnKinds = new Set(clues.map((c) => c.kind));
   if (spec.kinds.some((k) => !drawnKinds.has(k))) return null;
   const shape = { size: 9 as const, boxW: 3, boxH: 3, clues };
@@ -416,4 +422,41 @@ export function craftDaily(seed: string, spec: CraftSpec, tries = 16): Crafted {
   }
   if (!best) throw new Error(`no board for ${seed}`);
   return best;
+}
+
+/**
+ * A board for generator options with a time window: the Run's boards. It is crafted like a Daily
+ * (same seed and options, same board on every device), with exactly the options' rules and cut to
+ * opts.minutes. A fog board then gets the generator's fog layout, which can only add givens.
+ */
+export function craftPuzzle(opts: GenerateOptions): GeneratedPuzzle {
+  const [lo, hi] = opts.minutes ?? [0, 0];
+  const kinds = ALL_KINDS.filter((k) => opts.rules.includes(k));
+  const b = craftDaily(opts.seed, { difficulty: opts.difficulty, kinds, seconds: [lo * 60, hi * 60], hiddenCageTotals: opts.hiddenCageTotals });
+  const shape = { size: 9 as const, ...boxDims(9), clues: b.clues };
+  let givens = b.givens;
+  let difficulty = b.difficulty;
+  let score = b.score;
+  let fog: FogSpec | undefined;
+  if (opts.fog) {
+    const fit = fogFit(shape, b.solution, givens, opts.difficulty, `${opts.seed}|fog`, makeRng(`craft9-fog|${opts.seed}`));
+    givens = fit.givens;
+    fog = fit.fog;
+    const g = gradeFog({ ...shape, givens, solution: b.solution }, fog.start);
+    difficulty = g.difficulty;
+    score = g.score;
+  }
+  // The id comes from the content, so different boards never share one.
+  const content = `9|${givens.join('')}|${JSON.stringify(b.clues)}|${fog ? fog.start.join(',') : ''}`;
+  return {
+    id: `c9-${hashString(content).toString(36)}${hashString(`${content}#`).toString(36)}`,
+    seed: opts.seed,
+    ...shape,
+    givens,
+    solution: b.solution,
+    difficulty,
+    score,
+    name: nameFor(opts.seed),
+    ...(fog ? { fog } : {}),
+  };
 }

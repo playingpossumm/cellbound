@@ -83,6 +83,12 @@ export interface GenerateOptions {
   fog?: boolean;
   /** Hide every cage total. The puzzle must stay uniquely solvable. */
   hiddenCageTotals?: boolean;
+  /**
+   * 9x9 only: the estimated solving time to cut the board to, low and high end in minutes for an
+   * experienced player (effort.ts). Such a board is crafted like a 9x9 Daily (craft.ts), with
+   * exactly the given rules; without it the board keeps every given the rules leave unforced.
+   */
+  minutes?: [number, number];
 }
 
 export interface FogSpec {

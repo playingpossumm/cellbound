@@ -1,6 +1,7 @@
 // Engine API: pure TypeScript, no React. The UI calls the heavy parts through
 // the worker client in client.ts.
 import { findConflicts } from './conflicts';
+import { craftPuzzle } from './craft';
 import { dailyPuzzleFor } from './daily';
 import { fogLayout } from './fog';
 import { generatePuzzle } from './generator';
@@ -28,9 +29,12 @@ export function makeRng(seed: string): () => number {
   return seededRng(seed);
 }
 
-/** Generate a puzzle. Synchronous; the UI calls it through the worker client. */
+/**
+ * Generate a puzzle. Synchronous; the UI calls it through the worker client. A 9x9 with a time
+ * window (opts.minutes) is crafted to it; anything else comes from the generator.
+ */
 export function generate(opts: GenerateOptions): GeneratedPuzzle {
-  const p: GeneratedPuzzle = generatePuzzle(opts);
+  const p: GeneratedPuzzle = opts.minutes && opts.size === 9 ? craftPuzzle(opts) : generatePuzzle(opts);
   if (opts.fog && !p.fog) p.fog = fogFor(p);
   return p;
 }

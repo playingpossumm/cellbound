@@ -22,8 +22,9 @@ export default defineConfig({
         name: APP_NAME,
         short_name: APP_NAME,
         description: 'Variant sudoku with daily puzzles, roguelite runs and fog.',
-        theme_color: '#0c1730',
-        background_color: '#0c1730',
+        // The ground of Prism, the default look, at night (its default).
+        theme_color: '#0a0c11',
+        background_color: '#0a0c11',
         display: 'standalone',
         start_url: '/',
         icons: [
@@ -38,8 +39,7 @@ export default defineConfig({
         // Fonts ship as woff2 only: every browser that runs the app reads woff2, so the
         // .woff copies that @fontsource adds would only fill the cache. The app's text is
         // all Latin, so the latin-ext and Vietnamese slices are never requested either.
-        // The Star atlas digit faces are small .woff files that the build keeps out of the CSS.
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}', '**/cormorant-figures-*.woff'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         globIgnores: ['**/*-latin-ext-*.woff2', '**/*-vietnamese-*.woff2'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
       },

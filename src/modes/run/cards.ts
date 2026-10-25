@@ -3,22 +3,19 @@
 import { makeRng } from '../../engine';
 import type { ClueKind, Difficulty, GenerateOptions } from '../../engine/types';
 import type { GameMods } from '../../game/types';
-import { roundTo, sizeScale } from './scale';
+import { clockOf, scaleWindow, type Window } from './scale';
 
 export const START_HEARTS = 3;
 export const MAX_HEARTS = 5;
 export const MAX_SHIELD = 3;
-/** The Tight clock on a 6x6 board. */
-export const TIGHT_CLOCK_MS = 4 * 60 * 1000;
-
-/** The Tight clock for a board, scaled by its size to the whole minute: 4 minutes on a 6x6, 9 on a 9x9. */
-export function clockFor(size: number): number {
-  return roundTo(TIGHT_CLOCK_MS * sizeScale(size), 60_000);
-}
-
-const clockMinutes = (size: number) => clockFor(size) / 60_000;
 /** The hardest difficulty a Run board can reach. */
 export const MAX_RUN_DIFFICULTY: Difficulty = 4;
+/**
+ * How much Easy road shortens a board's time window and Hard turn lengthens it, along with its
+ * level: about one board of the ladder either way.
+ */
+export const STEP_SHORTER = 0.8;
+export const STEP_LONGER = 1.25;
 
 export const ALL_KINDS: ClueKind[] = [
   'thermo',
@@ -36,8 +33,17 @@ export type Rarity = 'common' | 'uncommon' | 'rare';
 export type CardKind = 'boon' | 'curse' | 'bargain';
 export type UnlockId = 'first-run' | 'board-3' | 'full-hearts' | 'cursed-board' | 'daily-3';
 
+/** Generator options for a Run board, always with its time window. */
+export type RunOptions = GenerateOptions & { minutes: Window };
+
 /** What the next board will be: what to generate and how to play it. */
 export interface BoardPlan {
+  options: RunOptions;
+  mods: GameMods;
+}
+
+/** A board as a card's text reads it: a plan, or a setup saved before boards had time windows. */
+export interface BoardView {
   options: GenerateOptions;
   mods: GameMods;
 }
@@ -47,8 +53,8 @@ export interface Card {
   name: string;
   /** One line, plain English. True of every board the card can reach. */
   text: string;
-  /** The line for a board of a known size, when a number in it depends on the size. */
-  textFor?: (size: number) => string;
+  /** The line for a known board, as the card leaves it, when a number in it depends on the board. */
+  textFor?: (board: BoardView) => string;
   rarity: Rarity;
   kind: CardKind;
   /** Added to the board's score multiplier (0.25 means plus 25 percent). Zero for boons. */
@@ -61,8 +67,6 @@ export interface Card {
   order: number;
   /** Two cards of one family are never offered together. */
   family: string;
-  /** Not offered before the final board. */
-  skipOnFinal?: boolean;
   effect(plan: BoardPlan): BoardPlan;
 }
 
@@ -88,7 +92,7 @@ const reveal = (n: number) => (p: BoardPlan) => withMods(p, { reveal: (p.mods.re
 const fog = (p: BoardPlan) => withOptions(p, { fog: true });
 const noNotes = (p: BoardPlan) => withMods(p, { noNotes: true, autoNotes: false });
 const dim = (p: BoardPlan) => withMods(p, { noHighlights: true });
-const clock = (p: BoardPlan) => withMods(p, { timeLimitMs: clockFor(p.options.size) });
+const clock = (p: BoardPlan) => withMods(p, { timeLimitMs: clockOf(p.options.minutes) });
 const autoNotes = (p: BoardPlan) => withMods(p, { autoNotes: true, noNotes: false });
 
 /** Cage totals hidden. A cage is forced into the rule list so the curse always bites. */
@@ -112,10 +116,21 @@ export function crowded(p: BoardPlan): BoardPlan {
   });
 }
 
-const harder = (p: BoardPlan) =>
-  withOptions(p, { difficulty: Math.min(MAX_RUN_DIFFICULTY, p.options.difficulty + 1) as Difficulty });
-const easier = (p: BoardPlan) =>
-  withOptions(p, { difficulty: Math.max(1, p.options.difficulty - 1) as Difficulty });
+/** One level harder or easier, and about one board longer or shorter. Never past level 4 or below 1. */
+function step(p: BoardPlan, by: 1 | -1): BoardPlan {
+  const difficulty = Math.max(1, Math.min(MAX_RUN_DIFFICULTY, p.options.difficulty + by)) as Difficulty;
+  if (difficulty === p.options.difficulty) return p;
+  return withOptions(p, { difficulty, minutes: scaleWindow(p.options.minutes, by > 0 ? STEP_LONGER : STEP_SHORTER) });
+}
+const harder = (p: BoardPlan) => step(p, 1);
+const easier = (p: BoardPlan) => step(p, -1);
+
+const TIGHT_TEXT = 'You have 8 to 13 minutes, more on later boards. When time runs out the run ends.';
+const SPRINT_TEXT = '8 to 13 minutes, more on later boards, or the run ends. You gain a heart.';
+
+/** A card's line with the minutes on the board's clock, or its general line when the board has none. */
+const withClock = (board: BoardView, line: (minutes: number) => string, general: string) =>
+  board.mods.timeLimitMs ? line(Math.round(board.mods.timeLimitMs / 60_000)) : general;
 
 // ---- the cards ---------------------------------------------------------------------
 
@@ -124,14 +139,14 @@ export const CARDS: Card[] = [
   {
     id: 'lantern',
     name: 'Lantern',
-    text: 'Three cells are filled in for you on the next board.',
+    text: 'Four cells are filled in for you on the next board.',
     rarity: 'common',
     kind: 'boon',
     mult: 0,
     lasts: 'board',
     order: 10,
     family: 'reveal',
-    effect: reveal(3),
+    effect: reveal(4),
   },
   {
     id: 'second-wind',
@@ -211,7 +226,7 @@ export const CARDS: Card[] = [
   {
     id: 'beacon',
     name: 'Beacon',
-    text: 'Six cells are filled in for you on the next board.',
+    text: 'Eight cells are filled in for you on the next board.',
     rarity: 'rare',
     kind: 'boon',
     mult: 0,
@@ -219,7 +234,7 @@ export const CARDS: Card[] = [
     lasts: 'board',
     order: 10,
     family: 'reveal',
-    effect: reveal(6),
+    effect: reveal(8),
   },
 
   // Curses
@@ -253,7 +268,8 @@ export const CARDS: Card[] = [
     text: 'You cannot write notes on the next board.',
     rarity: 'common',
     kind: 'curse',
-    mult: 0.3,
+    // A 9x9 without notes is about as hard as one against the clock.
+    mult: 0.4,
     lasts: 'board',
     order: 0,
     family: 'notes',
@@ -262,8 +278,8 @@ export const CARDS: Card[] = [
   {
     id: 'tight-clock',
     name: 'Tight clock',
-    text: 'You have 4 minutes, or 9 on the final board. When time runs out the run ends.',
-    textFor: (size) => `You have ${clockMinutes(size)} minutes to finish the next board. When time runs out the run ends.`,
+    text: TIGHT_TEXT,
+    textFor: (b) => withClock(b, (m) => `You have ${m} minutes to finish the next board. When time runs out the run ends.`, TIGHT_TEXT),
     rarity: 'uncommon',
     kind: 'curse',
     mult: 0.4,
@@ -306,8 +322,6 @@ export const CARDS: Card[] = [
     lasts: 'board',
     order: 0,
     family: 'difficulty',
-    // The final 9x9 is the longest board of the run; a harder one would not fit a sitting.
-    skipOnFinal: true,
     effect: harder,
   },
 
@@ -327,14 +341,14 @@ export const CARDS: Card[] = [
   {
     id: 'blind-faith',
     name: 'Blind faith',
-    text: 'The next board has cages with hidden totals, but five cells are filled in.',
+    text: 'The next board has cages with hidden totals, but seven cells are filled in.',
     rarity: 'rare',
     kind: 'bargain',
     mult: 0.1,
     lasts: 'board',
     order: 0,
     family: 'cages',
-    effect: compose(blankCages, reveal(5)),
+    effect: compose(blankCages, reveal(7)),
   },
   {
     id: 'hush',
@@ -351,8 +365,8 @@ export const CARDS: Card[] = [
   {
     id: 'sprint',
     name: 'Sprint',
-    text: '4 minutes for the next board, 9 for the final, or the run ends. You gain a heart.',
-    textFor: (size) => `${clockMinutes(size)} minutes to finish the next board or the run ends, but you gain a heart.`,
+    text: SPRINT_TEXT,
+    textFor: (b) => withClock(b, (m) => `${m} minutes to finish the next board or the run ends, but you gain a heart.`, SPRINT_TEXT),
     rarity: 'uncommon',
     kind: 'bargain',
     mult: 0.2,
@@ -364,14 +378,14 @@ export const CARDS: Card[] = [
   {
     id: 'dusk',
     name: 'Dusk',
-    text: 'Highlights are off, but three cells are filled in.',
+    text: 'Highlights are off, but four cells are filled in.',
     rarity: 'common',
     kind: 'bargain',
     mult: 0.1,
     lasts: 'board',
     order: 0,
     family: 'highlights',
-    effect: compose(dim, reveal(3)),
+    effect: compose(dim, reveal(4)),
   },
   {
     id: 'packed-house',
@@ -390,9 +404,9 @@ export const CARDS: Card[] = [
 
 const byId = new Map(CARDS.map((c) => [c.id, c]));
 
-/** A card's line for a board of the given size, or its general line when the size is not known. */
-export function cardText(card: Card, size?: number): string {
-  return size !== undefined && card.textFor ? card.textFor(size) : card.text;
+/** A card's line for a known board (as the card leaves it), or its general line. */
+export function cardText(card: Card, board?: BoardView): string {
+  return board && card.textFor ? card.textFor(board) : card.text;
 }
 
 export function cardById(id: string): Card | undefined {

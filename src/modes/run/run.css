@@ -78,7 +78,8 @@
   margin: 0;
 }
 
-/* The track: one small board per board of the run, the last (the 9x9 final) larger. */
+/* The track: one small board per board of the run, drawn in its box shape. A 6x6 from before
+   every board was a 9x9 is drawn smaller. */
 .cb-run-track {
   display: inline-flex;
   align-items: center;

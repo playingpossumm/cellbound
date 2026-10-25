@@ -1,23 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { EM_DASH } from '../../test/copy';
-import { BOARD_SPECS, basePlan, rulesFor } from './boards';
+import { BOARD_COUNT, BOARD_SPECS, basePlan, rulesFor } from './boards';
 import {
   ALL_KINDS,
   CARDS,
   MAX_HEARTS,
   MAX_SHIELD,
-  TIGHT_CLOCK_MS,
+  STEP_LONGER,
+  STEP_SHORTER,
   applyCards,
   cardText,
-  clockFor,
   cardById,
   cardPool,
   multiplierOf,
   type BoardPlan,
 } from './cards';
+import { clockOf, scaleWindow } from './scale';
 
 const plan = (index = 1, hearts = 3, shield = 0): BoardPlan => basePlan('t:seed', index, hearts, shield);
 const card = (id: string) => cardById(id)!;
+/** The boards a card can be picked for: board 2 to the final. */
+const OFFERED = Array.from({ length: BOARD_COUNT - 1 }, (_, k) => k + 1);
 
 describe('card set', () => {
   it('has enough boons, curses and bargains', () => {
@@ -39,9 +42,12 @@ describe('card set', () => {
 
   it('keeps card text to a line or two a player can take in at a glance', () => {
     for (const c of CARDS) {
-      expect(c.text.length).toBeLessThanOrEqual(90);
+      const lines = [c.text, ...OFFERED.map((i) => cardText(c, c.effect(plan(i))))];
+      for (const t of lines) {
+        expect(t.length, c.id).toBeLessThanOrEqual(90);
+        expect(t.endsWith('.'), c.id).toBe(true);
+      }
       expect(c.name.length).toBeLessThanOrEqual(14);
-      expect(c.text.endsWith('.')).toBe(true);
     }
   });
 
@@ -74,9 +80,9 @@ describe('card set', () => {
 });
 
 describe('boon effects', () => {
-  it('Lantern reveals three cells and Beacon six', () => {
-    expect(card('lantern').effect(plan()).mods.reveal).toBe(3);
-    expect(card('beacon').effect(plan()).mods.reveal).toBe(6);
+  it('Lantern reveals four cells and Beacon eight', () => {
+    expect(card('lantern').effect(plan()).mods.reveal).toBe(4);
+    expect(card('beacon').effect(plan()).mods.reveal).toBe(8);
   });
 
   it('Second wind adds a heart, and a shield at the cap', () => {
@@ -95,9 +101,13 @@ describe('boon effects', () => {
     expect(card('insight').effect(plan()).mods.autoNotes).toBe(true);
   });
 
-  it('Easy road lowers difficulty but not below 1', () => {
-    expect(card('easy-road').effect(plan(3)).options.difficulty).toBe(BOARD_SPECS[3].difficulty - 1);
-    expect(card('easy-road').effect(plan(0)).options.difficulty).toBe(1);
+  it('Easy road takes the board one level down and makes it shorter, but not below level 1', () => {
+    const before = plan(3);
+    const after = card('easy-road').effect(before);
+    expect(after.options.difficulty).toBe(BOARD_SPECS[3].difficulty - 1);
+    expect(after.options.minutes).toEqual(scaleWindow(BOARD_SPECS[3].minutes, STEP_SHORTER));
+    // The first board is already gentle: nothing changes.
+    expect(card('easy-road').effect(plan(0))).toEqual(plan(0));
   });
 
   it('Steady hand guarantees a shield', () => {
@@ -124,24 +134,26 @@ describe('curse effects', () => {
   it('No notes, Dim and Tight clock set their modifiers', () => {
     expect(card('no-notes').effect(plan()).mods.noNotes).toBe(true);
     expect(card('dim').effect(plan()).mods.noHighlights).toBe(true);
-    expect(card('tight-clock').effect(plan()).mods.timeLimitMs).toBe(TIGHT_CLOCK_MS);
-    expect(TIGHT_CLOCK_MS).toBe(240_000);
+    expect(card('tight-clock').effect(plan()).mods.timeLimitMs).toBe(clockOf(BOARD_SPECS[1].minutes));
   });
 
-  it('scales the Tight clock with the board: 4 minutes on a 6x6, 9 on the final 9x9', () => {
-    expect(clockFor(6)).toBe(240_000);
-    expect(clockFor(9)).toBe(540_000);
-    const final = plan(BOARD_SPECS.length - 1);
-    expect(final.options.size).toBe(9);
+  it('gives the Tight clock and Sprint the top of each board\'s time window, and names those minutes on the card', () => {
+    const minutes = OFFERED.map((i) => clockOf(BOARD_SPECS[i].minutes) / 60_000);
     for (const id of ['tight-clock', 'sprint']) {
-      expect(card(id).effect(final).mods.timeLimitMs).toBe(540_000);
-      // The offer names the minutes of the board it is for; the Collection covers both.
-      expect(cardText(card(id), 6)).toContain('4 minutes');
-      expect(cardText(card(id), 9)).toContain('9 minutes');
-      expect(cardText(card(id))).toMatch(/4 minutes.*9/);
-      expect(cardText(card(id), 9)).toMatch(/run ends/);
+      OFFERED.forEach((i, k) => {
+        const board = card(id).effect(plan(i));
+        expect(board.mods.timeLimitMs, `${id} board ${i + 1}`).toBe(minutes[k] * 60_000);
+        // The clock always leaves more time than par.
+        expect(minutes[k] * 60_000).toBeGreaterThan((BOARD_SPECS[i].minutes[0] + BOARD_SPECS[i].minutes[1]) * 30_000);
+        expect(cardText(card(id), board), id).toContain(`${minutes[k]} minutes`);
+        expect(cardText(card(id), board), id).toMatch(/run ends/);
+      });
+      // The Collection's line covers every board a card can be picked for.
+      expect(cardText(card(id))).toContain(`${Math.min(...minutes)} to ${Math.max(...minutes)} minutes`);
     }
-    expect(cardText(card('lantern'), 9)).toBe(card('lantern').text);
+    // Later boards get more time.
+    expect([...minutes].sort((a, b) => a - b)).toEqual(minutes);
+    expect(cardText(card('lantern'), card('lantern').effect(plan(2)))).toBe(card('lantern').text);
   });
 
   it('Crowded adds one more rule and is deterministic', () => {
@@ -154,11 +166,17 @@ describe('curse effects', () => {
     expect(a.options.maxKinds).toBe((p.options.maxKinds ?? 0) + 1);
   });
 
-  it('Hard turn raises difficulty and stops at 4', () => {
+  it('Hard turn takes the board one level up and makes it longer, up to level 4', () => {
     const hard = card('hard-turn');
-    expect(hard.effect(plan(1)).options.difficulty).toBe(BOARD_SPECS[1].difficulty + 1);
-    expect(hard.effect(plan(4)).options.difficulty).toBe(BOARD_SPECS[4].difficulty + 1);
-    expect(hard.effect(hard.effect(plan(3))).options.difficulty).toBe(4);
+    for (const i of OFFERED) {
+      const after = hard.effect(plan(i));
+      expect(after.options.difficulty, `board ${i + 1}`).toBe(BOARD_SPECS[i].difficulty + 1);
+      expect(after.options.minutes, `board ${i + 1}`).toEqual(scaleWindow(BOARD_SPECS[i].minutes, STEP_LONGER));
+    }
+    // A second step would pass level 4: the board stays as the first step left it.
+    const once = hard.effect(plan(BOARD_COUNT - 1));
+    expect(once.options.difficulty).toBe(4);
+    expect(hard.effect(once)).toEqual(once);
   });
 });
 
@@ -169,16 +187,16 @@ describe('bargains', () => {
     expect(night.mods.hearts).toBe(4);
     const blind = card('blind-faith').effect(plan(1));
     expect(blind.options.hiddenCageTotals).toBe(true);
-    expect(blind.mods.reveal).toBe(5);
+    expect(blind.mods.reveal).toBe(7);
     const hush = card('hush').effect(plan(1));
     expect(hush.mods.noNotes).toBe(true);
     expect(hush.mods.shield).toBe(1);
     const sprint = card('sprint').effect(plan(1, 3));
-    expect(sprint.mods.timeLimitMs).toBe(TIGHT_CLOCK_MS);
+    expect(sprint.mods.timeLimitMs).toBe(clockOf(BOARD_SPECS[1].minutes));
     expect(sprint.mods.hearts).toBe(4);
     const dusk = card('dusk').effect(plan(1));
     expect(dusk.mods.noHighlights).toBe(true);
-    expect(dusk.mods.reveal).toBe(3);
+    expect(dusk.mods.reveal).toBe(4);
     const packed = card('packed-house').effect(plan(2));
     expect(packed.mods.autoNotes).toBe(true);
     expect(packed.options.rules.length).toBe(plan(2).options.rules.length + 1);

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { clueHolds } from './conflicts';
+import { FAIR_DEPTH } from './craft';
+import { estimateEffort } from './effort';
+import { fogSolvable } from './fog';
 import { LYRA } from './fixtures';
 import { ALL_KINDS, LOCAL_KINDS } from './generator';
 import {
@@ -107,6 +110,42 @@ describe('generator', () => {
     const p = generate({ size: 6, seed: 'classic', rules: [], difficulty: 2 });
     checkPuzzle(p);
     expect(p.clues).toEqual([]);
+  });
+});
+
+describe('boards cut to a time window', () => {
+  const opts = { size: 9 as Size, seed: 'timed', rules: ['thermo', 'kropki'] as ClueKind[], difficulty: 2 as const, minutes: [8, 9] as [number, number] };
+
+  it('are crafted to the window with exactly the rules asked for, the same on every call', () => {
+    const p = generate(opts);
+    checkPuzzle(p);
+    expect(p.difficulty).toBe(2);
+    expect([...new Set(p.clues.map((c) => c.kind))].sort()).toEqual(['kropki', 'thermo']);
+    const seconds = estimateEffort(p, { probeDepth: FAIR_DEPTH }).seconds;
+    expect(seconds).toBeGreaterThanOrEqual(8 * 60 - 60);
+    expect(seconds).toBeLessThanOrEqual(9 * 60 + 60);
+    expect(generate(opts)).toEqual(p);
+    expect(generate({ ...opts, seed: 'timed-2' }).id).not.toBe(p.id);
+  });
+
+  it('can hide every cage total', () => {
+    const p = generate({ ...opts, rules: ['cage', 'xv'], hiddenCageTotals: true });
+    checkPuzzle(p);
+    const cages = p.clues.filter((c) => c.kind === 'cage');
+    expect(cages.length).toBeGreaterThan(0);
+    for (const c of cages) expect(c.kind === 'cage' ? c.sum : 0).toBeNull();
+  });
+
+  it('can be wrapped in fog that the rules alone clear', () => {
+    const p = generate({ ...opts, fog: true });
+    checkPuzzle(p);
+    expect(p.fog!.start.length).toBeGreaterThan(0);
+    expect(fogSolvable(p, p.fog!.start, 4)).toBe(true);
+  });
+
+  it('leave the time window to 9x9 boards: any other size comes from the generator', () => {
+    expect(generate(opts).id.startsWith('c9-')).toBe(true);
+    expect(generate({ ...opts, size: 6 }).id.startsWith('g6-')).toBe(true);
   });
 });
 

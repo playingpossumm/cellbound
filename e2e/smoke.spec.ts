@@ -108,9 +108,11 @@ test('board and pad fit a laptop window without scrolling', async ({ page }, inf
   test.skip(info.project.metadata.form !== 'laptop');
   await page.setViewportSize({ width: 1366, height: 660 });
   await openFresh(page);
-  const fits = await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1);
+  // Measured once the look's font has loaded, as the layout tests do: before that, the side
+  // column is set in a fallback face that can run a few pixels taller.
+  await page.evaluate(() => document.fonts.ready);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight)).toBeLessThanOrEqual(1);
   await shot(page, 'daily-660');
-  expect(fits).toBe(true);
 });
 
 for (const [w, h] of [

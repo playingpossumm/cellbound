@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { EM_DASH } from '../test/copy';
 import { rootVars, themeCss } from '../test/cssvars';
-import { DEFAULT_THEME, LEGACY_DEFAULT_THEME, getTheme, themes } from './index';
+import { DEFAULT_THEME, getTheme, themes } from './index';
 import { buildItems, project } from './letters/cube';
-import { mastheadFor } from './paper';
 import { cellsLoops, cellsOutline, simplify, wavePath } from './shared/util';
 
-const ids = ['prism', 'letters', 'atlas', 'paper', 'washi', 'swiss'] as const;
+const ids = ['prism', 'letters'] as const;
 
 const REQUIRED = [
   'ground', 'board', 'ink', 'mine', 'hint', 'note', 'wrong', 'peer', 'same', 'sel', 'sel-ring', 'focus',
@@ -15,11 +14,12 @@ const REQUIRED = [
 ].map((n) => `--cb-${n}`);
 
 describe('theme registry', () => {
-  it('lists the six themes in picker order, the two favourites first', () => {
+  it('lists the two looks in picker order, the default first', () => {
     expect(themes.map((t) => t.id)).toEqual([...ids]);
     expect(DEFAULT_THEME).toBe('prism');
-    expect(LEGACY_DEFAULT_THEME).toBe('atlas');
     expect(getTheme('letters').id).toBe('letters');
+    // An id from an old save that slipped past the settings falls back to the default look.
+    expect(getTheme('atlas' as never).id).toBe('prism');
   });
 
   it('describes each theme in one plain line', () => {
@@ -32,8 +32,8 @@ describe('theme registry', () => {
     }
   });
 
-  it('opens atlas and prism in night mode and the rest in day mode', () => {
-    expect(themes.filter((t) => t.defaultNight).map((t) => t.id)).toEqual(['prism', 'atlas']);
+  it('opens Prism in night mode and Letters in space in day mode', () => {
+    expect(themes.filter((t) => t.defaultNight).map((t) => t.id)).toEqual(['prism']);
   });
 });
 
@@ -47,20 +47,6 @@ describe('theme stylesheets', () => {
     }
   }
 
-});
-
-describe('paper masthead', () => {
-  it('names every mode in the voice of a newspaper', () => {
-    expect(mastheadFor('Daily')).toBe('The Daily Puzzle');
-    expect(mastheadFor('Run')).toBe('The Run Gazette');
-    expect(mastheadFor('Learn')).toBe('The Learning Column');
-    expect(mastheadFor('Fog')).toBe('The Fog Report');
-    expect(mastheadFor('Free play')).toBe('The Free Play Edition');
-  });
-
-  it('falls back to "The Title Puzzle" for a title it does not know', () => {
-    expect(mastheadFor('night owl')).toBe('The Night Owl Puzzle');
-  });
 });
 
 describe('shape helpers', () => {

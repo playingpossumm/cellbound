@@ -140,7 +140,7 @@ function BoardImpl(props: BoardProps) {
     if (conflict[i] && !isHidden) cls += ' is-conflict';
     if (given) cls += ' is-given';
     if (focusSet.has(i)) cls += ' is-focus';
-    if (done.has(b)) cls += ` box-done bd-${b}`;
+    if (done.has(b)) cls += ' box-done';
     if (inFlash) cls += ` ${flashCls}`;
     cells.push(
       <button
@@ -162,7 +162,7 @@ function BoardImpl(props: BoardProps) {
 
     let slotCls = 'cb-slot' + edges[i];
     if (inFlash) slotCls += ` ${flashCls}`;
-    if (done.has(b)) slotCls += ` box-done bd-${b}`;
+    if (done.has(b)) slotCls += ' box-done';
     if (i === selected) slotCls += ' is-sel';
     let inner = null;
     if (d) {

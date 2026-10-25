@@ -1,5 +1,5 @@
-// The run's pieces drawn rather than written: the track of five boards (the last, larger one the
-// 9x9 final), the hearts, and the strip shown with the board during a run.
+// The run's pieces drawn rather than written: the track of five boards, the hearts, and the strip
+// shown with the board during a run.
 import type { GameState } from '../../../game/types';
 import { BOARD_COUNT, BOARD_SPECS } from '../boards';
 import { cardText } from '../cards';
@@ -42,7 +42,8 @@ function Pip({ size, mark }: { size: number; mark: Mark }) {
 
 /**
  * The five boards of a run, in order. Cleared boards are filled, a failed one is crossed, the
- * board in play (or the one a card is being chosen for) is ringed. The words go to screen readers.
+ * board in play (or the one a card is being chosen for) is ringed. A board played before every
+ * board was a 9x9 keeps its smaller 6x6 shape. The words go to screen readers.
  */
 export function Track({ results = [], at = -1, label }: { results?: BoardResult[]; at?: number; label: string }) {
   return (
@@ -51,7 +52,7 @@ export function Track({ results = [], at = -1, label }: { results?: BoardResult[
         {BOARD_SPECS.slice(0, BOARD_COUNT).map((spec, k) => {
           const r = results.find((x) => x.index === k);
           const mark: Mark = r ? (r.status === 'solved' ? 'won' : 'lost') : k === at ? 'now' : 'later';
-          return <Pip key={k} size={spec.size} mark={mark} />;
+          return <Pip key={k} size={r ? (r.size ?? 6) : spec.size} mark={mark} />;
         })}
       </span>
       <span className="cb-run-visually-hidden">{label}</span>
@@ -78,7 +79,7 @@ export function Hud({ run, game }: { run: RunState; game: GameState | null }) {
       {cards.length > 0 && (
         <ul className="cb-run-tags" aria-label="Cards in play">
           {cards.map((c) => (
-            <li key={c.id} className={`cb-run-tag is-${c.kind}`} title={cardText(c, setup.options.size)}>
+            <li key={c.id} className={`cb-run-tag is-${c.kind}`} title={cardText(c, setup)}>
               <KindIcon kind={c.kind} className="cb-run-tag-icon" />
               <span>{c.name}</span>
               {c.mult > 0 && (

@@ -1,9 +1,10 @@
-// The five boards of a run: size, difficulty, rule mix and score par.
+// The five boards of a run: every one a 9x9, each cut to an estimated solving time that rises
+// through the run, with its level, rule mix, par and base score.
 import { makeRng } from '../../engine';
 import type { ClueKind, Difficulty, GenerateOptions, Size } from '../../engine/types';
 import type { GameMods } from '../../game/types';
-import { ALL_KINDS, applyCards, type BoardPlan, type Card } from './cards';
-import { roundTo, sizeScale } from './scale';
+import { ALL_KINDS, applyCards, type BoardPlan, type Card, type RunOptions } from './cards';
+import { baseOf, parOf, type Window } from './scale';
 
 export const BOARD_COUNT = 5;
 
@@ -14,39 +15,33 @@ export interface BoardSpec {
   kinds: number;
   /** Global rules (diagonal, anti-knight) can join from this board on. */
   allowGlobal: boolean;
+  /**
+   * The estimated solving time the board is cut to, in minutes for an experienced player, from the
+   * engine's effort model (src/engine/effort.ts). It also sets the board's par, base and Tight clock.
+   */
+  minutes: Window;
 }
 
 /**
- * Boards 1 to 4 are 6x6 for pace and rise from difficulty 1 to 3. The final board is a 9x9 at
- * difficulty 2 with three kinds: the biggest board of the run, at about a quarter of an hour,
- * so a whole run stays near forty minutes. Its par, base score and Tight clock grow with its
- * size (see scale.ts), and Hard turn is never offered before it, so it stays one sitting long.
+ * Every board is a 9x9, and each one asks a little more than the last: a gentle board with one
+ * rule, three easy boards with two, two and three rules, then a medium final (a level is the
+ * hardest technique a board needs). The time climbs from about six minutes to about twelve, a
+ * minute or two a board, so a whole run is about 45 minutes for an experienced player (pace.test.ts).
+ * A medium board cannot be cut much below eleven minutes, which is why only the final is medium.
  */
 export const BOARD_SPECS: readonly BoardSpec[] = [
-  { size: 6, difficulty: 1, kinds: 2, allowGlobal: false },
-  { size: 6, difficulty: 2, kinds: 2, allowGlobal: false },
-  { size: 6, difficulty: 2, kinds: 3, allowGlobal: true },
-  { size: 6, difficulty: 3, kinds: 3, allowGlobal: true },
-  { size: 9, difficulty: 2, kinds: 3, allowGlobal: true },
+  { size: 9, difficulty: 1, kinds: 1, allowGlobal: false, minutes: [5, 6.5] },
+  { size: 9, difficulty: 2, kinds: 2, allowGlobal: false, minutes: [6.5, 7.5] },
+  { size: 9, difficulty: 2, kinds: 2, allowGlobal: true, minutes: [8, 9] },
+  { size: 9, difficulty: 2, kinds: 3, allowGlobal: true, minutes: [9.5, 10.5] },
+  { size: 9, difficulty: 3, kinds: 3, allowGlobal: true, minutes: [11.5, 12.5] },
 ];
 
 const GLOBAL: ClueKind[] = ['diagonal', 'antiKnight'];
 
-/** Base score of a 6x6 board by difficulty (index 0 unused). */
-export const BASE_SCORE = [0, 100, 160, 240, 340, 480] as const;
-/** Par time in milliseconds of a 6x6 board by difficulty (index 0 unused). */
-export const PAR_MS = [0, 150_000, 210_000, 270_000, 330_000, 420_000] as const;
-
-const level = (d: number) => Math.max(1, Math.min(5, Math.round(d)));
-
-/** Par time for a board of a size and difficulty, to the half minute: 10:00 for a 9x9 at difficulty 3. */
-export function parFor(size: number, difficulty: number): number {
-  return roundTo(PAR_MS[level(difficulty)] * sizeScale(size), 30_000);
-}
-
-/** Base score for a board of a size and difficulty, to the ten: 540 for a 9x9 at difficulty 3. */
-export function baseFor(size: number, difficulty: number): number {
-  return Math.round((BASE_SCORE[level(difficulty)] * sizeScale(size)) / 10) * 10;
+/** Base score of a board's slot in the run. Cards that make a board easier or harder never change it. */
+export function baseFor(boardIndex: number): number {
+  return baseOf(BOARD_SPECS[boardIndex].minutes);
 }
 
 export function boardSeed(runSeed: string, boardIndex: number): string {
@@ -71,13 +66,14 @@ export function rulesFor(runSeed: string, boardIndex: number): ClueKind[] {
 /** The plan for a board before any card touches it. */
 export function basePlan(runSeed: string, boardIndex: number, hearts: number, shield: number): BoardPlan {
   const spec = BOARD_SPECS[boardIndex];
-  const options: GenerateOptions = {
+  const options: RunOptions = {
     size: spec.size,
     seed: boardSeed(runSeed, boardIndex),
     rules: rulesFor(runSeed, boardIndex),
     difficulty: spec.difficulty,
     minKinds: spec.kinds,
     maxKinds: spec.kinds,
+    minutes: spec.minutes,
   };
   const mods: GameMods = { hearts, shield };
   return { options, mods };
@@ -86,13 +82,17 @@ export function basePlan(runSeed: string, boardIndex: number, hearts: number, sh
 /** Everything a board needs to start. Plain data, so a run can be saved with it. */
 export interface BoardSetup {
   index: number;
+  /** What to generate. Boards set up before every Run board was a 9x9 have no time window here. */
   options: GenerateOptions;
   mods: GameMods;
   /** Cards in force on this board: the pick for it, then run cards. */
   cardIds: string[];
   /** Score multiplier, 1 or more. */
   mult: number;
+  /** The middle of the board's time window, after its cards. */
   parMs: number;
+  /** The base score of the board's slot. Boards set up before every Run board was a 9x9 have none and take their slot's. */
+  base?: number;
 }
 
 export function setupBoard(
@@ -110,6 +110,7 @@ export function setupBoard(
     mods: plan.mods,
     cardIds: cards.map((c) => c.id),
     mult,
-    parMs: parFor(plan.options.size, plan.options.difficulty),
+    parMs: parOf(plan.options.minutes),
+    base: baseFor(boardIndex),
   };
 }

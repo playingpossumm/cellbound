@@ -1,6 +1,6 @@
-// One clue renderer for the themes that draw with CSS. It returns SVG children
-// (the board wraps them in svg.cb-clues), emits the class vocabulary of the spec
-// (section 5) and sets --u, the cell edge in board units, on its root group, so a
+// One clue renderer for a look that draws its clues with CSS (Prism). It returns SVG
+// children (the board wraps them in svg.cb-clues), emits the class vocabulary of the
+// spec (section 5) and sets --u, the cell edge in board units, on its root group, so a
 // theme.css can size anything as calc(var(--u) * fraction).
 import { useId } from 'react';
 import type { ReactNode } from 'react';
@@ -12,10 +12,8 @@ import type { Pt } from './util';
 export interface ClueOptions {
   /** Thermo lines get a gradient stroke from the bulb to the far end (prism). */
   thermoGradient?: boolean;
-  /** Whisper lines are drawn wavy by default; 'line' keeps them straight. */
-  whisper?: 'wave' | 'line';
   /** Arrow head: half-angle in degrees, length and tip overshoot as fractions of a cell. */
-  head?: { angle: number; len: number; tip: number; shaftBack?: number; soft?: boolean };
+  head?: { angle: number; len: number; tip: number };
 }
 
 /** Draw order, back to front. */
@@ -119,26 +117,13 @@ function drawClue(c: Clue, geo: BoardGeometry, puzzleSize: number, gradId: strin
       const L = u * H.len;
       const a: Pt = [tip[0] + w1[0] * L, tip[1] + w1[1] * L];
       const b: Pt = [tip[0] + w2[0] * L, tip[1] + w2[1] * L];
-      // The shaft runs on to the tip, or stops inside a solid head.
-      const end: Pt = [tip[0] - dir[0] * u * (H.shaftBack ?? 0), tip[1] - dir[1] * u * (H.shaftBack ?? 0)];
-      const shaft: Pt[] = [...pts.slice(0, -1), end];
-      // A soft head bows its two strokes a little toward the shaft, like a brush.
-      const bow = (p: Pt): Pt => {
-        const mx = (p[0] + tip[0]) / 2;
-        const my = (p[1] + tip[1]) / 2;
-        const along = (mx - tip[0]) * dir[0] + (my - tip[1]) * dir[1];
-        const ax = tip[0] + dir[0] * along;
-        const ay = tip[1] + dir[1] * along;
-        return [mx + (ax - mx) * 0.2, my + (ay - my) * 0.2];
-      };
-      const head = H.soft
-        ? `M${r1(a[0])} ${r1(a[1])}Q${r1(bow(a)[0])} ${r1(bow(a)[1])} ${r1(tip[0])} ${r1(tip[1])}Q${r1(bow(b)[0])} ${r1(bow(b)[1])} ${r1(b[0])} ${r1(b[1])}`
-        : polyline([a, tip, b]);
+      // The shaft runs on to the tip of the head.
+      const shaft: Pt[] = [...pts.slice(0, -1), tip];
       return (
         <>
           <circle className="cb-ring" cx={r1(cx)} cy={r1(cy)} r={R} />
           <path className="cb-shaft" d={polyline(shaft)} />
-          <path className="cb-head" d={head} />
+          <path className="cb-head" d={polyline([a, tip, b])} />
         </>
       );
     }
@@ -176,7 +161,7 @@ function drawClue(c: Clue, geo: BoardGeometry, puzzleSize: number, gradId: strin
     }
     case 'whisper': {
       const p = c.cells.map((i) => geo.center(i));
-      return <path className="cb-line" d={options?.whisper === 'line' ? polyline(p) : wavePath(p, u * 0.028, u * 0.4)} />;
+      return <path className="cb-line" d={wavePath(p, u * 0.028, u * 0.4)} />;
     }
     case 'kropki': {
       const [x, y] = mid(geo, c.a, c.b);

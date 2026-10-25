@@ -120,7 +120,7 @@ test('settings persist and apply', async ({ page }) => {
 
 test('the time shows once in every theme', async ({ page }) => {
   await openFresh(page);
-  for (const theme of ['Star atlas', 'Paper and ink', 'Washi and sumi', 'Swiss poster', 'Prism', 'Letters in space']) {
+  for (const theme of ['Prism', 'Letters in space']) {
     await openScreen(page, 'Settings');
     await page.getByRole('radio', { name: new RegExp(`^${theme}`) }).check();
     await openScreen(page, 'Daily');

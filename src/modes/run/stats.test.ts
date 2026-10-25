@@ -48,11 +48,12 @@ describe('unlock milestones', () => {
     expect(onBoardStart(s, 2).topBoard).toBe(3);
   });
 
-  it('full hearts: needs a finished run with 3 hearts left, not a failed one', () => {
-    const lost = onRunEnd(emptyStats(), finishedRun('t:2', null, 1), 'x');
-    expect(unlockedSet(lost).has('full-hearts')).toBe(false);
-    const full = onRunEnd(emptyStats(), finishedRun('t:3', null, 0), 'x');
-    expect(unlockedSet(full).has('full-hearts')).toBe(true);
+  it('full hearts: needs a finished run with 2 hearts or more left, not a failed one', () => {
+    const run = finishedRun('t:2', null);
+    expect(unlockedSet(onRunEnd(emptyStats(), { ...run, hearts: 1 }, 'x')).has('full-hearts')).toBe(false);
+    expect(unlockedSet(onRunEnd(emptyStats(), { ...run, hearts: 2 }, 'x')).has('full-hearts')).toBe(true);
+    const failed = finishBoard(newRun('t:3', null, 1), { status: 'failed', mistakes: 3, hintsUsed: 0, elapsedMs: 1 });
+    expect(unlockedSet(onRunEnd(emptyStats(), failed, 'x')).has('full-hearts')).toBe(false);
   });
 
   it('cursed board: counts only cleared boards with a curse or bargain', () => {

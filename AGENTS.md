@@ -19,7 +19,7 @@ Run the unit tests, typecheck, build and e2e before calling a change done.
 | `src/game` | The zustand stores for the game, settings and stats. |
 | `src/app` | The shell, the play screen (`GameView`) and the other screens. The app name lives only in `src/app/brand.ts`. |
 | `src/board` | The board and its layers. Themes style its class names. |
-| `src/themes` | The six looks. Each is a `ThemeDef` (`src/themes/types.ts`) plus a stylesheet scoped by `data-theme` and `data-night`. |
+| `src/themes` | The two looks, Prism and Letters in space. Each is a `ThemeDef` (`src/themes/types.ts`) plus a stylesheet scoped by `data-theme` and `data-night`. |
 | `src/modes` | Run and Learn. |
 | `src/data` | Stored Daily puzzles, one module per month. |
 | `scripts` | Puzzle generation for Dailies and lessons. |
@@ -30,7 +30,7 @@ Run the unit tests, typecheck, build and e2e before calling a change done.
 - Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
 - Copy is plain English, with no em dashes anywhere.
 - Accessibility: text contrast at least 4.5:1 (3:1 from 24 px), touch targets at least 44 px, visible focus, an accessible name on every icon-only control, and reduced motion honoured from the device and from `data-reduced-motion`.
-- Themes style the board through the `--cb-*` custom properties and the board's class names, so a change to the board's markup must keep all six themes working.
+- Themes style the board through the `--cb-*` custom properties and the board's class names, so a change to the board's markup must keep both looks working.
 - The contract types in `src/engine/types.ts`, `src/game/types.ts`, `src/themes/types.ts` and `src/modes/types.ts` change additively only.
 - Never rename the `cellbound:*` localStorage keys; players would lose their saves.
 - Dailies are deterministic: a date gives the same puzzle on every device. Change their generation only behind a date cut-over, so past Dailies keep their boards.
@@ -47,7 +47,8 @@ Run the unit tests, typecheck, build and e2e before calling a change done.
 
 ## Looks
 
-- Prism is the default for a new player, and the picker lists Prism and Letters in space first (`themes` in `src/themes/index.ts`). A player with saves from before, and no saved settings, keeps `LEGACY_DEFAULT_THEME` (`src/game/settings.ts`).
+- Prism is the default and comes first in the picker (`themes` in `src/themes/index.ts`). Saved settings that name a removed look (Star atlas, Paper and ink, Washi and sumi, Swiss poster) load as Prism, and so does a player who never picked a look (`sanitizeSettings`, settings version 2).
+- No look uses `GridLayer` or `BoxDoneLayer` today; the board still draws them, and `src/board/Board.test.tsx` keeps them working for the next look.
 - A band must look complete with an empty `subtitle`: only a Daily from an earlier day passes its date. A band that sets the title large declares `bandShowsTitle`, so the top bar keeps its copy for screen readers only.
 - The picker draws each look with the real `Board` inside a shadow root (`src/app/LookPreview.tsx`). It works for any look whose rules all key on `[data-theme]`; keep them that way.
 - Cells, digit slots and fog cells carry `edge-l`, `edge-r`, `edge-t` and `edge-b` on the sides that face another box. A clue layer receives the full grid as `values`, to let its marks recede where digits stand.
@@ -57,4 +58,5 @@ Run the unit tests, typecheck, build and e2e before calling a change done.
 
 - The play screen is one grid (`.cb-play` in `src/styles/base.css`): stacked on a phone, with the band at the top and the board, pad and tools centred in the rest; in two columns from 900 px wide (and on a phone held sideways), with the board the full height on the left. `useBoardSide` in `GameView.tsx` sizes the board; keep its media queries in step with the CSS.
 - On a short phone (under 800 px high) the band is drawn at 60 percent and the keys are shorter, so a 9x9 and its pad still fit.
-- Run boards 1 to 4 are 6x6 and the final board is a 9x9. A board's par, base score and Tight clock scale with its cell count (`src/modes/run/scale.ts`); a card whose text names such a number gives `textFor(size)`.
+- Every game starts on a 9x9: the app opens on today's 9x9 Daily, Fog and Free play default to 9x9 (6x6 a tap away), and every Run board is a 9x9. Learn keeps its small practice boards. A save resumes only on the same board (`startGame`), so a 6x6 kept under today's Daily key opens as today's 9x9.
+- Run boards are crafted like 9x9 Dailies to a time window, `BoardSpec.minutes` in `src/modes/run/boards.ts`, in minutes of the engine's effort estimate (`GenerateOptions.minutes`, `src/engine/craft.ts`): gentle, easy, easy, easy, then a medium final, about 6 to 12 minutes a board and 45 a run (`pace.test.ts`). Par is the middle of the window, the Tight clock a minute more and the base 30 points a minute (`src/modes/run/scale.ts`). Easy road and Hard turn move a board one level and about a fifth in time. A card whose text names a board's number gives `textFor(board)`.

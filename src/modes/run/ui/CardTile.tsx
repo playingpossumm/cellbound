@@ -1,4 +1,4 @@
-import type { Card, CardKind, Rarity } from '../cards';
+import type { BoardView, Card, CardKind, Rarity } from '../cards';
 import { cardText } from '../cards';
 import { CheckIcon, KindIcon } from './icons';
 
@@ -14,9 +14,9 @@ export function cardBonus(card: Card): string | null {
 /**
  * The inside of a card: used by the choice buttons and the Collection tiles. The kind and the
  * bonus head it, then the name and what it does. Rarity is three pips; a picked card shows a tick.
- * `size` is the board the card would act on, so a card can name its numbers for that board.
+ * `board` is the board the card leads to, so a card can name its numbers for that board.
  */
-export function CardBody({ card, selected = false, size }: { card: Card; selected?: boolean; size?: number }) {
+export function CardBody({ card, selected = false, board }: { card: Card; selected?: boolean; board?: BoardView }) {
   const bonus = cardBonus(card);
   return (
     <>
@@ -36,7 +36,7 @@ export function CardBody({ card, selected = false, size }: { card: Card; selecte
         {card.name}
         {selected && <CheckIcon className="cb-run-picked-icon" />}
       </span>
-      <span className="cb-run-card-text">{cardText(card, size)}</span>
+      <span className="cb-run-card-text">{cardText(card, board)}</span>
       <span className="cb-run-pips" role="img" aria-label={RARITY_LABEL[card.rarity]} title={RARITY_LABEL[card.rarity]}>
         {Array.from({ length: 3 }, (_, i) => (
           <span key={i} className={'cb-run-pip' + (i < RARITY_PIPS[card.rarity] ? ' is-on' : '')} />

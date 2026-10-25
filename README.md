@@ -4,13 +4,13 @@ Cellbound is a variant sudoku game that runs in the browser and installs as an a
 
 Play it at [cellbound-sudoku.vercel.app](https://cellbound-sudoku.vercel.app).
 
-![The Daily in the six looks, on a phone](docs/six-looks.png)
+![The Daily on a phone in both looks, Prism and Letters in space, each in dark and light](docs/two-looks.png)
 
 ## Modes
 
 The Daily is one 9x9 puzzle a day, the same for everyone. It climbs from a gentle Monday with one rule to a hard Saturday, and Sunday brings a longer board with three rules. Each Daily is named after a constellation, and solving it on its own day keeps your streak going.
 
-Run is a roguelite. You play five boards in a row, four quick 6x6 boards and a 9x9 to finish, with three hearts, and every wrong digit costs a heart. Between boards you take one of three cards. A boon helps on the next board, a curse makes it harder and raises its score, and a bargain does a little of both. There is a daily run with the same boards and offers for everyone, free runs that are new every time, and five more cards to unlock by reaching milestones.
+Run is a roguelite. You play five 9x9 boards in a row with three hearts, and every wrong digit costs a heart. Each board asks a little more than the last, from a gentle board with one rule to a medium final with three, so a whole run takes an experienced player about 45 minutes. Between boards you take one of three cards. A boon helps on the next board, a curse makes it harder and raises its score, and a bargain does a little of both. There is a daily run with the same boards and offers for everyone, free runs that are new every time, and five more cards to unlock by reaching milestones.
 
 Fog opens on a 9x9 and hides most of the board. A correct digit clears the cells around it and shows the givens and clues underneath, while a wrong digit clears nothing.
 
@@ -44,14 +44,10 @@ A hint comes in three steps for the same deduction. The first shows where to loo
 
 ## Looks
 
-Cellbound has six looks, each with a light and a dark version. Prism is the default, and on Auto the light or dark version follows your device.
+Cellbound has two looks, each with a light and a dark version. Prism is the default, and on Auto the light or dark version follows your device.
 
-- Prism sets digits on dark glass, with one spectrum colour for every digit.
+- Prism sets digits on glass, with one spectrum colour for every digit.
 - Letters in space is a monospaced grid with rules spelled along the lines and the board drawn as a turning cube of letters.
-- Star atlas puts gold hairlines on ink-blue chart paper under a slow star field, with each Daily's constellation in the band.
-- Paper and ink is newsprint with graphite pencil and a blue pen under a newspaper masthead.
-- Washi and sumi has rice paper, brushed box lines and a vermilion seal for every finished box.
-- Swiss poster uses flat red, blue and yellow, heavy type and a thick rule, and turns finished boxes into blocks of colour.
 
 Every look honours reduced motion, from the device or from Settings.
 
@@ -77,13 +73,12 @@ Then open the address Vite prints. `npm run build` makes a production build in `
 - `npm run e2e:edge` runs the Edge projects only, which is the quick check.
 - `npm run gen:daily` regenerates the stored Daily puzzles. Pass a range of months to choose them, for example `npm run gen:daily -- 2028-01 2028-12`.
 - `npm run gen:practice` regenerates the Learn practice puzzles.
-- `python scripts/lining-digits.py` rebuilds the small lining-digit fonts of the Star atlas look from the installed Cormorant Garamond (it needs `pip install fonttools`).
 
 ## How it is built
 
 The app uses React 19 and TypeScript 7, built with Vite 8. Game state lives in zustand stores saved to local storage, and vite-plugin-pwa provides the service worker and the web manifest. Fonts come from Fontsource packages, so nothing is fetched from a font service.
 
-The puzzle engine in `src/engine` is plain TypeScript. It has a solver that proves each puzzle has one solution, a generator that grades difficulty by the techniques a logical solver needs, the hint explainer built on that solver, and the fog layouts. Boards for Free play, Fog and Run are made in a Web Worker, so the screen stays responsive while they are built. Dailies up to the end of 2027 are stored in `src/data/daily` and load a month at a time. Later dates are generated on the device from the same seed, so they still come out the same for everyone.
+The puzzle engine in `src/engine` is plain TypeScript. It has a solver that proves each puzzle has one solution, a generator that grades difficulty by the techniques a logical solver needs, an estimate of how long a board takes an experienced player, the hint explainer built on that solver, and the fog layouts. Daily and Run boards are cut to that estimate. Boards for Free play, Fog and Run are made in a Web Worker, so the screen stays responsive while they are built. Dailies up to the end of 2027 are stored in `src/data/daily` and load a month at a time. Later dates are generated on the device from the same seed, so they still come out the same for everyone.
 
 | Folder | What it holds |
 | --- | --- |
@@ -91,7 +86,7 @@ The puzzle engine in `src/engine` is plain TypeScript. It has a solver that prov
 | `src/game` | The game store, settings and stats |
 | `src/app` | The shell, the play screen and the other screens |
 | `src/board` | The board and its layers |
-| `src/themes` | The six looks |
+| `src/themes` | The two looks |
 | `src/modes` | Run and Learn |
 | `scripts` | Puzzle generation for Dailies and lessons |
 | `e2e` | Browser tests |

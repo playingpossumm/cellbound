@@ -6,14 +6,12 @@ import type { ClueKind } from '../engine/types';
 import { closeGame, onGameEnd } from '../game/store';
 import { parseLocalDate } from '../game/logic';
 import { useStats } from '../game/stats';
-import { useSettings } from '../game/settings';
 import { extraModes, learn } from '../modes';
-import { getTheme } from '../themes';
 import { APP_NAME } from './brand';
 import { AboutIcon, CloseIcon, DailyIcon, FogIcon, FreeIcon, LearnIcon, RunIcon, SettingsIcon, StatsIcon } from './icons';
 import { AboutScreen, DailyScreen, FogScreen, FreeScreen, Loading, SettingsScreen, StatsScreen } from './screens';
 import { OPEN_EVENT, ShellContext, type ScreenId, type Shell } from './shell';
-import { useApplyTheme, useNight } from './theme';
+import { useApplyTheme } from './theme';
 
 /** An icon for each screen in the menu, so the list reads at a glance. */
 const MENU_ICONS: Partial<Record<ScreenId, ReactNode>> = {
@@ -77,9 +75,6 @@ const sameRoute = (a: Route, b: Route) => a.screen === b.screen && a.date === b.
 
 export default function App() {
   useApplyTheme();
-  const night = useNight();
-  const themeId = useSettings((s) => s.theme);
-  const theme = getTheme(themeId);
   const [route, setRoute] = useState<Route>(initialRoute);
   // Today's date, refreshed when the app comes back into view (never mid-game).
   const [today, setToday] = useState(dailyDate);
@@ -148,7 +143,6 @@ export default function App() {
     return () => window.removeEventListener(OPEN_EVENT, onOpen);
   }, [go]);
 
-  const Backdrop = theme.Backdrop;
   const extra = route.screen.startsWith('mode:') ? extraModes.find((m) => `mode:${m.id}` === route.screen) : undefined;
 
   let body;
@@ -202,9 +196,6 @@ export default function App() {
 
   return (
     <ShellContext.Provider value={shell}>
-      <div className="cb-backdrop" aria-hidden="true">
-        {Backdrop && <Backdrop night={night} />}
-      </div>
       <div className="cb-app">{body}</div>
       <dialog
         ref={menuRef}

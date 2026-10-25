@@ -417,10 +417,8 @@ export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, ext
         }
       >
         {time && (
-          // Themes whose band draws the time keep this copy for screen readers only,
-          // so the time shows once on screen.
           <span
-            className={`cb-timer${limit !== undefined ? ' is-limit' : ''}${theme.bandShowsTime ? ' cb-sr' : ''}`}
+            className={`cb-timer${limit !== undefined ? ' is-limit' : ''}`}
             aria-label={`${limit !== undefined ? 'Time left' : 'Time'} ${time}`}
             role="timer"
           >

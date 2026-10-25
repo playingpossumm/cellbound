@@ -262,7 +262,8 @@ function reduce(shape: { size: Size; boxW: number; boxH: number; clues: Clue[] }
   return givens;
 }
 
-function nameFor(seed: string): string {
+/** A constellation for a generated board, picked by its seed. */
+export function nameFor(seed: string): string {
   return CONSTELLATIONS[hashString(seed) % CONSTELLATIONS.length];
 }
 
@@ -270,9 +271,9 @@ function nameFor(seed: string): string {
  * Fog boards keep a start area of about a third of the board. Where the fog
  * solver (held to the target's techniques) gets stuck, a cleared empty cell
  * becomes a given; when nothing cleared is left to fill, one more cell next
- * to the cleared region starts visible.
+ * to the cleared region starts visible. Crafted boards use it too (craft.ts).
  */
-function fogFit(shape: { size: Size; boxW: number; boxH: number; clues: Clue[] }, sol: number[], givens: number[], target: Difficulty, seed: string, rng: Rng): { givens: number[]; fog: FogSpec } {
+export function fogFit(shape: { size: Size; boxW: number; boxH: number; clues: Clue[] }, sol: number[], givens: number[], target: Difficulty, seed: string, rng: Rng): { givens: number[]; fog: FogSpec } {
   const n = shape.size;
   const N = n * n;
   const tech = target <= 2 ? 2 : target === 3 ? 3 : 4;

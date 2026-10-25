@@ -54,10 +54,10 @@ describe('offers', () => {
     expect(boards.size).toBeGreaterThan(1);
   });
 
-  it('never offer a card that would do nothing on the final board', () => {
-    for (let s = 0; s < 120; s++) {
-      expect(offerFor('t:' + s, 4, everything).some((c) => c.id === 'hard-turn')).toBe(false);
-    }
+  it('can offer Hard turn for the final board too, now that every board has a time window', () => {
+    let seen = 0;
+    for (let s = 0; s < 120; s++) if (offerFor('t:' + s, 4, everything).some((c) => c.id === 'hard-turn')) seen++;
+    expect(seen).toBeGreaterThan(0);
   });
 
   it('only offer cards from the pool they are given', () => {

@@ -1,4 +1,4 @@
-/* Structure shared by all six themes. Looks live in each theme.css, which is
+/* Structure shared by both looks. Each look lives in its theme.css, which is
    always loaded after this file. */
 
 /* Each digit slot is a size container: theme digits and notes size themselves

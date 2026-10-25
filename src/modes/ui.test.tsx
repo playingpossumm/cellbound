@@ -162,9 +162,9 @@ describe('Run screen', () => {
     expect(button('Start free run')).toBeDefined();
     expect(text()).toContain('Not played');
     expect(button(/^Collection/)?.textContent).toContain('16 of 21');
-    // Five boards, the last one larger (the 9x9 final), and three hearts.
+    // Five boards, every one a 9x9, and three hearts.
     expect(host.querySelectorAll('.cb-run-shape .cb-run-pip-board')).toHaveLength(5);
-    expect(host.querySelectorAll('.cb-run-shape .cb-run-pip-board.is-nine')).toHaveLength(1);
+    expect(host.querySelectorAll('.cb-run-shape .cb-run-pip-board.is-nine')).toHaveLength(5);
     expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('3 hearts');
     // No explanations: the home is the two ways to start and the scores.
     expect(text()).not.toMatch(/How a run works|Everyone gets the same boards/);

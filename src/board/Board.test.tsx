@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// The board on a fog board: givens and clues under fog stay hidden.
+// The board: fog hides givens and clues, and a look can replace its layers.
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -10,9 +10,9 @@ import { Board, type BoardProps } from './Board';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const plain = { id: 'atlas', name: 'Plain', blurb: '', defaultNight: false, loadFonts: async () => undefined, Band: () => null } as unknown as ThemeDef;
+const plain = { id: 'prism', name: 'Plain', blurb: '', defaultNight: false, loadFonts: async () => undefined, Band: () => null } as unknown as ThemeDef;
 
-function props(puzzle: Puzzle, fogCleared?: boolean[]): BoardProps {
+function props(puzzle: Puzzle, fogCleared?: boolean[], theme: ThemeDef = plain): BoardProps {
   const n = puzzle.size * puzzle.size;
   return {
     puzzle,
@@ -31,7 +31,7 @@ function props(puzzle: Puzzle, fogCleared?: boolean[]): BoardProps {
     placedCell: null,
     placeCount: 0,
     placedAt: {},
-    theme: plain,
+    theme,
     onSelect: () => undefined,
   };
 }
@@ -81,5 +81,33 @@ describe('board under fog', () => {
     const cleared = LYRA.givens.map((_, i) => i === 34 || i === 35);
     const el = await render(props(LYRA, cleared));
     expect(el.querySelectorAll('.cb-clue[data-kind="kropki"]')).toHaveLength(1);
+  });
+});
+
+describe('layers a look can replace', () => {
+  // No look replaces the grid or draws over finished boxes today; the hooks stay for the next one.
+  const custom = {
+    ...plain,
+    GridLayer: () => <path className="t-grid" />,
+    BoxDoneLayer: ({ done }: { done: number[] }) => <span className="t-done">{done.join(',')}</span>,
+  } as ThemeDef;
+
+  it("draws the default grid, and a look's own grid in its place", async () => {
+    let el = await render(props(LYRA));
+    expect(el.querySelector('.cb-grid .cb-thick')).not.toBeNull();
+    el.remove();
+    el = await render(props(LYRA, undefined, custom));
+    expect(el.querySelector('.cb-grid .t-grid')).not.toBeNull();
+    expect(el.querySelector('.cb-grid .cb-thick')).toBeNull();
+  });
+
+  it('marks the cells of finished boxes and hands the boxes to the look', async () => {
+    const el = await render({ ...props(LYRA, undefined, custom), doneBoxes: [0, 5] });
+    expect(el.querySelector('.cb-over .t-done')?.textContent).toBe('0,5');
+    // Box 0 of a 6x6 is the top left three by two; cell 0 is in it, cell 3 is not.
+    const cells = el.querySelectorAll('.cb-cell');
+    expect(cells[0].classList.contains('box-done')).toBe(true);
+    expect(cells[3].classList.contains('box-done')).toBe(false);
+    expect(el.querySelectorAll('.cb-slot.box-done')).toHaveLength(12);
   });
 });

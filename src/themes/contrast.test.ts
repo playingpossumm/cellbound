@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { contrast, oklabDistance, over, parseColor, resolve, rootVars, sizeVars, themeCss } from '../test/cssvars';
 import type { Rgba } from '../test/cssvars';
 
-const ids = ['atlas', 'paper', 'washi', 'swiss', 'prism', 'letters'] as const;
+const ids = ['prism', 'letters'] as const;
 
 function colour(env: Record<string, string>, name: string, under?: Rgba): Rgba {
   const c = parseColor(resolve(name, env));
@@ -61,25 +61,12 @@ describe('contrast', () => {
       }
 
       it(`${label}: digits and notes on board, selected and same-digit cells`, () => {
-        // Swiss paints the selected cell yellow and sets its digits in near black instead.
-        const cells: Rgba[] = [board, over(colour(env, '--cb-same', board), board)];
-        if (id !== 'swiss') cells.push(over(colour(env, '--cb-sel', board), board));
+        const cells: Rgba[] = [board, over(colour(env, '--cb-same', board), board), over(colour(env, '--cb-sel', board), board)];
         for (const name of ['--cb-ink', '--cb-mine', '--cb-hint', '--cb-note', '--cb-wrong']) {
           const c = colour(env, name, board);
           for (const bg of cells) expect(contrast(c, bg), `${label} ${name}`).toBeGreaterThanOrEqual(4.5);
         }
       });
-
-      if (id === 'swiss') {
-        it(`${label}: digits on the colour blocks of finished boxes`, () => {
-          for (const k of ['red', 'blue', 'yellow', 'ink']) {
-            const on = colour(env, `--sw-on-${k}`);
-            const bg = colour(env, `--sw-${k}`);
-            // 9x9 digits on a phone are under the large-text size, so the full 4.5:1 applies.
-            expect(contrast(on, bg), `${label} ${k}`).toBeGreaterThanOrEqual(4.5);
-          }
-        });
-      }
     }
   }
 });

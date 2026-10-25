@@ -5,7 +5,7 @@ import { formatDateLong } from '../../../game/logic';
 import { RULE_NAMES } from '../../names';
 import { useScreenEntry } from '../../screenEntry';
 import { loadBoard } from '../board';
-import { BOARD_COUNT, BOARD_SPECS, rulesFor } from '../boards';
+import { BOARD_COUNT, rulesFor } from '../boards';
 import { START_HEARTS, CARDS, cardsByKind, type Card, type CardKind } from '../cards';
 import { formatScore } from '../score';
 import { cardsOf, choose as chooseCard, type RunState } from '../state';
@@ -98,9 +98,9 @@ export function Home(p: HomeProps) {
   );
   return (
     <Page title="Run" onBack={p.onBack}>
-      {/* What a run is, drawn: five boards, the last a 9x9, and three hearts. */}
+      {/* What a run is, drawn: five boards and three hearts. */}
       <div className="cb-run-shape">
-        <Track label={`Five boards, the last one 9 by 9, and ${START_HEARTS} hearts.`} />
+        <Track label={`${BOARD_COUNT} boards and ${START_HEARTS} hearts.`} />
         <Hearts now={START_HEARTS} slots={START_HEARTS} />
       </div>
 
@@ -252,7 +252,6 @@ export function Collection({ stats, onBack }: { stats: RunStats; onBack: () => v
 export function Choose({ run, onPick, onHome }: { run: RunState; onPick: (id: string) => void; onHome: () => void }) {
   const [sel, setSel] = useState<string | null>(null);
   const next = run.index + 1;
-  const spec = BOARD_SPECS[next];
   const offers = cardsOf(run.offer);
   const chosen = offers.find((c) => c.id === sel);
   // Start building the board a card leads to as soon as it is highlighted, so Take is instant.
@@ -263,9 +262,9 @@ export function Choose({ run, onPick, onHome }: { run: RunState; onPick: (id: st
   };
   return (
     <Page title="Choose a card" onBack={onHome}>
-      {/* The track rings the board the card is for; the final 9x9 is the large one. */}
+      {/* The track rings the board the card is for. */}
       <div className="cb-run-hud-row cb-run-choose-status">
-        <Track results={run.results} at={next} label={`The card is for board ${next + 1} of ${BOARD_COUNT}, ${spec.size} by ${spec.size}.`} />
+        <Track results={run.results} at={next} label={`The card is for board ${next + 1} of ${BOARD_COUNT}.`} />
         <Hearts now={run.hearts} slots={Math.max(3, run.hearts)} shield={run.shield} />
         <Score value={run.score} />
       </div>
@@ -283,7 +282,7 @@ export function Choose({ run, onPick, onHome }: { run: RunState; onPick: (id: st
               aria-pressed={sel === c.id}
               onClick={() => select(c.id)}
             >
-              <CardBody card={c} selected={sel === c.id} size={spec.size} />
+              <CardBody card={c} selected={sel === c.id} board={chooseCard(run, c.id).setup} />
             </button>
           </li>
         ))}

@@ -208,13 +208,22 @@ function candidateNotes(g: GameState): number[] {
   return full.map((d, i) => (d ? 0 : (cands[i] ?? 0)));
 }
 
+/**
+ * True when a saved game was played on this very board. The id alone is not enough: a Daily's id is
+ * its date, and a device that ran an older app on the morning of 24 October 2026 saved a 6x6 under
+ * the id of a day whose Daily is now a 9x9.
+ */
+function sameBoard(a: Puzzle, b: Puzzle): boolean {
+  return a.id === b.id && a.size === b.size && a.givens.length === b.givens.length && a.givens.every((d, i) => d === b.givens[i]);
+}
+
 export function startGame(opts: StartOptions): void {
   commitClock();
   const s = useStore.getState();
   const saved = s.games[opts.key];
   ladder = null;
   useFx.setState(emptyFx());
-  if (opts.resume !== false && saved && saved.puzzle.id === opts.puzzle.id) {
+  if (opts.resume !== false && saved && sameBoard(saved.puzzle, opts.puzzle)) {
     const status = saved.status === 'paused' ? 'playing' : saved.status;
     setGame({ ...saved, selected: null, status });
     return;

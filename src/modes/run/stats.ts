@@ -102,7 +102,8 @@ export interface Milestone {
 export const MILESTONES: readonly Milestone[] = [
   { id: 'first-run', how: 'Finish a run.', goal: 1, progress: (s) => s.finished },
   { id: 'board-3', how: 'Reach board 3 in any run.', goal: 3, progress: (s) => s.topBoard },
-  { id: 'full-hearts', how: 'Finish a run with 3 hearts or more left.', goal: 3, progress: (s) => s.bestHearts },
+  // Five 9x9 boards hold nearly twice the digits of the old run, so one lost heart is allowed.
+  { id: 'full-hearts', how: 'Finish a run with 2 hearts or more left.', goal: 2, progress: (s) => s.bestHearts },
   { id: 'cursed-board', how: 'Clear a board that has a curse on it.', goal: 1, progress: (s) => s.cursedCleared },
   {
     id: 'daily-3',
