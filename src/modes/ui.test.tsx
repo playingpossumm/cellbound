@@ -333,6 +333,96 @@ describe('Run screen', () => {
     expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 2');
   });
 
+  it('keeps a lens picked while it moves, and drops the pick when it is sold, so a second tap cannot sell the next one', async () => {
+    runActions.start('free', 1000, '2099-01-01');
+    const r = state().run!;
+    const shop = { ante: 1, rerolls: 0, lenses: ['spyglass', 'arrow'], items: ['spectra1', 'inkHint'] };
+    useRunStore.setState({ run: { ...r, phase: 'shop', slot: 2, coins: 30, lenses: [{ id: 'loupe' }, { id: 'monocle' }], shop } as typeof r });
+    await run();
+    const tiles = () => [...host.querySelectorAll('.cb-run-loadout .cb-run-lens')];
+    const picked = () => tiles().filter((t) => t.className.includes('is-selected')).map((t) => (t.getAttribute('aria-label') ?? '').split(':')[0]);
+    await click(tiles()[0]);
+    expect(picked()).toEqual(['Loupe']);
+    await click(button('Move right'));
+    expect(state().run!.lenses.map((l) => l.id)).toEqual(['monocle', 'loupe']);
+    expect(picked()).toEqual(['Loupe']);
+    expect(host.querySelector('.cb-run-detail')?.textContent).toContain('Loupe');
+    await click(button(/^Sell/));
+    expect(state().run!.lenses.map((l) => l.id)).toEqual(['monocle']);
+    expect(host.querySelector('.cb-run-detail')).toBeNull();
+    expect(picked()).toEqual([]);
+  });
+
+  it('shows the cards a run holds by name, with how many, and what a picked one does', async () => {
+    runActions.start('free', 1000, '2099-01-01');
+    const r = state().run!;
+    useRunStore.setState({ run: { ...r, perks: { prismShard: 2, peek: 1, lifeLink: 1 } } });
+    await run();
+    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 1');
+    const pills = [...host.querySelectorAll('.cb-run-perk')];
+    expect(pills.map((p) => p.textContent)).toEqual(['Life Link', 'Peek', 'Prism Shard×2']);
+    expect(host.querySelector('.cb-run-detail')).toBeNull();
+    await click(pills[2]);
+    expect(host.querySelector('.cb-run-detail')?.textContent).toContain('Prism Shard ×2');
+    expect(host.querySelector('.cb-run-detail')?.textContent).toContain('on all scoring');
+    await click(pills[2]);
+    expect(host.querySelector('.cb-run-detail')).toBeNull();
+    // A run with no cards draws no row for them.
+    useRunStore.setState({ run: { ...state().run!, perks: {} } });
+    await run();
+    expect(host.querySelector('.cb-run-perk')).toBeNull();
+  });
+
+  it('brings the words and buttons of a picked tile into view, no further than needed, and not when it is put away', async () => {
+    const scrolled: Array<{ cls: string; arg: unknown }> = [];
+    const before = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element, arg?: boolean | ScrollIntoViewOptions) {
+      scrolled.push({ cls: this.className, arg });
+    };
+    try {
+      runActions.start('free', 1000, '2099-01-01');
+      const r = state().run!;
+      useRunStore.setState({ run: { ...r, perks: { peek: 1 } } });
+      await run();
+      await click(host.querySelector('.cb-run-perk') ?? undefined);
+      expect(scrolled).toHaveLength(1);
+      expect(scrolled[0]!.cls).toContain('cb-run-detail');
+      expect(scrolled[0]!.arg).toMatchObject({ block: 'nearest' });
+      await click(host.querySelector('.cb-run-perk') ?? undefined);
+      expect(host.querySelector('.cb-run-detail')).toBeNull();
+      expect(scrolled).toHaveLength(1);
+    } finally {
+      Element.prototype.scrollIntoView = before;
+    }
+  });
+
+  it('marks where a Thief gives come back with a question mark, and takes the mark off when the given returns', async () => {
+    await run();
+    await click(button('Start free run'));
+    await playBoard();
+    const live = state().run!.live!;
+    useRunStore.setState({ run: { ...state().run!, live: { ...live, stolen: [3, 17] } } });
+    await act(async () => undefined);
+    expect(host.querySelectorAll('[data-testid="overlay"] .cb-run-ghost')).toHaveLength(2);
+    expect(host.querySelector('[data-testid="overlay"] .cb-run-ghost')?.getAttribute('aria-hidden')).toBe('true');
+    useRunStore.setState({ run: { ...state().run!, live: { ...state().run!.live!, stolen: [17] } } });
+    await act(async () => undefined);
+    expect(host.querySelectorAll('[data-testid="overlay"] .cb-run-ghost')).toHaveLength(1);
+  });
+
+  it('draws one run in progress on the home: its own box to resume from, and no empty shape or second button', async () => {
+    runActions.start('daily', 1000);
+    runActions.home();
+    await run();
+    expect(host.querySelector('.cb-run-shape')).toBeNull();
+    expect(host.querySelectorAll('.cb-run-box [class*="cb-run-pip"]').length).toBeGreaterThan(0);
+    expect(buttons().filter((b) => /^Resume/.test(b.textContent ?? ''))).toHaveLength(1);
+    expect(button(/daily/i)).toBeUndefined();
+    expect(button('Start free run')).toBeDefined();
+    // Neither start is the main button while there is a run to resume.
+    expect(host.querySelectorAll('.cb-run-btn.is-primary')).toHaveLength(1);
+  });
+
   it('shows a lens or the boss rule in the message panel on the board, and uses an item from there', async () => {
     runActions.start('free', 1000, '2099-01-01');
     const r = state().run!;

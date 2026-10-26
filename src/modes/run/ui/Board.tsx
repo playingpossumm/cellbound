@@ -16,9 +16,10 @@ import { flowCapOf, lensById, maxHeartsOf } from '../lenses';
 import type { TallyFx } from '../live';
 import type { BoardResult, RunState } from '../model';
 import { flowOf } from '../scoring';
+import { placePopup, popupSize, WEIGHT, type Box, type Ground } from '../popups';
 import { formatMult, formatScore, slotName } from '../state';
 import { inkUsable, playedBoard, runActions, useRunStore } from '../store';
-import { CoinIcon, TargetIcon } from './icons';
+import { CheckIcon, CoinIcon, TargetIcon } from './icons';
 import { Coins, Hearts, ItemTile, LensTile, Meter, Page, TierDot, useCountUp } from './parts';
 
 // ---- the score band --------------------------------------------------------------------
@@ -40,6 +41,9 @@ function FlowMeter({ flow, cap }: { flow: number; cap: number }) {
   const share = cap > 1 ? (flow - 1) / (cap - 1) : 0;
   return (
     <span className={`cb-run-flow${flow >= cap ? ' is-full' : ''}`} aria-label={`Flow ×${formatMult(flow)}`} role="img">
+      <span className="cb-run-flow-label" aria-hidden="true">
+        Flow
+      </span>
       <span className="cb-run-flow-track" aria-hidden="true">
         <span className="cb-run-flow-fill" style={{ transform: `scaleX(${Math.max(0, Math.min(1, share))})` }} />
       </span>
@@ -74,7 +78,7 @@ function ScoreBand({ run }: { run: RunState }) {
       <div className="cb-run-band-meter">
         <Meter score={now.score} target={now.target} />
         <span className="cb-run-band-target" aria-hidden="true">
-          <TargetIcon className="cb-run-target-icon" />
+          {now.score >= now.target ? <CheckIcon className="cb-run-target-icon" /> : <TargetIcon className="cb-run-target-icon" />}
           {formatScore(now.target)}
         </span>
       </div>
@@ -84,7 +88,7 @@ function ScoreBand({ run }: { run: RunState }) {
       </div>
       {/* The technique and points of each placement, spoken after the digit itself. */}
       <p className="cb-run-sr" aria-live="polite">
-        {last ? `${last.name}, ${last.points} ${last.points === 1 ? 'point' : 'points'}` : ''}
+        {last ? (last.note ? `${last.name}, ${last.note}` : `${last.name}, ${last.points} ${last.points === 1 ? 'point' : 'points'}`) : ''}
       </p>
     </div>
   );
@@ -104,7 +108,7 @@ function useHeld<T>(value: T | null, ms: number): T | null {
   return held;
 }
 
-type Pick = { kind: 'boss' } | { kind: 'lens'; k: number } | { kind: 'item'; k: number } | null;
+type Pick = { kind: 'boss' } | { kind: 'bet' } | { kind: 'lens'; k: number } | { kind: 'item'; k: number } | null;
 
 function LensRow({ run, pick, onPick }: { run: RunState; pick: Pick; onPick: (p: Pick) => void }) {
   const tally = useRunStore((s) => s.fx.tally);
@@ -133,42 +137,82 @@ function LensRow({ run, pick, onPick }: { run: RunState; pick: Pick; onPick: (p:
   );
 }
 
-// ---- popups over the cells -------------------------------------------------------------
+// ---- hidden givens and popups over the cells ------------------------------------------
+
+/** Where Thief's hidden givens will come back: a faint question mark in each cell, gone once it is back. */
+function Ghosts({ cells, n }: { cells: readonly number[]; n: number }) {
+  return (
+    <>
+      {cells.map((c) => (
+        <span key={c} className="cb-run-ghost" aria-hidden="true" style={{ left: `${(((c % n) + 0.5) / n) * 100}%`, top: `${((Math.floor(c / n) + 0.5) / n) * 100}%` }}>
+          ?
+        </span>
+      ))}
+    </>
+  );
+}
 
 const POPUP_MS = 1100;
 
-function Popups({ n }: { n: number }) {
+/** How much each cell would lose if a popup covered it: a digit in full, notes a little, an empty cell nothing. */
+function groundOf(game: GameState | null, side: number): Ground {
+  const n = game?.puzzle.size ?? 9;
+  const weight = Array.from({ length: n * n }, (_, i) => {
+    if (!game) return WEIGHT.empty;
+    if (game.fog && !game.fog.cleared[i]) return WEIGHT.empty;
+    if (game.puzzle.givens[i] || game.values[i]) return WEIGHT.digit;
+    return game.notes[i] ? WEIGHT.notes : WEIGHT.empty;
+  });
+  return { n, side, weight };
+}
+
+/**
+ * Each placement's technique and points, over the board. A popup takes its place once, when it
+ * first shows (see popups.ts): beside its cell, clear of the other popups still showing and of as
+ * many digits as the board allows, so a run of quick placements reads one by one.
+ */
+function Popups() {
   const popups = useRunStore((s) => s.fx.popups);
+  const game = useGame();
   const reduce = useReducedMotion();
-  const seen = useRef(new Map<number, number>());
+  const host = useRef<HTMLDivElement>(null);
+  // Each popup keeps the place it was given when it first showed, and when that was.
+  const [spots] = useState(() => new Map<number, { box: Box | null; at: number }>());
   const [, tick] = useState(0);
   const now = Date.now();
-  for (const p of popups) if (!seen.current.has(p.id)) seen.current.set(p.id, now);
-  const live = popups.filter((p) => now - (seen.current.get(p.id) ?? now) < POPUP_MS);
+  const side = host.current?.clientWidth ?? 0;
+  for (const p of popups) {
+    if (spots.has(p.id)) continue;
+    const showing = [...spots.values()].filter((v) => v.box && now - v.at < POPUP_MS).map((v) => v.box!);
+    // Before the board has a size there is nothing to place against: the popup sits above its cell.
+    spots.set(p.id, { box: side ? placePopup(groundOf(game, side), p.cell, popupSize(p), showing) : null, at: now });
+  }
+  const live = popups.filter((p) => now - (spots.get(p.id)?.at ?? now) < POPUP_MS);
   useEffect(() => {
-    if (!live.length) return;
+    // Popups the store has let go of are forgotten; the rest are asked again once their time is up.
+    const ids = new Set(popups.map((p) => p.id));
+    for (const id of spots.keys()) if (!ids.has(id)) spots.delete(id);
+    if (!popups.length) return;
     const t = setTimeout(() => tick((x) => x + 1), POPUP_MS + 20);
     return () => clearTimeout(t);
-  }, [live.length, popups]);
+  }, [popups, spots]);
+  const n = game?.puzzle.size ?? 9;
   return (
-    <>
+    <div className="cb-run-pops" ref={host} aria-hidden="true">
       {live.map((p) => {
-        const r = Math.floor(p.cell / n);
-        const c = p.cell % n;
-        const below = r === 0;
-        const style = {
-          left: `${((c + 0.5) / n) * 100}%`,
-          top: `${((below ? r + 1 : r) / n) * 100}%`,
-          ['--rn-x' as string]: c === 0 ? '-18%' : c === n - 1 ? '-82%' : '-50%',
-        };
+        const box = spots.get(p.id)!.box;
+        const style = box
+          ? { left: box.x, top: box.y, minWidth: box.w }
+          : { left: `${(((p.cell % n) + 0.5) / n) * 100}%`, top: `${(Math.floor(p.cell / n) / n) * 100}%` };
         return (
-          <span key={p.id} className={`cb-run-pop cb-run-t${p.tier}${below ? ' is-below' : ''}${reduce ? ' is-still' : ''}${p.points ? '' : ' is-zero'}`} style={style} aria-hidden="true">
+          <span key={p.id} className={`cb-run-pop cb-run-t${p.tier}${box ? '' : ' is-unplaced'}${reduce ? ' is-still' : ''}${p.points ? '' : ' is-zero'}${p.note ? ' is-event' : ''}`} style={style}>
             <span className="cb-run-pop-name">{p.name}</span>
-            <span className="cb-run-pop-points">+{formatScore(p.points)}</span>
+            <span className="cb-run-pop-points">{p.note ?? `+${formatScore(p.points)}`}</span>
+            {p.clean > 1 && <span className="cb-run-pop-clean">Clean ×{formatMult(p.clean)}</span>}
           </span>
         );
       })}
-    </>
+    </div>
   );
 }
 
@@ -186,6 +230,18 @@ function nextLabel(run: RunState): string {
   if (run.outcome) return 'See summary';
   if (r?.status === 'cleared') return 'Pick a card';
   return isBoss(run.slot) ? 'Shop' : 'Next board';
+}
+
+/** Where a board's coins came from. One source needs no number: the total beside it says it. */
+function coinWhy(c: NonNullable<BoardResult['coins']>): string {
+  const parts: [string, number][] = [
+    ['board', c.board],
+    ['over target', c.overflow],
+    ['interest', c.interest],
+    ['lenses', c.lenses],
+  ];
+  const paid = parts.filter(([, n]) => n > 0);
+  return paid.length === 1 ? paid[0][0] : paid.map(([why, n]) => `${n} ${why}`).join(', ');
 }
 
 /** Techniques by points, best first. */
@@ -245,9 +301,7 @@ export function TallyPanel({ run, onNext }: { run: RunState; onNext: () => void 
           <span className="cb-run-panel-coins">
             <CoinIcon className="cb-run-coin" />
             <strong>+{c.total}</strong>
-            <span className="cb-run-panel-why">
-              {[c.board && `${c.board} board`, c.overflow && `${c.overflow} over target`, c.interest && `${c.interest} interest`, c.lenses && `${c.lenses} lenses`].filter(Boolean).join(', ')}
-            </span>
+            <span className="cb-run-panel-why">{coinWhy(c)}</span>
           </span>
         ) : (
           <span />
@@ -342,6 +396,8 @@ export function BoardScreen({ run, GameViewComponent }: { run: RunState; GameVie
     );
   }
   const rule = run.live?.rule ?? null;
+  // Double or Nothing rides on this board: a mistake in it loses the score at stake.
+  const bet = run.live && run.pending && run.pending.slot !== run.live.slot ? run.pending : null;
   return (
     <GameViewComponent
       game={game}
@@ -350,22 +406,37 @@ export function BoardScreen({ run, GameViewComponent }: { run: RunState; GameVie
       band={<ScoreBand key={key} run={run} />}
       extra={<LensRow run={run} pick={pick} onPick={setPick} />}
       chipsLead={
-        rule ? (
-          <button
-            type="button"
-            className={`cb-chip cb-run-bosschip${pick?.kind === 'boss' ? ' on' : ''}`}
-            aria-pressed={pick?.kind === 'boss'}
-            aria-describedby="cb-run-boss-d"
-            onClick={() => setPick(pick?.kind === 'boss' ? null : { kind: 'boss' })}
-          >
-            {BOSS_NAMES[rule]}
-            <span id="cb-run-boss-d" hidden>
-              Boss rule
-            </span>
-          </button>
+        rule || bet ? (
+          <>
+            {rule && (
+              <button
+                type="button"
+                className={`cb-chip cb-run-bosschip${pick?.kind === 'boss' ? ' on' : ''}`}
+                aria-pressed={pick?.kind === 'boss'}
+                aria-describedby="cb-run-boss-d"
+                onClick={() => setPick(pick?.kind === 'boss' ? null : { kind: 'boss' })}
+              >
+                {BOSS_NAMES[rule]}
+                <span id="cb-run-boss-d" hidden>
+                  Boss rule
+                </span>
+              </button>
+            )}
+            {bet && (
+              <button type="button" className={`cb-chip cb-run-betchip${pick?.kind === 'bet' ? ' on' : ''}`} aria-pressed={pick?.kind === 'bet'} onClick={() => setPick(pick?.kind === 'bet' ? null : { kind: 'bet' })}>
+                Double or nothing
+              </button>
+            )}
+          </>
         ) : undefined
       }
-      boardOverlay={<Popups n={game.puzzle.size} />}
+      boardOverlay={
+        <>
+          <Ghosts cells={run.live?.stolen ?? []} n={game.puzzle.size} />
+          <Popups />
+        </>
+      }
+      quietClock
       note={note}
       onNoteDismiss={() => setPick(null)}
       endPanel={<TallyPanel run={run} onNext={runActions.next} />}
@@ -377,6 +448,10 @@ export function BoardScreen({ run, GameViewComponent }: { run: RunState; GameVie
 /** The words for a picked lens, item or boss rule, with Use for an item that can act now. */
 function noteFor(run: RunState, game: GameState | null, pick: Pick, done: () => void): GameNote | null {
   if (!pick) return null;
+  if (pick.kind === 'bet') {
+    const at = run.pending;
+    return at ? { text: `Double or Nothing. No mistakes on this board doubles the ${formatScore(at.score)} from the last one. A mistake loses it.` } : null;
+  }
   if (pick.kind === 'boss') {
     const rule = run.live?.rule;
     if (!rule) return null;

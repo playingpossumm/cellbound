@@ -15,6 +15,8 @@ export interface RewardDef {
   category: Category;
   rarity: Rarity;
   unlock?: UnlockId;
+  /** The technique tiers the card reads, so offers lean on what the run has placed. Absent for the rest. */
+  tiers?: readonly number[];
   /** A perk stays for the run, and up to this many can stack. Absent for a card that acts once. */
   stack?: number;
   /** False when the card could do nothing now, so it is not offered. */
@@ -136,6 +138,7 @@ export const REWARDS: readonly RewardDef[] = [
     id: 'fishbowl',
     name: 'Fishbowl',
     text: `X-Wings, wings and their kin score ×${REWARD.fishbowl}.`,
+    tiers: [6, 7],
     category: 'mult',
     rarity: 'rare',
     unlock: 'xwing',
@@ -193,6 +196,7 @@ export const REWARDS: readonly RewardDef[] = [
     id: 'expertPay',
     name: 'Expert Pay',
     text: `+${REWARD.expertPay} points for every pair, triple or harder placement.`,
+    tiers: [5, 6, 7, 8],
     category: 'score',
     rarity: 'uncommon',
     stack: 2,

@@ -5,8 +5,13 @@
 /** Chips a correct placement earns, by the tier of the technique that proves it (0 to 8). */
 export const CHIPS: readonly number[] = [0, 10, 20, 30, 50, 80, 150, 250, 400];
 
-/** Extra chips per Spectra level, by tier. */
-export const SPECTRA_CHIPS: readonly number[] = [0, 10, 10, 10, 25, 25, 50, 50, 50];
+/**
+ * Extra chips per Spectra level, by tier. Singles are about nine placements in ten and a single is
+ * worth 10 chips, so a level there is worth far more than a level anywhere else: at +10 a Singles
+ * Spectrum was +50 to +65 percent of a run's score for 3 coins, and three of them tripled it. At +3
+ * a level adds about a sixth, in line with a lens (npm run balance:run prints every buy).
+ */
+export const SPECTRA_CHIPS: readonly number[] = [0, 3, 10, 10, 25, 25, 50, 50, 50];
 /** The highest level a tier can reach. */
 export const SPECTRA_MAX = 9;
 
@@ -80,6 +85,8 @@ export const OFFERS = {
   bossSize: 4,
   /** A skipped board's tag: a smaller pick, commons only. */
   tagSize: 2,
+  /** A lens, Spectrum or card that reads tiers the run has never placed weighs this share of one that does. */
+  unplaced: 0.35,
   rarity: { common: 6, uncommon: 3, rare: 1 },
   /** Heart cards weigh this much more for every missing heart. */
   perMissingHeart: 1,
@@ -103,6 +110,8 @@ export const BOSS = {
   /** Thief hides this many givens, at least `thiefSpacing` cells apart. */
   thief: 6,
   thiefSpacing: 2,
+  /** Orders of the hidden givens tried, each checked for a guess, before one fewer is hidden. */
+  thiefTries: 4,
 } as const;
 
 /** Numbers on the reward cards. */
@@ -114,8 +123,8 @@ export const REWARD = {
   expertTier: 5,
   /** Prism Shard adds this to the multiplier on all scoring, per shard. */
   prismShard: 0.2,
-  /** Glass Heart adds this to the multiplier on all scoring. */
-  glassHeart: 1,
+  /** Glass Heart adds this to the multiplier on all scoring: three Prism Shards for a heart slot. */
+  glassHeart: 0.6,
   fishbowl: 3,
   /** Cascade: each placement in line with the last adds this much more multiplier. */
   cascade: 0.1,
@@ -126,9 +135,15 @@ export const REWARD = {
   overtime: 2,
 } as const;
 
-/** Numbers on the lenses. */
+/**
+ * Numbers on the lenses. A flow that stays full, singles and the digit 1 are what a board is made
+ * of, so the lenses that read them were worth two to four times the rest: Loupe at +6 chips added
+ * 40 percent of a run's score for 4 coins and Riptide at +3 mult added 85. They are set so a lens
+ * that reads the common placements adds 15 to 30 percent and one that reads the rarer ones a
+ * similar amount over a run (npm run balance:run).
+ */
 export const LENS = {
-  loupe: 6,
+  loupe: 3,
   monocle: 2,
   spyglass: 2,
   fisheye: 5,
@@ -136,9 +151,9 @@ export const LENS = {
   arrow: 2,
   dot: 20,
   redShift: 4,
-  blueShift: 30,
-  undertowCap: 3,
-  riptide: 3,
+  blueShift: 20,
+  undertowCap: 2.5,
+  riptide: 1,
   clearGlass: 3,
   kaleidoscope: 0.1,
   coinPrismMax: 5,

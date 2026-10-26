@@ -56,6 +56,23 @@ describe('reward offers', () => {
     expect(categoryWeight('hearts', run('w', { lastCats: ['hints', 'mult', 'score'] }))).toBeGreaterThan(categoryWeight('hints', run('w', { lastCats: ['hints', 'mult', 'score'] })));
   });
 
+  it('lean on what was placed: Fishbowl and Expert Pay wait until the run has placed a technique they read', () => {
+    const board = (tech: Record<string, { n: number; points: number; top: number }>) =>
+      [{ slot: 0, status: 'cleared', score: 1, target: 1, coins: null, heartsLost: 0, heartsAfter: 3, mistakes: 0, hintsUsed: 0, elapsedMs: 1, tech, best: null, clean: 0, rule: null }] as unknown as RunState['results'];
+    const share = (results: RunState['results']) => {
+      let hard = 0;
+      for (let k = 0; k < 800; k++) {
+        const o = makeOffer({ ...run(`lean${k}`, { slot: k % 9 }), results }, 'boss', everything);
+        if (o.cards.some((c) => c === 'fishbowl' || c === 'expertPay')) hard++;
+      }
+      return hard;
+    };
+    const plain = share(board({ nakedSingle: { n: 40, points: 900, top: 40 } }));
+    const withWing = share(board({ nakedSingle: { n: 40, points: 900, top: 40 }, xWing: { n: 1, points: 900, top: 900 }, nakedPair: { n: 1, points: 90, top: 90 } }));
+    expect(withWing).toBeGreaterThan(plain * 1.6);
+    expect(plain).toBeGreaterThan(0);
+  });
+
   it('lean on the state: more heart cards when hearts are low, more hint cards after hints were used', () => {
     const share = (over: Partial<RunState>, cat: Category) => {
       let n = 0;

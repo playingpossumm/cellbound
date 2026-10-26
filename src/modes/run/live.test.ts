@@ -73,6 +73,36 @@ describe('the board in play', () => {
     expect(run.live!.best).toEqual({ technique: 'hiddenSingle', points: 20 });
   });
 
+  it('never names a full house the best placement, though it finishes the most units', () => {
+    let run = onBoard();
+    const values = new Array(36).fill(0);
+    const [a, b] = empty;
+    run = applyPlaced(run, event(values, a, P.solution[a]), cls('nakedSingle')).run;
+    values[a] = P.solution[a];
+    // Worth more than the single, but only the last cell of its units.
+    const second = applyPlaced(run, event(values, b, P.solution[b], { units: [{ kind: 'row', index: 0, cells: [] }, { kind: 'column', index: 0, cells: [] }] }), cls('fullHouse'));
+    expect(second.run.live!.tech.fullHouse!.points).toBeGreaterThan(second.run.live!.tech.nakedSingle!.points);
+    expect(second.run.live!.best).toEqual({ technique: 'nakedSingle', points: run.live!.best!.points });
+  });
+
+  it('says when a shield or Second Wind takes a mistake: a popup at the cell, and the hearts as they should be', () => {
+    const wrong = (cell: number) => (P.solution[cell] % P.size) + 1;
+    const a = empty[0];
+    const shielded = applyPlaced(onBoard({ shield: 1 }), event(new Array(36).fill(0), a, wrong(a)), null);
+    expect(shielded.out.popup).toMatchObject({ cell: a, name: 'Shield', note: 'No heart lost', points: 0 });
+    expect(shielded.run.live).toMatchObject({ hearts: 3, shield: 0, mistakes: 1 });
+    const saved = applyPlaced(onBoard({ hearts: 1, perks: { secondWind: 1 } }), event(new Array(36).fill(0), a, wrong(a)), null);
+    expect(saved.out.popup).toMatchObject({ cell: a, name: 'Second Wind', note: 'Heart kept' });
+    expect(saved.run.live!.hearts).toBe(1);
+    expect(saved.run.secondWindUsed).toBe(true);
+    // A mistake that costs a heart says nothing: the heart goes.
+    const hurt = applyPlaced(onBoard(), event(new Array(36).fill(0), a, wrong(a)), null);
+    expect(hurt.out.popup).toBeNull();
+    expect(hurt.run.live!.hearts).toBe(2);
+    // The ids of such popups never meet a placement's.
+    expect(shielded.out.popup!.id).toBeLessThan(0);
+  });
+
   it('counts each unit once, and clean only with no notes, hints or mistakes in it', () => {
     const clean = playAll(onBoard());
     // A 6x6 has 18 units, every one finished clean when nothing was noted.

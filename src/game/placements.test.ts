@@ -139,6 +139,26 @@ describe('Run boards', () => {
     expect(getGame()!.hintsUsed).toBe(2);
   });
 
+  it('point at a wrong digit without using a hint or starting a ladder, even with none left', () => {
+    startGame({ key: 'run2:wrong', mode: 'run', puzzle: LYRA, mods: { hints: 1 } });
+    const i = empty[0];
+    play(i, wrongFor(i));
+    const step = actions.hint()!;
+    expect(step.focus).toEqual([i]);
+    expect(getGame()!.hintsUsed).toBe(0);
+    // Asked again it says the same, and nothing was placed.
+    expect(actions.hint()!.focus).toEqual([i]);
+    expect(getGame()!.values[i]).toBe(wrongFor(i));
+    // Once the digit is gone the board's one hint is still there.
+    actions.erase();
+    expect(actions.hint()!.level).toBe(1);
+    expect(getGame()!.hintsUsed).toBe(1);
+    // With the hint spent, a wrong digit is still pointed at.
+    play(i, wrongFor(i));
+    expect(actions.hint()!.focus).toEqual([i]);
+    expect(getGame()!.hintsUsed).toBe(1);
+  });
+
   it('fill notes in the cells a card names', () => {
     const cells = [empty[0], empty[1]];
     startGame({ key: 'run2:notes', mode: 'run', puzzle: LYRA, mods: { notesIn: cells } });

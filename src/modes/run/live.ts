@@ -34,6 +34,10 @@ export interface Popup {
   name: string;
   points: number;
   tier: TechniqueTier;
+  /** What its clean units multiplied the mult by: 1 when none was clean. */
+  clean: number;
+  /** For a protection that fired rather than a placement: what it did, in place of the points. */
+  note?: string;
 }
 
 /** One placement's chips times mult, for the tally in the header. */
@@ -140,11 +144,17 @@ export function applyPlaced(run: RunState, e: Placed, cls: PlacementClass | null
 
   if (!e.correct) {
     let next: LiveBoard = { ...live, mistakes: live.mistakes + 1, streak: 0, chain: 0 };
-    if (next.shield > 0) return { run: { ...run, live: { ...next, shield: next.shield - 1 } }, out };
+    // A shield or Second Wind takes the mistake without a word, so the cell says what it did.
+    const said = (name: string, note: string): Popup => ({ id: -next.mistakes, cell: e.cell, name, points: 0, tier: 0, clean: 1, note });
+    if (next.shield > 0) {
+      out.popup = said('Shield', 'No heart lost');
+      return { run: { ...run, live: { ...next, shield: next.shield - 1 } }, out };
+    }
     const glass = next.rule === 'glass';
     const h = hurt(run, next, glass ? HEARTS.glass : 1);
     next = { ...h.live, broken: glass || undefined };
     out.saved = h.saved;
+    if (h.saved) out.popup = said('Second Wind', 'Heart kept');
     out.fail = glass || next.hearts <= 0;
     return { run: { ...h.run, live: next }, out };
   }
@@ -187,8 +197,10 @@ export function applyPlaced(run: RunState, e: Placed, cls: PlacementClass | null
     const id = facts.technique;
     const was = next.tech[id] ?? { n: 0, points: 0, top: 0 };
     next.tech = { ...next.tech, [id]: { n: was.n + 1, points: was.points + sc.points, top: Math.max(was.top, sc.points) } };
-    if (!next.best || sc.points > next.best.points) next.best = { technique: id, points: sc.points };
-    out.popup = { id: next.seq, cell: e.cell, name: cls?.name ?? 'Guess', points: sc.points, tier };
+    // A full house is the last cell of a unit and proves nothing, but it finishes the most units, so
+    // it would always be the best placement of a run: the best is the best deduction.
+    if (id !== 'fullHouse' && (!next.best || sc.points > next.best.points)) next.best = { technique: id, points: sc.points };
+    out.popup = { id: next.seq, cell: e.cell, name: cls?.name ?? 'Guess', points: sc.points, tier, clean: sc.clean };
     if (tier > 0) out.tally = { id: next.seq, chips: sc.chips, mult: sc.mult, points: sc.points, flow: sc.flow, fired: sc.fired, tier };
   }
 

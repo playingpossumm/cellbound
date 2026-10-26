@@ -230,7 +230,7 @@ function apply(placed: Placed, cls: PlacementClass | null) {
   saveInPlay(next);
   if (out.popup || out.tally) {
     const fx = get().fx;
-    const popups = out.popup ? [...fx.popups.slice(-3), out.popup] : fx.popups;
+    const popups = out.popup ? [...fx.popups.slice(-5), out.popup] : fx.popups;
     useRunStore.setState({ fx: { popups, tally: out.tally ?? fx.tally } });
   }
   const game = getGame();

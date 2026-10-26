@@ -9,7 +9,7 @@ import { BOSS_NAMES, type BossRule } from '../bosses';
 import { itemById, TIER_NAMES } from '../items';
 import { lensById, maxHeartsOf, type LensDef } from '../lenses';
 import type { BoardResult, ItemId, LensSlot, RewardId, RunState } from '../model';
-import { isBargain, rewardById } from '../rewards';
+import { isBargain, REWARDS, rewardById } from '../rewards';
 import { sellValue } from '../shop';
 import { formatScore, KIND_NAMES, resultOf } from '../state';
 import { SLOTS } from '../tuning';
@@ -217,6 +217,33 @@ export function ItemTile({ id, selected = false, onClick, size = 'md' }: { id: I
   );
 }
 
+/**
+ * A card that stays for the run, as a pill: its category's glyph and colour, its name and, when it
+ * stacks, how many of it the run holds. A glyph alone would not tell three hint cards apart.
+ */
+export function PerkTile({ id, count, selected = false, onClick }: { id: RewardId; count: number; selected?: boolean; onClick?: () => void }) {
+  const def = rewardById(id);
+  if (!def) return null;
+  const name = count > 1 ? `${def.name} ×${count}` : def.name;
+  const body = (
+    <>
+      <CategoryIcon category={def.category} className="cb-run-perk-icon" />
+      <span className="cb-run-perk-name">{def.name}</span>
+      {count > 1 && <span className="cb-run-perk-n">×{count}</span>}
+    </>
+  );
+  const cls = `cb-run-perk is-${def.category} is-${def.rarity}${selected ? ' is-selected' : ''}`;
+  return onClick ? (
+    <button type="button" className={cls} aria-pressed={selected} aria-label={`${name}: ${def.text}`} onClick={onClick}>
+      {body}
+    </button>
+  ) : (
+    <span className={cls} role="img" aria-label={`${name}: ${def.text}`}>
+      {body}
+    </span>
+  );
+}
+
 /** Empty slots, drawn so the room for more shows. */
 export function EmptySlots({ count, kind }: { count: number; kind: 'lens' | 'item' }) {
   return (
@@ -228,8 +255,21 @@ export function EmptySlots({ count, kind }: { count: number; kind: 'lens' | 'ite
   );
 }
 
+/** Cards the run holds that stay, by how many of each. */
+export const heldCards = (run: Pick<RunState, 'perks'>) => REWARDS.filter((r) => (run.perks[r.id] ?? 0) > 0);
+
+/** True when there is anything of the run's to show: a lens, an item or a card that stays. */
+export const hasLoadout = (run: Pick<RunState, 'lenses' | 'items' | 'perks'>) => run.lenses.length > 0 || run.items.length > 0 || heldCards(run).length > 0;
+
+/** A picked tile in the loadout: a lens or an item by its slot, a card by its id. */
+export interface LoadoutPick {
+  lens?: number;
+  item?: number;
+  perk?: RewardId;
+}
+
 /** What a lens, an item or a card says, for the detail line under a row of tiles. */
-export function describe(what: { lens?: LensSlot; item?: ItemId }): { name: string; text: string } | null {
+export function describe(what: { lens?: LensSlot; item?: ItemId; perk?: { id: RewardId; count: number } }): { name: string; text: string } | null {
   if (what.lens) {
     const d = lensById(what.lens.id);
     return d ? { name: d.name, text: d.text } : null;
@@ -238,12 +278,31 @@ export function describe(what: { lens?: LensSlot; item?: ItemId }): { name: stri
     const d = itemById(what.item);
     return d ? { name: d.name, text: d.text } : null;
   }
+  if (what.perk) {
+    const d = rewardById(what.perk.id);
+    return d ? { name: what.perk.count > 1 ? `${d.name} ×${what.perk.count}` : d.name, text: d.text } : null;
+  }
   return null;
 }
 
+/** A picked tile by what it is: the nth of the `of` tiles with its id, or a card by its id. */
+type Held = { kind: 'lens' | 'item'; id: string; nth: number; of: number } | { kind: 'perk'; id: RewardId };
+
+/** The tile at slot k of a row of ids, as a pick. */
+function holdOf(kind: 'lens' | 'item', ids: readonly string[], k: number): Held {
+  const id = ids[k]!;
+  return { kind, id, nth: ids.slice(0, k).filter((x) => x === id).length, of: ids.filter((x) => x === id).length };
+}
+
+/** Where that tile sits now in the row, or -1 when it went away (or a twin of it did). */
+function whereIs(ids: readonly string[], id: string, nth: number, of: number): number {
+  const at = ids.flatMap((x, i) => (x === id ? [i] : []));
+  return at.length === of ? (at[nth] ?? -1) : -1;
+}
+
 /**
- * The run's lenses and items, with the empty slots. A tap picks a tile and its words show
- * below the row, with the actions the screen offers for it.
+ * The run's lenses, items and cards that stay, with the empty slots. A tap picks a tile and its
+ * words show below the rows, with the actions the screen offers for it.
  */
 export function Loadout({
   run,
@@ -252,32 +311,63 @@ export function Loadout({
 }: {
   run: RunState;
   /** The buttons for a picked tile. */
-  actions?: (pick: { lens?: number; item?: number }) => ReactNode;
+  actions?: (pick: LoadoutPick) => ReactNode;
   slots?: boolean;
 }) {
-  const [pick, setPick] = useState<{ lens?: number; item?: number } | null>(null);
+  // A picked tile is remembered by what it is, not by where it sits, so a lens that moves stays
+  // picked, and one that is sold, or an item that is used, drops the pick instead of handing it to
+  // whatever slides into its place.
+  const [held, setHeld] = useState<Held | null>(null);
+  const lensIds = run.lenses.map((l) => l.id);
+  const heldAt = held && held.kind !== 'perk' ? whereIs(held.kind === 'lens' ? lensIds : run.items, held.id, held.nth, held.of) : -1;
+  const pick: LoadoutPick | null =
+    held?.kind === 'lens' && heldAt >= 0
+      ? { lens: heldAt }
+      : held?.kind === 'item' && heldAt >= 0
+        ? { item: heldAt }
+        : held?.kind === 'perk' && (run.perks[held.id] ?? 0) > 0
+          ? { perk: held.id }
+          : null;
   const lens = pick?.lens !== undefined ? run.lenses[pick.lens] : undefined;
   const item = pick?.item !== undefined ? run.items[pick.item] : undefined;
-  const words = describe({ lens, item });
-  // A tile that went away (sold, used, moved) drops the pick.
+  const perks = heldCards(run);
+  const perk = pick?.perk ? { id: pick.perk, count: run.perks[pick.perk]! } : undefined;
+  const words = describe({ lens, item, perk });
   useEffect(() => {
-    if (pick && !lens && !item) setPick(null);
-  }, [pick, lens, item]);
+    if (held && !pick) setHeld(null);
+  }, [held, pick]);
+  // The words and buttons for a picked tile open under the rows, which on a phone can be below the
+  // screen: bring them in, no further than needed.
+  const detail = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const picked = held ? (held.kind === 'perk' ? `perk:${held.id}` : `${held.kind}:${held.id}:${held.nth}`) : '';
+  useEffect(() => {
+    if (picked) detail.current?.scrollIntoView?.({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }, [picked, reduce]);
   return (
     <div className="cb-run-loadout">
-      <div className="cb-run-tiles" role="group" aria-label="Lenses and items">
-        {run.lenses.map((l, k) => (
-          <LensTile key={`${l.id}${k}`} slot={l} selected={pick?.lens === k} onClick={() => setPick(pick?.lens === k ? null : { lens: k })} />
-        ))}
-        {slots && <EmptySlots count={SLOTS.lenses - run.lenses.length} kind="lens" />}
-        <span className="cb-run-tiles-gap" aria-hidden="true" />
-        {run.items.map((id, k) => (
-          <ItemTile key={`${id}${k}`} id={id} selected={pick?.item === k} onClick={() => setPick(pick?.item === k ? null : { item: k })} />
-        ))}
-        {slots && <EmptySlots count={SLOTS.consumables - run.items.length} kind="item" />}
-      </div>
+      {(slots || run.lenses.length > 0 || run.items.length > 0) && (
+        <div className="cb-run-tiles" role="group" aria-label="Lenses and items">
+          {run.lenses.map((l, k) => (
+            <LensTile key={`${l.id}${k}`} slot={l} selected={pick?.lens === k} onClick={() => setHeld(pick?.lens === k ? null : holdOf('lens', lensIds, k))} />
+          ))}
+          {slots && <EmptySlots count={SLOTS.lenses - run.lenses.length} kind="lens" />}
+          <span className="cb-run-tiles-gap" aria-hidden="true" />
+          {run.items.map((id, k) => (
+            <ItemTile key={`${id}${k}`} id={id} selected={pick?.item === k} onClick={() => setHeld(pick?.item === k ? null : holdOf('item', run.items, k))} />
+          ))}
+          {slots && <EmptySlots count={SLOTS.consumables - run.items.length} kind="item" />}
+        </div>
+      )}
+      {perks.length > 0 && (
+        <div className="cb-run-tiles is-perks" role="group" aria-label="Cards">
+          {perks.map((r) => (
+            <PerkTile key={r.id} id={r.id} count={run.perks[r.id]!} selected={pick?.perk === r.id} onClick={() => setHeld(pick?.perk === r.id ? null : { kind: 'perk', id: r.id })} />
+          ))}
+        </div>
+      )}
       {words && pick && (
-        <div className="cb-run-detail" role="status">
+        <div className="cb-run-detail" role="status" ref={detail}>
           <p>
             <strong>{words.name}</strong> {words.text}
           </p>

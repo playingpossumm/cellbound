@@ -57,6 +57,8 @@ export interface LensDef {
   coins?(ctx: CashCtx, slot: LensSlot): number;
   /** The lens's counter after a box is finished. */
   onBox?(slot: LensSlot): LensSlot;
+  /** The technique tiers the lens reads, so the shop leans on what the run has placed. Absent for the rest. */
+  tiers?: readonly number[];
   /** A passive lens: the flow's cap while it is held. */
   flowCap?: number;
   /** A passive lens: the most hearts the player can hold while it is held. */
@@ -74,6 +76,7 @@ export const LENSES: readonly LensDef[] = [
     text: `Singles and hidden singles: +${LENS.loupe} chips.`,
     price: 4,
     rarity: 'common',
+    tiers: [1, 2],
     tone: 'chips',
     badge: () => plus(LENS.loupe),
     score: (c) => (c.tier === 1 || c.tier === 2 ? { chips: LENS.loupe } : null),
@@ -84,6 +87,7 @@ export const LENSES: readonly LensDef[] = [
     text: `Clue, pointing and cage placements: +${LENS.monocle} mult.`,
     price: 5,
     rarity: 'common',
+    tiers: [3, 4],
     tone: 'mult',
     badge: () => plus(LENS.monocle),
     score: (c) => (c.tier === 3 || c.tier === 4 ? { mult: LENS.monocle } : null),
@@ -94,6 +98,7 @@ export const LENSES: readonly LensDef[] = [
     text: `Pairs and triples: ×${LENS.spyglass} mult.`,
     price: 6,
     rarity: 'uncommon',
+    tiers: [5],
     tone: 'mult',
     badge: () => times(LENS.spyglass),
     score: (c) => (c.tier === 5 ? { xmult: LENS.spyglass } : null),
@@ -105,6 +110,7 @@ export const LENSES: readonly LensDef[] = [
     price: 8,
     rarity: 'rare',
     unlock: 'xwing',
+    tiers: [6, 7],
     tone: 'mult',
     badge: () => plus(LENS.fisheye),
     score: (c) => (c.tier === 6 || c.tier === 7 ? { mult: LENS.fisheye } : null),
@@ -116,6 +122,7 @@ export const LENSES: readonly LensDef[] = [
     price: 8,
     rarity: 'rare',
     unlock: 'chain',
+    tiers: [8],
     tone: 'mult',
     badge: () => times(LENS.telescope),
     score: (c) => (c.tier === 8 ? { xmult: LENS.telescope } : null),

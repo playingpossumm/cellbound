@@ -32,8 +32,7 @@ export function Home(p: HomeProps) {
   // The first attempt of a day sets the daily best, so ending one early counts.
   const counts = !!p.current && p.current.daily !== null && !p.current.replay;
   const start = (kind: 'daily' | 'free') => {
-    if (kind === 'daily' && dailyRunning) p.onResume();
-    else if (p.current) setAsk(kind);
+    if (p.current) setAsk(kind);
     else (kind === 'daily' ? p.onDaily : p.onFree)();
   };
   const warning =
@@ -67,21 +66,26 @@ export function Home(p: HomeProps) {
   const runs = p.stats.started + p.legacy;
   return (
     <Page title="Run" onBack={p.onBack}>
-      {/* What a run is, drawn: three antes of three boards, the boss larger, and three hearts. */}
-      <div className="cb-run-shape">
-        <Track label={`${ANTES} antes of three boards, and ${HEARTS.start} hearts.`} />
-        <Hearts now={HEARTS.start} slots={HEARTS.start} />
-      </div>
+      {/* What a run is, drawn: three antes of three boards, the boss larger, and three hearts. A run
+          in progress draws its own, below, so the empty one gives way. */}
+      {!p.current && (
+        <div className="cb-run-shape">
+          <Track label={`${ANTES} antes of three boards, and ${HEARTS.start} hearts.`} />
+          <Hearts now={HEARTS.start} slots={HEARTS.start} />
+        </div>
+      )}
 
       {p.current && (
         <section className="cb-run-box" aria-labelledby="cb-run-resume-h">
-          <h2 id="cb-run-resume-h" className="cb-run-h2">
-            Run in progress
-          </h2>
+          <div className="cb-run-box-head">
+            <h2 id="cb-run-resume-h" className="cb-run-h2">
+              Run in progress
+            </h2>
+            <RunScore value={p.current.score} />
+          </div>
           <div className="cb-run-row">
             <Track run={p.current} label={whereLabel(p.current)} />
             <RunHearts run={p.current} />
-            <RunScore value={p.current.score} />
           </div>
           <div className="cb-run-actions">
             <button type="button" className="cb-run-btn is-primary" onClick={p.onResume}>
@@ -96,11 +100,14 @@ export function Home(p: HomeProps) {
 
       {ask === 'end' && question}
 
-      <div className="cb-run-start">
-        <button type="button" className={'cb-run-btn is-big' + (todays && !dailyRunning ? '' : ' is-primary')} onClick={() => start('daily')}>
-          {dailyRunning ? 'Resume daily run' : todays ? 'Play the daily again' : 'Start daily run'}
-        </button>
-        <button type="button" className={'cb-run-btn is-big' + (todays && !dailyRunning ? ' is-primary' : '')} onClick={() => start('free')}>
+      {/* The run in progress is resumed from its own box, so a daily run in progress has no second button here. */}
+      <div className={'cb-run-start' + (dailyRunning ? ' is-one' : '')}>
+        {!dailyRunning && (
+          <button type="button" className={'cb-run-btn is-big' + (todays || p.current ? '' : ' is-primary')} onClick={() => start('daily')}>
+            {todays ? 'Replay daily' : 'Start daily run'}
+          </button>
+        )}
+        <button type="button" className={'cb-run-btn is-big' + (todays && !p.current ? ' is-primary' : '')} onClick={() => start('free')}>
           Start free run
         </button>
       </div>
@@ -128,7 +135,7 @@ export function Home(p: HomeProps) {
             <dt>Runs</dt>
             <dd>
               {runs}
-              {p.stats.won > 0 && <span className="cb-run-dim"> {p.stats.won} won</span>}
+              {p.stats.won > 0 && <span className="cb-run-dim"> · {p.stats.won} won</span>}
             </dd>
           </div>
         </dl>

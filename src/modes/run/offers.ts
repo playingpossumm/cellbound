@@ -5,6 +5,7 @@
 import { makeRng } from '../../engine';
 import { maxHeartsOf } from './lenses';
 import type { Category, Offer, OfferKind, RunState } from './model';
+import { placedTiers, relevance } from './placed';
 import { canOffer, isBargain, type RewardDef } from './rewards';
 import { OFFERS } from './tuning';
 
@@ -34,9 +35,11 @@ export function makeOffer(run: RunState, kind: OfferKind, pool: readonly RewardD
   const rng = makeRng(`${run.seed}:offer:${kind}:${run.slot}`);
   const cards = eligible(run, kind, pool);
   const chosen: RewardDef[] = [];
+  const placed = placedTiers(run);
   const weight = (c: RewardDef) =>
     OFFERS.rarity[c.rarity] *
     categoryWeight(c.category, run) *
+    relevance(c.tiers, placed) *
     (isBargain(c) ? OFFERS.bargain : 1) *
     (chosen.some((x) => x.category === c.category) ? OFFERS.repeat : 1);
   const draw = (list: RewardDef[]): RewardDef | undefined => {

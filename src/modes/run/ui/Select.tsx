@@ -8,7 +8,7 @@ import type { BoardResult, RunState } from '../model';
 import { bossShown, canSkip, formatScore, KIND_NAMES, resultOf, ruleOf } from '../state';
 import { COINS } from '../tuning';
 import { CheckIcon, SkipIcon, TargetIcon } from './icons';
-import { BossTag, Coins, Loadout, LoadoutActions, Page, RunHearts, RunScore, Track, whereLabel } from './parts';
+import { BossTag, Coins, hasLoadout, Loadout, LoadoutActions, Page, RunHearts, RunScore, Track, whereLabel } from './parts';
 
 export interface SelectProps {
   run: RunState;
@@ -48,8 +48,8 @@ export function Select({ run, ready, onPlay, onSkip, onRetry, onHome, onMove, on
         </div>
       </div>
 
-      {(run.lenses.length > 0 || run.items.length > 0) && (
-        <Loadout run={run} actions={(pick) => <LoadoutActions run={run} pick={pick} onMove={onMove} onUse={onUse} />} />
+      {hasLoadout(run) && (
+        <Loadout run={run} slots={run.lenses.length > 0 || run.items.length > 0} actions={(pick) => <LoadoutActions run={run} pick={pick} onMove={onMove} onUse={onUse} />} />
       )}
 
       <ol className="cb-run-boards" aria-label={`Ante ${ante}`}>
@@ -62,7 +62,7 @@ export function Select({ run, ready, onPlay, onSkip, onRetry, onHome, onMove, on
           const rule = ruleOf(run, slot);
           const coinTimes = now ? (run.next.coinTimes ?? 1) : 1;
           const minutes = Math.round(clockMs(SLOT_SPECS[slot].minutes) / 60_000);
-          const mods = now ? [run.next.fog && 'Fog', run.next.clock && 'Clock'].filter(Boolean) : [];
+          const mods = now ? [run.next.fog && 'Fog', run.next.clock && 'Clock', run.pending && 'Double or nothing'].filter(Boolean) : [];
           return (
             <li key={kind} className={`cb-run-board is-${kind}${now ? ' is-now' : ''}${r ? ' is-done' : ''}`} aria-current={now ? 'step' : undefined}>
               <span className="cb-run-board-kind">{KIND_NAMES[kind]}</span>

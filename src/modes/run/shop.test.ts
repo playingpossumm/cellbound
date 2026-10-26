@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lensById, lensPool, maxHeartsOf } from './lenses';
-import type { RunState } from './model';
+import type { BoardResult, RunState } from './model';
 import { buyItem, buyLens, canBuyLens, moveLens, openShop, priceOfItem, reroll, rerollCost, sellLens, sellValue, stockFor } from './shop';
 import { newRun } from './state';
 import { SHOP, SLOTS } from './tuning';
@@ -29,6 +29,31 @@ describe('the shop after a boss', () => {
       expect(stock.lenses).not.toContain('cage');
       expect(stock.lenses.every((id) => !lensById(id!)!.unlock)).toBe(true);
     }
+  });
+
+  it('leans on what the run has placed: Spyglass and the Pairs Spectrum turn up far more often once a pair was placed', () => {
+    const placed = (tech: BoardResult['tech']): RunState['results'] => [
+      { slot: 0, status: 'cleared', score: 1, target: 1, coins: null, heartsLost: 0, heartsAfter: 3, mistakes: 0, hintsUsed: 0, elapsedMs: 1, tech, best: null, clean: 0, rule: null },
+    ];
+    const count = (results: RunState['results']) => {
+      let spyglass = 0;
+      let pairs = 0;
+      let loupe = 0;
+      for (let k = 0; k < 600; k++) {
+        const stock = stockFor({ ...newRun(`t:lean${k}`, null, 1), results }, 1, 0, pool);
+        if (stock.lenses.includes('spyglass')) spyglass++;
+        if (stock.items.includes('spectra5')) pairs++;
+        if (stock.lenses.includes('loupe')) loupe++;
+      }
+      return { spyglass, pairs, loupe };
+    };
+    const singles = count(placed({ nakedSingle: { n: 40, points: 800, top: 40 }, hiddenSingle: { n: 5, points: 150, top: 40 } }));
+    const withPair = count(placed({ nakedSingle: { n: 40, points: 800, top: 40 }, nakedPair: { n: 2, points: 150, top: 90 } }));
+    expect(withPair.spyglass).toBeGreaterThan(singles.spyglass * 2);
+    expect(withPair.pairs).toBeGreaterThan(singles.pairs * 2);
+    // What reads singles is in full either way.
+    expect(Math.abs(withPair.loupe - singles.loupe)).toBeLessThan(120);
+    expect(singles.spyglass).toBeGreaterThan(0);
   });
 
   it('rerolls for 2 coins, then one more each time, into new stock', () => {

@@ -38,7 +38,7 @@ Every board keeps the classic rule that each row, column and box holds each digi
 
 Tap or click a cell, then a number. On a keyboard, type the digit, move with the arrow keys or WASD, and erase with Backspace, Delete or 0. N switches to notes and Shift with a digit writes a single note, Z undoes and Y redoes (Ctrl+Z and Ctrl+Y work too), H asks for a hint, P pauses and Escape clears the selection.
 
-A hint comes in three steps for the same deduction. The first shows where to look, the second names the rule that does the work, and the third places the digit and explains why. Mistake checking can be off, can show only digits that break a rule, or can mark every digit that differs from the solution. Fog and Run always check against the solution, because clearing fog and losing hearts depend on it. A Run board allows a set number of hints, shown on the hint key, and a digit a hint gives scores nothing.
+A hint comes in three steps for the same deduction. The first shows where to look, the second names the rule that does the work, and the third places the digit and explains why. Mistake checking can be off, can show only digits that break a rule, or can mark every digit that differs from the solution. Fog and Run always check against the solution, because clearing fog and losing hearts depend on it. A Run board allows a set number of hints, shown on the hint key, and a digit a hint gives scores nothing; pointing at a wrong digit costs no hint.
 
 ![A Daily on a laptop](docs/laptop.png)
 
@@ -71,6 +71,7 @@ Then open the address Vite prints. `npm run build` makes a production build in `
 - `npm run gen:daily` regenerates the stored Daily puzzles. Pass a range of months to choose them, for example `npm run gen:daily -- 2028-01 2028-12`.
 - `npm run gen:practice` regenerates the Learn practice puzzles.
 - `npm run calibrate:run` plays sample Run boards three ways and prints their scores against their targets, for tuning `src/modes/run/tuning.ts`. Pass a number of seeds to sample more, for example `npm run calibrate:run -- 12`.
+- `npm run balance:run` plays sample Run boards once with notes and once without, and prints what every lens, Spectrum and card adds to the score, and the builds a player might lean on, so the buys can be set against each other in `src/modes/run/tuning.ts`.
 
 ## How it is built
 

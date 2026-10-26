@@ -103,11 +103,13 @@ describe('the ladder of boards', () => {
     expect(play(run, 5000, 1000).results[0].coins).toEqual({ board: 3, overflow: 5, interest: 5, lenses: 0, total: 13 });
   });
 
-  it('costs a heart for a board under its target, pays interest only and offers no pick', () => {
-    const run = { ...newRun('t:miss', null, 1), coins: 10 };
+  it('costs a heart for a board under its target, pays no coins at all and offers no pick', () => {
+    const run = { ...newRun('t:miss', null, 1), coins: 10, lenses: [{ id: 'coinPrism' as const }] };
     const done = play(run, 900, 1000);
     expect(done.results[0]).toMatchObject({ status: 'missed', heartsLost: 1, heartsAfter: 2 });
-    expect(done.results[0].coins).toEqual({ board: 0, overflow: 0, interest: 2, lenses: 0, total: 2 });
+    // Not the interest on 10 coins, and not what a held lens pays: only a cleared board is cashed out.
+    expect(done.results[0].coins).toEqual({ board: 0, overflow: 0, interest: 0, lenses: 0, total: 0 });
+    expect(done.coins).toBe(10);
     expect(done.hearts).toBe(2);
     const next = leaveTally(done, rewards, lenses);
     expect(next).toMatchObject({ phase: 'select', slot: 1 });

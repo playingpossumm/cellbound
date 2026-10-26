@@ -7,7 +7,7 @@ import { generateAsync } from '../../engine/client';
 import { tierProfileAsync, type TierProfile } from '../../engine/techniques';
 import type { FogSpec, GeneratedPuzzle, GenerateOptions, Puzzle, PuzzleShape } from '../../engine/types';
 import { optionsFor } from './boards';
-import { pickFishBoard, thiefCells } from './bosses';
+import { pickFishBoard, pickThiefCells } from './bosses';
 import type { RunState } from './model';
 import { ruleOf } from './state';
 import { targetFor } from './targets';
@@ -89,7 +89,7 @@ export function prepareBoard(run: Pick<RunState, 'seed' | 'bosses'>, slot: numbe
       puzzle = await load(options);
       profile = await profileOf(puzzle);
     }
-    const stolen = rule === 'thief' ? thiefCells(puzzle, undefined, deps.isUnique) : [];
+    const stolen = rule === 'thief' ? await pickThiefCells(puzzle, profileOf, deps.isUnique) : [];
     return { slot, puzzle, profile, target: targetFor(slot, profile), stolen };
   })();
   if (!deps.gen && !deps.profileOf && !deps.isUnique) {

@@ -49,6 +49,8 @@ export interface GameViewProps {
   chipsLead?: ReactNode;
   /** Laid over the board without taking input, for example the Run's placement popups. */
   boardOverlay?: ReactNode;
+  /** Hides the clock on a board with no time limit, for a mode whose score ignores time (a Run). */
+  quietClock?: boolean;
   /** A mode's own line for the message panel, with an optional action, shown like a rule's text. */
   note?: GameNote | null;
   /** Called when the message panel moves on from the note (another chip, Escape). */
@@ -181,6 +183,7 @@ export function GameView({
   band,
   chipsLead,
   boardOverlay,
+  quietClock,
   note,
   onNoteDismiss,
 }: GameViewProps) {
@@ -244,7 +247,7 @@ export function GameView({
   const highlights = settings.highlights && !game.mods?.noHighlights;
   // Boards with a time limit count down; everything else counts up.
   const limit = game.mods?.timeLimitMs;
-  const time = settings.hideTimer && limit === undefined ? '' : formatTime(limit !== undefined ? Math.max(0, limit - game.elapsedMs) : game.elapsedMs);
+  const time = (settings.hideTimer || quietClock) && limit === undefined ? '' : formatTime(limit !== undefined ? Math.max(0, limit - game.elapsedMs) : game.elapsedMs);
   const ended = game.status === 'solved' || game.status === 'failed';
   const paused = game.status === 'paused';
 

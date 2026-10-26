@@ -635,9 +635,17 @@ export const actions = {
     let counted = g.hintsUsed;
     let helped = g.helped;
     if (!current) {
+      const wrong = wrongCells(g);
+      // A board with a set number of hints (a Run) marks a wrong digit the moment it goes in, and it
+      // has cost its heart already, so pointing at it spends no hint and starts no ladder.
+      if (g.mods?.hints !== undefined && wrong.length) {
+        const step: HintStep = { level: 2, focus: wrong, rule: 'cell', text: 'The glowing cells hold digits that do not fit.' };
+        ladder = null;
+        useFx.setState({ hint: step });
+        return step;
+      }
       // A board with a set number of hints gives no new one once they are used.
       if (g.mods?.hints !== undefined && g.hintsUsed >= g.mods.hints) return null;
-      const wrong = wrongCells(g);
       let steps: HintStep[] | null = null;
       if (wrong.length) steps = mistakeSteps(g, wrong);
       else {

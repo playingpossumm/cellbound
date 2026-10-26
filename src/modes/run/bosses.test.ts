@@ -5,7 +5,7 @@ import type { GeneratedPuzzle, GenerateOptions } from '../../engine/types';
 import { LYRA } from '../../engine/fixtures';
 import { optionsFor } from './boards';
 import { prepareBoard } from './board';
-import { bossText, BOSS_RULES, clockMs, fishIn, pickFishBoard, returning, thiefCells, withStolen } from './bosses';
+import { bossText, BOSS_RULES, clockMs, fishIn, pickFishBoard, pickThiefCells, returning, thiefCells, withStolen } from './bosses';
 import { BOSS } from './tuning';
 
 const profile = (expert: number[]): TierProfile => ({ typical: [0, 30, 10, 5, 0, 0, 0, 0, 0], expert });
@@ -90,6 +90,61 @@ describe('Thief hides givens', () => {
     expect(returning(6, [5, 20], 4)).toEqual([5]);
     expect(returning(6, [5, 20], 14)).toEqual([20]);
     expect(returning(6, [5, 20], 0)).toEqual([]);
+  });
+});
+
+describe('Thief never forces a guess', () => {
+  const calm = profile([0, 20, 10, 5, 2, 1, 0, 0, 0]);
+  const typicalGuess: TierProfile = { typical: [2, 28, 10, 5, 0, 0, 0, 0, 0], expert: calm.expert };
+  const expertGuess: TierProfile = { typical: calm.typical, expert: [1, 19, 10, 5, 2, 1, 0, 0, 0] };
+
+  it('takes the first set when both simulated players solve its board by logic', async () => {
+    const asked: number[][] = [];
+    const cells = await pickThiefCells(LYRA, (p) => (asked.push(p.givens.slice()), calm));
+    expect(cells).toEqual(thiefCells(LYRA, BOSS.thief));
+    // The profile is read on the board as it is played, the hidden givens out.
+    expect(asked).toHaveLength(1);
+    for (const c of cells) expect(asked[0][c]).toBe(0);
+  });
+
+  it('deals another order when a set needs a guess, for the typical player or the expert', async () => {
+    for (const bad of [typicalGuess, expertGuess]) {
+      let calls = 0;
+      const cells = await pickThiefCells(LYRA, () => (calls++ === 0 ? bad : calm));
+      expect(calls).toBe(2);
+      expect(cells).toEqual(thiefCells(LYRA, BOSS.thief, undefined, 1));
+      expect(cells).not.toEqual(thiefCells(LYRA, BOSS.thief));
+    }
+  });
+
+  it('hides fewer givens when no order of the full count will do, and none when no board will', async () => {
+    // Only a board with at most two hidden givens is solvable here.
+    const cells = await pickThiefCells(LYRA, (p) => (p.givens.filter(Boolean).length >= LYRA.givens.filter(Boolean).length - 2 ? calm : typicalGuess));
+    expect(cells.length).toBeGreaterThan(0);
+    expect(cells.length).toBeLessThanOrEqual(2);
+    expect(await pickThiefCells(LYRA, () => typicalGuess)).toEqual([]);
+  });
+
+  it('keeps the first set when a profile cannot be read', async () => {
+    const cells = await pickThiefCells(LYRA, () => {
+      throw new Error('no worker');
+    });
+    expect(cells).toEqual(thiefCells(LYRA, BOSS.thief));
+  });
+
+  it('is what a prepared Thief board hides: the first set was a guess, so it hides fewer', async () => {
+    const run = { seed: 't:thief', bosses: ['thief', 'mute', 'clock'] as ('thief' | 'mute' | 'clock')[] };
+    let seen = 0;
+    // The board's own profile first, then the boards with givens hidden: the first of those needs a guess.
+    const profileOf = (p: { id: string }) => (p.id.endsWith('-thief') && seen++ === 0 ? typicalGuess : calm);
+    const p = await prepareBoard(run, 2, { gen: fakeGen, profileOf });
+    const seed = optionsFor(run.seed, 2).seed;
+    const board = { ...LYRA, id: seed, seed };
+    // Every order takes the same givens on this small board, so the next try hides fewer of them.
+    const first = thiefCells(board, BOSS.thief);
+    expect(p.stolen.length).toBeGreaterThan(0);
+    expect(p.stolen.length).toBeLessThan(first.length);
+    expect(first).toEqual(expect.arrayContaining(p.stolen));
   });
 });
 

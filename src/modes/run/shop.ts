@@ -6,6 +6,7 @@ import { anteOf } from './boards';
 import { ITEMS, type ItemDef } from './items';
 import { lensById, maxHeartsOf, sellPrice, type LensDef } from './lenses';
 import type { ItemId, LensId, RunState, ShopState } from './model';
+import { placedTiers, relevance } from './placed';
 import { OFFERS, SHOP, SLOTS } from './tuning';
 
 /** How often each consumable turns up: low-tier Spectra most, then the inks, then high tiers. */
@@ -34,13 +35,17 @@ function drawDistinct<T>(rng: () => number, list: readonly T[], weight: (x: T) =
   return out;
 }
 
-/** The stock for a shop visit and reroll count. Lenses already held are never on sale. */
+/**
+ * The stock for a shop visit and reroll count. Lenses already held are never on sale, and what
+ * reads a technique the run has never placed turns up less often (placed.ts).
+ */
 export function stockFor(run: RunState, ante: number, rerolls: number, pool: readonly LensDef[]): Pick<ShopState, 'lenses' | 'items'> {
   const rng = makeRng(`${run.seed}:shop:${ante}:${rerolls}`);
   const held = new Set(run.lenses.map((l) => l.id));
   const lenses = pool.filter((l) => !held.has(l.id)).sort((a, b) => (a.id < b.id ? -1 : 1));
-  const pickedLenses = drawDistinct(rng, lenses, (l) => OFFERS.rarity[l.rarity], SHOP.lenses).map((l) => l.id);
-  const items = drawDistinct(rng, ITEMS, itemWeight, SHOP.items).map((i) => i.id);
+  const placed = placedTiers(run);
+  const pickedLenses = drawDistinct(rng, lenses, (l) => OFFERS.rarity[l.rarity] * relevance(l.tiers, placed), SHOP.lenses).map((l) => l.id);
+  const items = drawDistinct(rng, ITEMS, (i) => itemWeight(i) * relevance(i.tier ? [i.tier] : undefined, placed), SHOP.items).map((i) => i.id);
   return { lenses: pickedLenses, items };
 }
 

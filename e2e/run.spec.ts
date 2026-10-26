@@ -168,9 +168,11 @@ test('a board left mid-way resumes where it was', async ({ page }) => {
   expect(kept).toBe(true);
 });
 
-test('the shop buys and sells lenses, rerolls, and leads to the next ante', async ({ page }) => {
+test('the shop buys and sells lenses, rerolls, and leads to the next ante', async ({ page }, info) => {
+  // A short phone, where the shop is taller than the screen.
+  if (info.project.metadata.form === 'phone') await page.setViewportSize({ width: 390, height: 640 });
   const shop = { ante: 1, rerolls: 0, lenses: ['loupe', 'spyglass'], items: ['spectra1', 'inkHint'] };
-  await openRunWith(page, { v: 2, current: savedRun({ phase: 'shop', slot: 2, coins: 20, shop }), last: null, stats: {} });
+  await openRunWith(page, { v: 2, current: savedRun({ phase: 'shop', slot: 2, coins: 20, shop, perks: { secondWind: 1, sharpEye: 1 } }), last: null, stats: {} });
   await page.getByRole('button', { name: 'Resume run' }).click();
   await expect(page.locator('.cb-run-title')).toHaveText('Shop');
   await page.getByRole('button', { name: 'Buy Loupe for 4 coins' }).click();
@@ -179,6 +181,15 @@ test('the shop buys and sells lenses, rerolls, and leads to the next ante', asyn
   await page.getByRole('button', { name: 'Buy Singles Spectrum for 3 coins' }).click();
   await page.locator('.cb-run-loadout .cb-run-lens').first().click();
   await expect(page.locator('.cb-run-detail')).toContainText('Loupe');
+  // The shop can be taller than the screen: the words and the Sell button come into view.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const r = document.querySelector('.cb-run-detail')!.getBoundingClientRect();
+        return r.top >= 0 && r.bottom <= window.innerHeight + 1;
+      }),
+    )
+    .toBe(true);
   await shot(page, 'run-shop');
   await page.getByRole('button', { name: 'Sell for 2 coins' }).click();
   await expect(page.locator('.cb-run-loadout .cb-run-lens')).toHaveCount(0);
@@ -227,6 +238,77 @@ test('the board, its band and its lenses fit the screen without scrolling', asyn
   const lens = (await page.locator('.cb-run-tiles.is-board .cb-run-lens').first().boundingBox())!;
   expect(lens.width).toBeGreaterThanOrEqual(44);
   await shot(page, 'run-board');
+});
+
+test('a phone held sideways draws the Run band at 60 percent beside the board, as the plain band is', async ({ page }, info) => {
+  test.skip(info.project.metadata.form !== 'phone');
+  await page.setViewportSize({ width: 844, height: 390 });
+  await openRunWith(page, { v: 2, current: savedRun(), last: null, stats: {} });
+  await page.getByRole('button', { name: 'Resume run' }).click();
+  await playWhenReady(page);
+  await page.evaluate(() => document.fonts.ready);
+  // The band is 104 px high at full size and about 62 px at 60 percent.
+  const band = (await page.locator('.cb-band-wrap').boundingBox())!;
+  expect(band.height).toBeLessThanOrEqual(70);
+  const board = (await page.locator('.cb-board').boundingBox())!;
+  const pad = (await page.locator('.cb-pad').boundingBox())!;
+  expect(pad.x).toBeGreaterThan(board.x + board.width);
+  expect(pad.y + pad.height).toBeLessThanOrEqual(390);
+});
+
+test('placements made close together get popups that never print over each other, and the board needs no clock', async ({ page }) => {
+  await openRunWith(page, { v: 2, current: savedRun(), last: null, stats: {} });
+  await page.getByRole('button', { name: 'Resume run' }).click();
+  await playWhenReady(page);
+  // No time limit, and a Run's score ignores time: no clock in the bar.
+  await expect(page.locator('.cb-timer')).toHaveCount(0);
+  // Six digits that logic proves, a few milliseconds apart, as a quick player would make them.
+  await page.evaluate(async () => {
+    const { actions, getGame, candidates } = (window as unknown as { __cellbound: Hook }).__cellbound;
+    for (let k = 0; k < 6; k++) {
+      const g = getGame()!;
+      const grid = g.puzzle.givens.map((d, i) => d || (g.values[i] === g.puzzle.solution[i] ? g.values[i] : 0));
+      const cands = candidates(g.puzzle, grid);
+      const pick = grid.findIndex((_, i) => !grid[i] && cands[i] && (cands[i] & (cands[i] - 1)) === 0);
+      if (pick < 0) return;
+      actions.select(pick);
+      actions.input(g.puzzle.solution[pick]);
+      await new Promise((r) => setTimeout(r, 25));
+    }
+  });
+  await expect.poll(() => page.locator('.cb-run-pop').count(), { timeout: 15_000 }).toBeGreaterThanOrEqual(3);
+  const boxes = await page.evaluate(() => {
+    const board = document.querySelector('.cb-board-wrap')!.getBoundingClientRect();
+    const rect = (e: Element) => {
+      const r = e.getBoundingClientRect();
+      return { x: r.left, y: r.top, w: r.width, h: r.height };
+    };
+    return { board: { x: board.left, y: board.top, w: board.width, h: board.height }, pops: [...document.querySelectorAll('.cb-run-pop')].map(rect) };
+  });
+  const over = (a: { x: number; y: number; w: number; h: number }, b: typeof a) => a.x < b.x + b.w - 1 && b.x < a.x + a.w - 1 && a.y < b.y + b.h - 1 && b.y < a.y + a.h - 1;
+  boxes.pops.forEach((a, i) => {
+    // On the board, and clear of every other popup showing.
+    expect(a.x).toBeGreaterThanOrEqual(boxes.board.x - 1);
+    expect(a.y).toBeGreaterThanOrEqual(boxes.board.y - 1);
+    expect(a.x + a.w).toBeLessThanOrEqual(boxes.board.x + boxes.board.w + 1);
+    expect(a.y + a.h).toBeLessThanOrEqual(boxes.board.y + boxes.board.h + 1);
+    boxes.pops.slice(i + 1).forEach((b) => expect(over(a, b), JSON.stringify([a, b, boxes.board])).toBe(false));
+  });
+  await shot(page, 'run-popups');
+});
+
+test('the cards a run holds show by name, with their counts, and say what they do when picked', async ({ page }) => {
+  const held = savedRun({ perks: { prismShard: 2, peek: 1, lifeLink: 1 } });
+  await openRunWith(page, { v: 2, current: held, last: null, stats: {} });
+  await page.getByRole('button', { name: 'Resume run' }).click();
+  const pills = page.locator('.cb-run-perk');
+  await expect(pills).toHaveCount(3);
+  await expect(pills.nth(2)).toHaveText('Prism Shard×2');
+  expect((await pills.first().boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await pills.nth(2).click();
+  await expect(page.locator('.cb-run-detail')).toContainText('on all scoring');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+  await shot(page, 'run-cards');
 });
 
 test('a run of the first Run is not resumed, its save is left alone, and its runs still count', async ({ page }) => {

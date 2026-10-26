@@ -1,8 +1,10 @@
 // Async front door for heavy engine work. Jobs run on module Web Workers
 // with request ids: one worker makes boards (and their tier profiles), a
 // second classifies placements, so a placement never waits behind a board
-// being made. Without Worker (node, tests) a job runs inline.
-import { runJob, type Job } from './jobs';
+// being made. Without Worker (node, tests) a job runs inline, and the
+// detector behind it loads only then: this file is in the first paint, and
+// the worker path never needs the detector on the main thread.
+import type { Job } from './jobs';
 import type { Classified, Profile } from './ladder';
 import type { Digit, GeneratedPuzzle, GenerateOptions, Puzzle } from './types';
 
@@ -16,6 +18,14 @@ interface WorkerReply {
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; job: Job };
 
 let nextId = 1;
+
+const failure = (err: unknown): Error => (err instanceof Error ? err : new Error(String(err)));
+
+/** Runs a job on this thread. The jobs module, with the detector in it, is fetched on first use. */
+async function runInline(job: Job): Promise<unknown> {
+  const { runJob } = await import('./jobs');
+  return runJob(job);
+}
 
 class Lane {
   private worker: Worker | null = null;
@@ -46,13 +56,7 @@ class Lane {
       this.worker = null;
       const jobs = [...this.pending.values()];
       this.pending.clear();
-      for (const job of jobs) {
-        try {
-          job.resolve(runJob(job.job));
-        } catch (err) {
-          job.reject(err instanceof Error ? err : new Error(String(err)));
-        }
-      }
+      for (const job of jobs) runInline(job.job).then(job.resolve, (err) => job.reject(failure(err)));
     };
     this.worker = w;
     return w;
@@ -60,13 +64,7 @@ class Lane {
 
   run<T>(job: Job): Promise<T> {
     const w = this.get();
-    if (!w) {
-      try {
-        return Promise.resolve(runJob(job) as T);
-      } catch (err) {
-        return Promise.reject(err instanceof Error ? err : new Error(String(err)));
-      }
-    }
+    if (!w) return runInline(job).then((v) => v as T, (err) => Promise.reject(failure(err)));
     const id = nextId++;
     return new Promise<T>((resolve, reject) => {
       this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, job });

@@ -150,12 +150,17 @@ export interface BoardEnd {
   timedOut: boolean;
 }
 
-/** Coins a played board pays: its own coins and the overflow when cleared, interest and lens coins either way. */
+/**
+ * Coins a board pays when it is cashed out: its own coins, the overflow, interest and what the
+ * lenses pay. Only a cleared board is cashed out, as a skipped one is not: a missed board pays
+ * nothing at all.
+ */
 export function cashOut(run: RunState, live: LiveBoard, cleared: boolean, hintsLeft: number): CashOut {
+  if (!cleared) return { board: 0, overflow: 0, interest: 0, lenses: 0, total: 0 };
   const times = live.coinTimes;
-  const board = cleared ? COINS.board[kindOf(live.slot)] * times : 0;
+  const board = COINS.board[kindOf(live.slot)] * times;
   const over = live.target > 0 ? Math.floor((live.score - live.target) / (live.target * COINS.overflowStep) + 1e-9) : 0;
-  const overflow = cleared ? Math.max(0, Math.min(COINS.overflowMax, over)) * times : 0;
+  const overflow = Math.max(0, Math.min(COINS.overflowMax, over)) * times;
   const interest = Math.min(COINS.interestMax, Math.floor(run.coins / COINS.interestPer));
   let lenses = 0;
   run.lenses.forEach((_, k) => {

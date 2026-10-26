@@ -56,6 +56,8 @@ export interface PlacementScore {
   mult: number;
   /** The flow this placement scored at. */
   flow: number;
+  /** What its clean units multiplied the mult by: 1 when none was clean. */
+  clean: number;
   /** Points added after chips times mult (Expert Pay). */
   flat: number;
   /** Lens slots that fired, in slot order. */
@@ -85,7 +87,7 @@ function round2(x: number): number {
   return Math.round(x * 100) / 100;
 }
 
-const nothing = (next: Streak): PlacementScore => ({ points: 0, chips: 0, mult: 0, flow: 1, flat: 0, fired: [], next });
+const nothing = (next: Streak): PlacementScore => ({ points: 0, chips: 0, mult: 0, flow: 1, clean: 1, flat: 0, fired: [], next });
 
 export function scorePlacement(f: PlacementFacts, s: ScoreSetup, at: Streak): PlacementScore {
   if (f.source === 'reveal') return nothing(at);
@@ -95,7 +97,8 @@ export function scorePlacement(f: PlacementFacts, s: ScoreSetup, at: Streak): Pl
   let mult = 1 + f.units + f.clues.length;
   const flow = flowOf(at.streak, s);
   mult *= flow;
-  mult *= (perk(s, 'cleanSweep') ? CLEAN.sweep : CLEAN.mult) ** f.clean;
+  const clean = (perk(s, 'cleanSweep') ? CLEAN.sweep : CLEAN.mult) ** f.clean;
+  mult *= clean;
   if (perk(s, 'fishbowl') && (f.tier === 6 || f.tier === 7)) mult *= REWARD.fishbowl;
   if (s.rule === 'fish' && f.tier >= BOSS.fishTier) mult *= BOSS.fishMult;
   const chain = perk(s, 'cascade') && f.inLine ? at.chain + 1 : 0;
@@ -127,5 +130,5 @@ export function scorePlacement(f: PlacementFacts, s: ScoreSetup, at: Streak): Pl
 
   const flat = f.tier >= REWARD.expertTier ? REWARD.expertPay * perk(s, 'expertPay') : 0;
   mult = round2(mult);
-  return { points: Math.round(chips * mult) + flat, chips, mult, flow, flat, fired, next: { streak: at.streak + 1, chain } };
+  return { points: Math.round(chips * mult) + flat, chips, mult, flow, clean: round2(clean), flat, fired, next: { streak: at.streak + 1, chain } };
 }

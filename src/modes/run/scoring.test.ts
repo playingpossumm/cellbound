@@ -37,10 +37,10 @@ describe('a placement scores chips times mult', () => {
     }
   });
 
-  it('adds the Spectra levels of the tier: 10 a level for tiers 1 to 3, 25 for 4 and 5, 50 for 6 to 8', () => {
-    expect(SPECTRA_CHIPS.slice(1)).toEqual([10, 10, 10, 25, 25, 50, 50, 50]);
+  it('adds the Spectra levels of the tier: 3 a level for singles, 10 for tiers 2 and 3, 25 for 4 and 5, 50 for 6 to 8', () => {
+    expect(SPECTRA_CHIPS.slice(1)).toEqual([3, 10, 10, 25, 25, 50, 50, 50]);
     const levels = [0, 2, 0, 0, 1, 0, 3, 0, 0];
-    expect(chipsFor(1, levels)).toBe(30);
+    expect(chipsFor(1, levels)).toBe(16);
     expect(chipsFor(4, levels)).toBe(75);
     expect(chipsFor(6, levels)).toBe(300);
     expect(scorePlacement(facts({ tier: 4 }), setup({ levels }), fresh).points).toBe(75);
@@ -111,7 +111,7 @@ describe('perks and the boss rule', () => {
 
   it('Prism Shards and Glass Hearts multiply all scoring and add up', () => {
     expect(allScoringOf({ prismShard: 2 })).toBe(1.4);
-    expect(allScoringOf({ prismShard: 1, glassHeart: 1 })).toBe(2.2);
+    expect(allScoringOf({ prismShard: 1, glassHeart: 1 })).toBe(1.8);
     expect(scorePlacement(facts({ tier: 3 }), setup({ perks: { prismShard: 3 } }), fresh).points).toBe(48);
   });
 

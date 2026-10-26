@@ -108,17 +108,18 @@ export async function pickFishBoard(
 const unique = (shape: PuzzleShape) => countSolutions(shape, 2) === 1;
 
 /**
- * Thief's hidden givens: up to `count` of them, in an order fixed by the board, at least
- * BOSS.thiefSpacing cells apart, each taken only if the board still has a single solution
- * without it.
+ * Thief's hidden givens: up to `count` of them, in an order fixed by the board (and by `salt`, which
+ * deals another order when the first would not do), at least BOSS.thiefSpacing cells apart, each
+ * taken only if the board still has a single solution without it.
  */
-export function thiefCells(p: Puzzle, count: number = BOSS.thief, isUnique: (shape: PuzzleShape) => boolean = unique): CellIndex[] {
+export function thiefCells(p: Puzzle, count: number = BOSS.thief, isUnique: (shape: PuzzleShape) => boolean = unique, salt = 0): CellIndex[] {
   const n = p.size;
   const far = (a: number, b: number) => Math.max(Math.abs(Math.floor(a / n) - Math.floor(b / n)), Math.abs((a % n) - (b % n))) >= BOSS.thiefSpacing;
+  const tag = salt ? `thief${salt}` : 'thief';
   const order = p.givens
     .map((d, i) => (d ? i : -1))
     .filter((i) => i >= 0)
-    .sort((a, b) => hashString(`${p.seed}:thief:${a}`) - hashString(`${p.seed}:thief:${b}`));
+    .sort((a, b) => hashString(`${p.seed}:${tag}:${a}`) - hashString(`${p.seed}:${tag}:${b}`));
   const taken: CellIndex[] = [];
   const givens = p.givens.slice();
   for (const c of order) {
@@ -129,6 +130,42 @@ export function thiefCells(p: Puzzle, count: number = BOSS.thief, isUnique: (sha
     else givens[c] = p.givens[c];
   }
   return taken.sort((a, b) => a - b);
+}
+
+/**
+ * Thief's givens for a board, chosen so the rule never forces a guess. Unique is not enough: with six
+ * givens gone, about one board in four needed a step that nothing in the technique ladder proves for
+ * the simulated typical or expert player, and a hidden given only comes back once a cell next to it
+ * is solved. So the first set in the board's fixed order whose board both players still solve by
+ * logic is taken; another order is dealt (BOSS.thiefTries of them) before fewer givens are hidden.
+ * Whatever a game plays out can only be easier than that, because every returning given is one
+ * more correct digit and a proven cell stays proven. Deterministic, so a daily run hides the same
+ * cells for everyone. When the profile cannot be read the first set stands.
+ */
+export async function pickThiefCells(
+  p: Puzzle,
+  profileOf: (p: Puzzle) => TierProfile | Promise<TierProfile> = tierProfileAsync,
+  isUnique: (shape: PuzzleShape) => boolean = unique,
+): Promise<CellIndex[]> {
+  const seen = new Set<string>();
+  for (let count = BOSS.thief; count >= 1; count--) {
+    for (let salt = 0; salt < BOSS.thiefTries; salt++) {
+      const cells = thiefCells(p, count, isUnique, salt);
+      if (!cells.length) break;
+      const key = cells.join(',');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      let guesses: number;
+      try {
+        const pr = await profileOf(withStolen(p, cells));
+        guesses = pr.typical[0] + pr.expert[0];
+      } catch {
+        return cells;
+      }
+      if (guesses === 0) return cells;
+    }
+  }
+  return [];
 }
 
 /** The board as Thief deals it: the hidden givens taken out. */

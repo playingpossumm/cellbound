@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { generateAsync } from './client';
 import { ALL_KINDS } from './generator';
@@ -11,5 +12,12 @@ describe('client', () => {
     expect(a).toEqual(generate(opts));
     expect(a.fog).toBeDefined();
     expect(b.seed).toBe('client-2');
+  });
+
+  it('fetches the detector only when a job runs inline, so the first paint does not carry it', () => {
+    const src = readFileSync(new URL('./client.ts', import.meta.url), 'utf8');
+    // Types only: a value import of the jobs or the ladder would put the detector in the main bundle.
+    expect(src).not.toMatch(/^import\s+(?!type\b)[^;]*from\s+'\.\/(jobs|ladder|patterns|index)'/m);
+    expect(src).toContain("import('./jobs')");
   });
 });
