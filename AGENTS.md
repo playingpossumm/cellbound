@@ -25,6 +25,11 @@ Run the unit tests, typecheck, build and e2e before calling a change done.
 | `scripts` | Puzzle generation for Dailies and lessons. |
 | `e2e` | Browser tests. |
 
+## Technique ladder
+
+- `classifyPlacement` (`src/engine/techniques.ts`, built in `ladder.ts` and `patterns.ts`) closes the board before a placement at tier 1, then 2 and so on up to 7, and reports the first tier that leaves the cell with only that digit, with the last deduction of that tier as the technique. Tiers 1 to 3 run as a cascade (singles, hidden singles, one clue at a time); tiers 4 to 7 apply one pattern at a time, cheapest first. Tier 8 must prove the cell itself, with nothing cascading after it: one chain (at most 9 links) leaves the cell with only its digit, or one forcing chain does (a cell with two or three candidates, each of which within 5 rounds of propagation breaks a rule or puts the digit there); the limits are `TIER8`. Anything else is a guess, tier 0. `tierProfile` plays the board with the same ladder. The UI calls the async forms, which run on their own worker.
+- Run scores and targets follow it: changing a detector, the order they are tried or the `TIER8` limits changes how placements score, so keep `techniques.test.ts` and its fixtures passing (they check that logical play never needs a guess and that proven cells stay proven). It reads boards only and never changes Dailies or generation.
+
 ## Rules
 
 - Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.

@@ -1,10 +1,10 @@
-// Module worker that runs generation off the main thread.
-import { generate } from './index';
-import type { GenerateOptions } from './types';
+// Module worker that runs engine jobs (generation, placement classification,
+// tier profiles) off the main thread.
+import { runJob, type Job } from './jobs';
 
 export interface WorkerRequest {
   id: number;
-  opts: GenerateOptions;
+  job: Job;
 }
 
 const ctx = self as unknown as {
@@ -13,9 +13,9 @@ const ctx = self as unknown as {
 };
 
 ctx.onmessage = (e) => {
-  const { id, opts } = e.data;
+  const { id, job } = e.data;
   try {
-    ctx.postMessage({ id, ok: true, puzzle: generate(opts) });
+    ctx.postMessage({ id, ok: true, value: runJob(job) });
   } catch (err) {
     ctx.postMessage({ id, ok: false, error: err instanceof Error ? err.message : String(err) });
   }
