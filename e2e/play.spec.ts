@@ -118,27 +118,21 @@ test('settings persist and apply', async ({ page }) => {
   await expect(page.locator('.cb-band-wrap')).not.toContainText(/\d:\d\d/);
 });
 
-test('the time shows once in every theme', async ({ page }) => {
+test('the time shows once', async ({ page }) => {
   await openFresh(page);
-  for (const theme of ['Prism', 'Letters in space']) {
-    await openScreen(page, 'Settings');
-    await page.getByRole('radio', { name: new RegExp(`^${theme}`) }).check();
-    await openScreen(page, 'Daily');
-    await expect(page.locator('.cb-board')).toBeVisible();
-    // Every visible text node that looks like a clock.
-    const clocks = await page.evaluate(() => {
-      const out: string[] = [];
-      const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
-        const el = n.parentElement;
-        if (!el || !/^\s*\d+:\d\d\s*$/.test(n.textContent ?? '')) continue;
-        const box = el.getBoundingClientRect();
-        if (box.width > 2 && box.height > 2 && getComputedStyle(el).visibility !== 'hidden') out.push(n.textContent!.trim());
-      }
-      return out;
-    });
-    expect(clocks, theme).toHaveLength(1);
-  }
+  // Every visible text node that looks like a clock.
+  const clocks = await page.evaluate(() => {
+    const out: string[] = [];
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const el = n.parentElement;
+      if (!el || !/^\s*\d+:\d\d\s*$/.test(n.textContent ?? '')) continue;
+      const box = el.getBoundingClientRect();
+      if (box.width > 2 && box.height > 2 && getComputedStyle(el).visibility !== 'hidden') out.push(n.textContent!.trim());
+    }
+    return out;
+  });
+  expect(clocks).toHaveLength(1);
 });
 
 test('free play starts a board and shares a challenge link', async ({ page }) => {

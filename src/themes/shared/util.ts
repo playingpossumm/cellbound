@@ -134,17 +134,3 @@ export function cellsOutline(cells: number[], n: number, u: number, inset: numbe
     .map((l) => polyline(l, true))
     .join('');
 }
-
-/** Drop points that sit on a straight run, so a chain of letters is spaced as one line. */
-export function simplify(pts: Pt[]): Pt[] {
-  const out: Pt[] = [];
-  for (let i = 0; i < pts.length; i++) {
-    if (i > 0 && i < pts.length - 1) {
-      const [ax, ay] = unit(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-      const [bx, by] = unit(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
-      if (Math.abs(ax - bx) < 1e-6 && Math.abs(ay - by) < 1e-6) continue;
-    }
-    out.push(pts[i]);
-  }
-  return out;
-}

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// The board: fog hides givens and clues, and a look can replace its layers.
+// The board: fog hides givens and clues, finished boxes are marked, and a look can draw its own clues.
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -84,26 +84,22 @@ describe('board under fog', () => {
   });
 });
 
-describe('layers a look can replace', () => {
-  // No look replaces the grid or draws over finished boxes today; the hooks stay for the next one.
-  const custom = {
-    ...plain,
-    GridLayer: () => <path className="t-grid" />,
-    BoxDoneLayer: ({ done }: { done: number[] }) => <span className="t-done">{done.join(',')}</span>,
-  } as ThemeDef;
-
-  it("draws the default grid, and a look's own grid in its place", async () => {
-    let el = await render(props(LYRA));
+describe('grid, finished boxes and clue layers', () => {
+  it('draws the box lines and the frame', async () => {
+    const el = await render(props(LYRA));
     expect(el.querySelector('.cb-grid .cb-thick')).not.toBeNull();
-    el.remove();
-    el = await render(props(LYRA, undefined, custom));
-    expect(el.querySelector('.cb-grid .t-grid')).not.toBeNull();
-    expect(el.querySelector('.cb-grid .cb-thick')).toBeNull();
+    expect(el.querySelector('.cb-grid .cb-frame')).not.toBeNull();
   });
 
-  it('marks the cells of finished boxes and hands the boxes to the look', async () => {
-    const el = await render({ ...props(LYRA, undefined, custom), doneBoxes: [0, 5] });
-    expect(el.querySelector('.cb-over .t-done')?.textContent).toBe('0,5');
+  it("draws a look's own clue layer in place of the default one", async () => {
+    const own = { ...plain, ClueLayer: () => <g className="t-clues" /> } as ThemeDef;
+    const el = await render(props(LYRA, undefined, own));
+    expect(el.querySelector('.cb-clues .t-clues')).not.toBeNull();
+    expect(el.querySelectorAll('.cb-clue')).toHaveLength(0);
+  });
+
+  it('marks the cells of finished boxes', async () => {
+    const el = await render({ ...props(LYRA), doneBoxes: [0, 5] });
     // Box 0 of a 6x6 is the top left three by two; cell 0 is in it, cell 3 is not.
     const cells = el.querySelectorAll('.cb-cell');
     expect(cells[0].classList.contains('box-done')).toBe(true);

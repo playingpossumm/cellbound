@@ -125,7 +125,7 @@ for (const [w, h] of [
     await openFresh(page);
     const sideways = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(sideways).toBe(false);
-    // The cell's share of the board: some looks inset each cell's tile inside it.
+    // The cell's share of the board: Prism insets each cell's tile inside it.
     const board = await page.locator('.cb-board-wrap').boundingBox();
     const n = await boardSize(page);
     // A 9x9 on a small 360x640 phone gives up a little width so its pad fits, and keeps 34 px cells.

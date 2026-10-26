@@ -53,7 +53,7 @@ function ClueLayer(props: ClueLayerProps): ReactNode {
 export const prism: ThemeDef = {
   id: 'prism',
   name: 'Prism',
-  blurb: 'Dark glass cells and one spectrum colour for every digit.',
+  blurb: 'Glass cells and one spectrum colour for every digit, in light and dark.',
   defaultNight: true,
   bandShowsTitle: true,
   loadFonts: () => Promise.all([import('@fontsource-variable/sora/index.css')]),

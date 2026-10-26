@@ -1,12 +1,13 @@
-// Default grid and clue layers. They render SVG children; the Board wraps them
-// in svg.cb-grid and svg.cb-clues with viewBox 0 0 px px. Themes may replace
-// either layer with their own component, drawn inside the same wrapper.
+// The grid layer and the default clue layer. They render SVG children; the Board
+// wraps them in svg.cb-grid and svg.cb-clues with viewBox 0 0 px px. Themes style
+// the grid with CSS, and may replace the clue layer with their own component,
+// drawn inside the same wrapper.
 import type { ReactNode } from 'react';
 import type { Clue } from '../engine/types';
 import type { BoardGeometry, ClueLayerProps } from '../themes/types';
 import { arrowPaths, cagePath, edgeMid, gridPaths, linePath } from './geometry';
 
-export function DefaultGridLayer({ geo }: { geo: BoardGeometry }) {
+export function GridLayer({ geo }: { geo: BoardGeometry }) {
   const { thin, thick } = gridPaths(geo);
   return (
     <>

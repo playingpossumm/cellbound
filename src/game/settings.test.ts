@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// The look a player gets: Prism for everyone, unless they picked Letters in space. A save that
-// names one of the looks that were removed falls back to Prism, in storage as well as on screen.
+// The look a player gets: Prism for everyone. A save that names a look that was removed falls
+// back to Prism, in storage as well as on screen, and keeps the player's other settings.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const KEY = 'cellbound:v1:settings';
@@ -29,23 +29,26 @@ describe('the look a player gets', () => {
   });
 
   it('turns a removed look into Prism, keeps the other settings and writes the change down', async () => {
-    for (const old of ['atlas', 'paper', 'washi', 'swiss']) {
+    // Version 2 saves could name the last look to go; version 1 saves any of the earlier ones.
+    const olds: [string, number][] = [['letters', 2], ['atlas', 1], ['paper', 1], ['washi', 1], ['swiss', 1]];
+    for (const [old, version] of olds) {
       localStorage.clear();
-      save({ theme: old, night: 'dark', mistakes: 'strict', hideTimer: true });
+      save({ theme: old, night: 'dark', mistakes: 'strict', hideTimer: true, reducedMotion: 'on' }, version);
       const s = await load();
       expect(s.theme, old).toBe('prism');
-      expect([s.night, s.mistakes, s.hideTimer], old).toEqual(['dark', 'strict', true]);
+      expect([s.night, s.mistakes, s.hideTimer, s.reducedMotion], old).toEqual(['dark', 'strict', true, 'on']);
       expect(saved()?.state.theme, old).toBe('prism');
       expect(saved()?.state.night, old).toBe('dark');
-      expect(saved()?.version, old).toBe(2);
+      expect(saved()?.version, old).toBe(3);
     }
   });
 
-  it('keeps Letters in space for a player who picked it', async () => {
-    save({ theme: 'letters', reducedMotion: 'on' });
+  it('rewrites a version 2 save that was already on Prism, under the same key', async () => {
+    save({ theme: 'prism', night: 'light' }, 2);
     const s = await load();
-    expect(s.theme).toBe('letters');
-    expect(s.reducedMotion).toBe('on');
+    expect([s.theme, s.night]).toEqual(['prism', 'light']);
+    expect(saved()?.version).toBe(3);
+    expect(Object.keys(localStorage)).toEqual([KEY]);
   });
 
   it('survives a damaged save', async () => {

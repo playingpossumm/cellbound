@@ -1,12 +1,10 @@
-// The board: cells, grid, clues, digits, fog and overlays, in the class
-// vocabulary of the spec (section 5). Themes style these classes and may
-// replace the grid, clue, box-done and digit layers.
+// The board: cells, grid, clues, digits and fog, in the class vocabulary of
+// the spec (section 5). Themes style these classes and may replace the clue layer.
 import { memo, useEffect, useId, useMemo, useRef, type CSSProperties } from 'react';
 import type { CellIndex, ClueKind, Digit, Puzzle } from '../engine/types';
 import type { ThemeDef } from '../themes/types';
-import { fogGlyphs } from '../game/logic';
 import { makeGeometry } from './geometry';
-import { clueCells, DefaultClueLayer, DefaultGridLayer } from './layers';
+import { clueCells, DefaultClueLayer, GridLayer } from './layers';
 
 export interface BoardProps {
   puzzle: Puzzle;
@@ -111,10 +109,7 @@ function BoardImpl(props: BoardProps) {
     }
   }, [selected]);
 
-  const Grid = theme.GridLayer ?? DefaultGridLayer;
   const Clues = theme.ClueLayer ?? DefaultClueLayer;
-  const BoxDone = theme.BoxDoneLayer;
-  const DigitView = theme.Digit;
   const tabCell = selected ?? 0;
   const noteCols = n === 4 ? 2 : 3;
 
@@ -166,17 +161,14 @@ function BoardImpl(props: BoardProps) {
     if (i === selected) slotCls += ' is-sel';
     let inner = null;
     if (d) {
-      const kind: 'given' | 'mine' | 'hint' | 'wrong' = given ? 'given' : wrong[i] ? 'wrong' : hinted?.[i] ? 'hint' : 'mine';
-      if (DigitView) inner = <DigitView digit={d} kind={kind} placedAt={placedAt[i] ?? 0} />;
-      else {
-        let dc = `cb-digit is-${kind} h${d}`;
-        if (i === placedCell && !given) dc += ` ${placeCls}`;
-        inner = (
-          <span key={placedAt[i] ?? 0} className={dc} aria-hidden="true">
-            {d}
-          </span>
-        );
-      }
+      const kind = given ? 'given' : wrong[i] ? 'wrong' : hinted?.[i] ? 'hint' : 'mine';
+      let dc = `cb-digit is-${kind} h${d}`;
+      if (i === placedCell && !given) dc += ` ${placeCls}`;
+      inner = (
+        <span key={placedAt[i] ?? 0} className={dc} aria-hidden="true">
+          {d}
+        </span>
+      );
     } else if (noteList.length) {
       inner = (
         <span className="cb-notes" aria-hidden="true">
@@ -196,7 +188,7 @@ function BoardImpl(props: BoardProps) {
 
     if (fogCleared) {
       const fs: VarStyle = { '--d': (r + c) % 3 };
-      fogs.push(<div key={i} className={(isHidden ? 'cb-fog is-on' : 'cb-fog') + edges[i]} style={fs} data-glyphs={fogGlyphs(puzzle.seed, i)} />);
+      fogs.push(<div key={i} className={(isHidden ? 'cb-fog is-on' : 'cb-fog') + edges[i]} style={fs} />);
     }
   }
 
@@ -207,7 +199,7 @@ function BoardImpl(props: BoardProps) {
         {cells}
       </div>
       <svg className="cb-grid" viewBox={`0 0 ${geo.px} ${geo.px}`} aria-hidden="true" focusable="false">
-        <Grid geo={geo} />
+        <GridLayer geo={geo} />
       </svg>
       <svg className="cb-clues" viewBox={`0 0 ${geo.px} ${geo.px}`} aria-hidden="true" focusable="false">
         {hidden ? (
@@ -224,11 +216,11 @@ function BoardImpl(props: BoardProps) {
               </mask>
             </defs>
             <g mask={`url(#${maskId})`}>
-              <Clues puzzle={cluePuzzle} geo={geo} lit={lit} hidden={hidden} values={full} />
+              <Clues puzzle={cluePuzzle} geo={geo} lit={lit} hidden={hidden} />
             </g>
           </>
         ) : (
-          <Clues puzzle={puzzle} geo={geo} lit={lit} hidden={hidden} values={full} />
+          <Clues puzzle={puzzle} geo={geo} lit={lit} hidden={hidden} />
         )}
       </svg>
       <div className="cb-digits" aria-hidden="true">
@@ -239,9 +231,6 @@ function BoardImpl(props: BoardProps) {
           {fogs}
         </div>
       )}
-      <div className="cb-over" aria-hidden="true">
-        {BoxDone && <BoxDone geo={geo} done={doneBoxes} />}
-      </div>
     </div>
   );
 }

@@ -4,7 +4,7 @@ Cellbound is a variant sudoku game that runs in the browser and installs as an a
 
 Play it at [cellbound-sudoku.vercel.app](https://cellbound-sudoku.vercel.app).
 
-![The Daily on a phone in both looks, Prism and Letters in space, each in dark and light](docs/two-looks.png)
+![The Daily on a phone in Prism, dark and light](docs/prism.png)
 
 ## Modes
 
@@ -42,14 +42,11 @@ A hint comes in three steps for the same deduction. The first shows where to loo
 
 ![A Daily on a laptop](docs/laptop.png)
 
-## Looks
+## Look
 
-Cellbound has two looks, each with a light and a dark version. Prism is the default, and on Auto the light or dark version follows your device.
+Cellbound has one look, Prism, in a light and a dark version. Digits sit on glass cells, each digit in its own spectrum colour, under a band where a beam of white light splits into one ray per digit. On Auto the light or dark version follows your device, and Settings can keep either one.
 
-- Prism sets digits on glass, with one spectrum colour for every digit.
-- Letters in space is a monospaced grid with rules spelled along the lines and the board drawn as a turning cube of letters.
-
-Every look honours reduced motion, from the device or from Settings.
+Prism honours reduced motion, from the device or from Settings.
 
 ## Run it
 
@@ -76,7 +73,7 @@ Then open the address Vite prints. `npm run build` makes a production build in `
 
 ## How it is built
 
-The app uses React 19 and TypeScript 7, built with Vite 8. Game state lives in zustand stores saved to local storage, and vite-plugin-pwa provides the service worker and the web manifest. Fonts come from Fontsource packages, so nothing is fetched from a font service.
+The app uses React 19 and TypeScript 7, built with Vite 8. Game state lives in zustand stores saved to local storage, and vite-plugin-pwa provides the service worker and the web manifest. The font comes from a Fontsource package, so nothing is fetched from a font service.
 
 The puzzle engine in `src/engine` is plain TypeScript. It has a solver that proves each puzzle has one solution, a generator that grades difficulty by the techniques a logical solver needs, an estimate of how long a board takes an experienced player, the hint explainer built on that solver, and the fog layouts. Daily and Run boards are cut to that estimate. Boards for Free play, Fog and Run are made in a Web Worker, so the screen stays responsive while they are built. Dailies up to the end of 2027 are stored in `src/data/daily` and load a month at a time. Later dates are generated on the device from the same seed, so they still come out the same for everyone.
 
@@ -86,7 +83,7 @@ The puzzle engine in `src/engine` is plain TypeScript. It has a solver that prov
 | `src/game` | The game store, settings and stats |
 | `src/app` | The shell, the play screen and the other screens |
 | `src/board` | The board and its layers |
-| `src/themes` | The two looks |
+| `src/themes` | The look, Prism |
 | `src/modes` | Run and Learn |
 | `scripts` | Puzzle generation for Dailies and lessons |
 | `e2e` | Browser tests |

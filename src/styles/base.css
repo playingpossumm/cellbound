@@ -257,8 +257,8 @@ button {
 
 .cb-band-wrap {
   position: relative;
-  /* Its own stacking context, so nothing in a band (the Letters cube sets z-index on every
-     letter) can rise above the message panel that covers it. */
+  /* Its own stacking context, so nothing in a band can rise above the message panel that
+     covers it. */
   z-index: 0;
 }
 
@@ -581,8 +581,7 @@ button {
 }
 
 .cb-grid,
-.cb-clues,
-.cb-over {
+.cb-clues {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -612,10 +611,6 @@ button {
   z-index: 5;
   pointer-events: none;
   overflow: hidden;
-}
-
-.cb-over {
-  z-index: 6;
 }
 
 .cb-cell {
@@ -1281,7 +1276,6 @@ button {
 
 .cb-seg label:has(input:focus-visible),
 .cb-checks label:has(input:focus-visible),
-.cb-look-opt:has(input:focus-visible),
 .cb-toggle:has(input:focus-visible) {
   outline: 2px solid var(--cb-accent);
   outline-offset: 2px;
@@ -1451,93 +1445,6 @@ button {
 
 .cb-form fieldset .cb-muted {
   margin-bottom: 0;
-}
-
-/* The look picker: a live preview of every look, with its name under it. */
-.cb-looks {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-@media (min-width: 560px) {
-  .cb-looks {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.cb-look-opt {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 6px 6px 10px;
-  border: 1px solid var(--cb-line-thin);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.cb-look-opt.on {
-  border-color: var(--cb-accent);
-  box-shadow: inset 0 0 0 1px var(--cb-accent);
-  background: var(--cb-sel);
-}
-
-/* The radio stays in the page for the keyboard and screen readers; the frame shows its state. */
-.cb-look-opt input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.cb-look {
-  display: block;
-  aspect-ratio: 4 / 3;
-  border-radius: 3px;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.cb-look-name {
-  padding: 0 4px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.cb-look-opt.on .cb-look-name::after {
-  content: '';
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-left: 8px;
-  vertical-align: middle;
-  border-radius: 50%;
-  background: var(--cb-accent);
-}
-
-/* Inside a preview's shadow root: the look's ground, and a small board on it. */
-.cb-look-root,
-.cb-look-in {
-  width: 100%;
-  height: 100%;
-}
-
-.cb-look-in {
-  display: grid;
-  place-items: center;
-  background: var(--cb-ground);
-  color: var(--cb-text);
-  font-family: var(--cb-font-ui);
-  font-variant-numeric: lining-nums;
-}
-
-.cb-look-board {
-  height: 82%;
-  aspect-ratio: 1;
 }
 
 .cb-toggle {

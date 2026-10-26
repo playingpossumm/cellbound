@@ -40,7 +40,7 @@ const pick = <T extends string>(v: unknown, allowed: readonly T[], fallback: T):
 
 /**
  * Keeps only known values, so an old or edited save never breaks the app. A look that no longer
- * exists (Star atlas, Paper and ink, Washi and sumi, Swiss poster) becomes the default look.
+ * exists (every look but Prism) becomes the default look.
  */
 export function sanitizeSettings(raw: unknown): Settings {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
@@ -64,9 +64,9 @@ export const useSettings = create<SettingsStore>()(
     }),
     {
       name: 'cellbound:v1:settings',
-      // Version 2 has two looks. Loading a version 1 save runs migrate and writes the result back,
-      // so a removed look is replaced in storage too, not only on screen.
-      version: 2,
+      // Version 3 has one look, Prism. Loading an older save runs migrate and writes the result
+      // back, so a removed look is replaced in storage too, not only on screen.
+      version: 3,
       storage: safeStorage,
       partialize: (s) => sanitizeSettings(s),
       migrate: (persisted) => sanitizeSettings(persisted),

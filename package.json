@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Variant sudoku with daily puzzles, roguelite runs, fog and two hand-made looks.",
+  "description": "Variant sudoku with daily puzzles, roguelite runs and fog.",
   "license": "MIT",
   "scripts": {
     "dev": "vite",
@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "@fontsource-variable/sora": "^5.3.0",
-    "@fontsource/ibm-plex-mono": "^5.3.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zustand": "^5.0.16"

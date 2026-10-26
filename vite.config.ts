@@ -22,7 +22,7 @@ export default defineConfig({
         name: APP_NAME,
         short_name: APP_NAME,
         description: 'Variant sudoku with daily puzzles, roguelite runs and fog.',
-        // The ground of Prism, the default look, at night (its default).
+        // The ground of Prism at night, its default.
         theme_color: '#0a0c11',
         background_color: '#0a0c11',
         display: 'standalone',

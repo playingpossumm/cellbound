@@ -110,23 +110,6 @@ export function hashString(s: string): number {
   return h >>> 0;
 }
 
-const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-
-/** Deterministic 16 character string for a fog cell, used by themes that draw letters. */
-export function fogGlyphs(seed: string, i: CellIndex): string {
-  let h = hashString(`${seed}#${i}`) || 1;
-  let out = '';
-  for (let k = 0; k < 16; k++) {
-    h ^= h << 13;
-    h >>>= 0;
-    h ^= h >>> 17;
-    h ^= h << 5;
-    h >>>= 0;
-    out += GLYPHS[h % GLYPHS.length];
-  }
-  return out;
-}
-
 export function bitCount(mask: number): number {
   let c = 0;
   let m = mask;

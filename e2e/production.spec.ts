@@ -36,7 +36,7 @@ test('works offline after the first visit', async ({ page, context }) => {
   await page.reload();
   await expect(page.locator('.cb-board')).toBeVisible();
   await expect(page.locator('.cb-top-title')).toHaveText('Daily');
-  // The default look is Prism, and its font comes from the cache.
+  // The look is Prism, and its font comes from the cache.
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'prism');
   await page.evaluate(() => document.fonts.ready);
   await expect

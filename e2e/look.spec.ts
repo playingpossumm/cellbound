@@ -3,15 +3,35 @@ import { localToday, nineByNine, openFresh, openScreen } from './helpers';
 
 const SETTINGS = 'cellbound:v1:settings';
 
-test('a new player starts in Prism, and the picker offers Prism and Letters in space', async ({ page }) => {
+test('a new player starts in Prism, and Settings offers light, dark and auto but no look to pick', async ({ page }) => {
   await openFresh(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'prism');
   await openScreen(page, 'Settings');
-  const names = await page.getByRole('radio').evaluateAll((els) =>
-    els.filter((e) => (e as HTMLInputElement).name === 'theme').map((e) => (e.closest('label')?.querySelector('.cb-look-name')?.textContent ?? '').trim()),
-  );
-  expect(names).toEqual(['Prism', 'Letters in space']);
-  await expect(page.getByRole('radio', { name: 'Prism' })).toBeChecked();
+  await expect(page.locator('.cb-form legend').first()).toHaveText('Light or dark');
+  const night = page.getByRole('group', { name: 'Light or dark' });
+  const names = await night.getByRole('radio').evaluateAll((els) => els.map((e) => (e.closest('label')?.textContent ?? '').trim()));
+  expect(names).toEqual(['Auto', 'Light', 'Dark']);
+  await expect(night.getByRole('radio', { name: 'Auto' })).toBeChecked();
+  await expect(page.locator('input[name="theme"]')).toHaveCount(0);
+});
+
+test('Auto follows the device, Light and Dark override it, and the browser bar takes the ground', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await openFresh(page);
+  const html = page.locator('html');
+  const bar = page.locator('meta[name="theme-color"]');
+  await expect(html).toHaveAttribute('data-night', 'false');
+  await expect(bar).toHaveAttribute('content', '#eceef3');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(html).toHaveAttribute('data-night', 'true');
+  await expect(bar).toHaveAttribute('content', '#0a0c11');
+  await openScreen(page, 'Settings');
+  await page.getByRole('radio', { name: 'Light', exact: true }).check();
+  await expect(html).toHaveAttribute('data-night', 'false');
+  await expect(bar).toHaveAttribute('content', '#eceef3');
+  await page.reload();
+  await expect(html).toHaveAttribute('data-night', 'false');
+  await expect(html).toHaveAttribute('data-theme', 'prism');
 });
 
 test('a player from before who never picked a look gets Prism', async ({ page }) => {
@@ -24,36 +44,22 @@ test('a player from before who never picked a look gets Prism', async ({ page })
 
 test('a saved look that was removed becomes Prism, and the other settings stay', async ({ page }) => {
   await openFresh(page);
-  for (const old of ['atlas', 'paper', 'washi', 'swiss']) {
-    await page.evaluate(([key, theme]) => localStorage.setItem(key, JSON.stringify({ state: { theme, night: 'dark', hideTimer: true }, version: 1 })), [SETTINGS, old]);
+  // Version 2 saves could name the last look to go; version 1 saves any of the earlier ones.
+  const olds: [string, number][] = [['letters', 2], ['atlas', 1], ['paper', 1], ['washi', 1], ['swiss', 1]];
+  for (const [theme, version] of olds) {
+    await page.evaluate(
+      (o) => localStorage.setItem(o.key, JSON.stringify({ state: { theme: o.theme, night: 'dark', hideTimer: true }, version: o.version })),
+      { key: SETTINGS, theme, version },
+    );
     await page.reload();
     await expect(page.locator('.cb-board')).toBeVisible();
-    await expect(page.locator('html'), old).toHaveAttribute('data-theme', 'prism');
-    await expect(page.locator('html'), old).toHaveAttribute('data-night', 'true');
-    await expect(page.locator('.cb-timer'), old).toHaveCount(0);
+    await expect(page.locator('html'), theme).toHaveAttribute('data-theme', 'prism');
+    await expect(page.locator('html'), theme).toHaveAttribute('data-night', 'true');
+    await expect(page.locator('.cb-timer'), theme).toHaveCount(0);
     const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? 'null'), SETTINGS);
-    expect(saved?.state?.theme, old).toBe('prism');
+    expect(saved?.state?.theme, theme).toBe('prism');
+    expect(saved?.version, theme).toBe(3);
   }
-});
-
-test('the picker shows each look instead of describing it', async ({ page }) => {
-  await openFresh(page);
-  await openScreen(page, 'Settings');
-  await expect(page.locator('.cb-look')).toHaveCount(2);
-  // Each preview is a real board in that look, drawn apart from the page's own look.
-  const looks = await page.locator('.cb-look').evaluateAll((els) =>
-    els.map((e) => {
-      const inner = e.shadowRoot?.querySelector('.cb-look-in');
-      return { theme: inner?.getAttribute('data-theme'), cells: inner?.querySelectorAll('.cb-cell').length ?? 0 };
-    }),
-  );
-  expect(looks.map((l) => l.theme)).toEqual(['prism', 'letters']);
-  for (const l of looks) expect(l.cells).toBe(16);
-  // The words that used to describe each look are for screen readers only.
-  expect(await page.locator('.cb-looks').innerText()).not.toContain('spectrum colour');
-  await expect(page.getByRole('radio', { name: 'Prism' })).toHaveAccessibleDescription(/spectrum colour/);
-  await page.getByRole('radio', { name: 'Letters in space' }).check();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'letters');
 });
 
 test('the app opens on today\'s 9x9 Daily, even over a 6x6 begun for today before every Daily was a 9x9', async ({ page }) => {

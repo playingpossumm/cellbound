@@ -1,5 +1,5 @@
-/* Structure shared by both looks. Each look lives in its theme.css, which is
-   always loaded after this file. */
+/* Structure every look shares. A look lives in its theme.css, which is always
+   loaded after this file. */
 
 /* Each digit slot is a size container: theme digits and notes size themselves
    from the cell with cqw units, so 4x4, 6x6 and 9x9 need no extra rules. */

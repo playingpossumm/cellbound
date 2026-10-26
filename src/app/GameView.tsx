@@ -17,7 +17,6 @@ import { CheckIcon, EraseIcon, HintIcon, NotesIcon, PauseIcon, PlayIcon, ShareIc
 import { kindsIn, RULE_NAMES, ruleText } from './rules';
 import { appUrl, shareResult } from './share';
 import { useShell } from './shell';
-import { useNight } from './theme';
 import { TopBar } from './TopBar';
 
 export interface GameViewProps {
@@ -153,7 +152,6 @@ type Message = { kind: 'notice' | 'hint'; text: string } | { kind: 'rule'; text:
 export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, extra, hideRuleChips, endPanel, next, shareUrl }: GameViewProps) {
   const settings = useSettings();
   const theme = getTheme(settings.theme);
-  const night = useNight();
   const shell = useShell();
   const fx = useFx();
   const [lit, setLit] = useState<ClueKind | null>(null);
@@ -432,7 +430,7 @@ export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, ext
           page, so Tab and screen readers reach it first. */}
       <div className="cb-play" ref={playRef}>
         <div className="cb-band-wrap">
-          <Band title={title} subtitle={smallBand ? '' : bandSubtitle} time={time} puzzle={p} values={full} night={night} />
+          <Band title={title} subtitle={smallBand ? '' : bandSubtitle} puzzle={p} />
           {smallBand && bandSubtitle && <p className="cb-band-line">{bandSubtitle}</p>}
         </div>
 

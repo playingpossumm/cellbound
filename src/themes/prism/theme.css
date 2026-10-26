@@ -49,10 +49,11 @@
 }
 
 /* Digit hues, per board size. They sit on the play screen's root, so the board, the band and the
-   pad share them; the board and the band carry data-size too, for boards drawn elsewhere (the theme
-   picker). The nine 9x9 hues were searched for the largest smallest difference between any two
-   (in OKLab, with and without red-green colour blindness), each kept near its place in the
-   spectrum and at 4.6:1 or better on its own tint, the selected cell and the peer cell. */
+   pad share them; the board and the band carry data-size too, so either keeps its hues if it is
+   drawn outside the play screen. The nine 9x9 hues were searched for the largest smallest
+   difference between any two (in OKLab, with and without red-green colour blindness), each kept
+   near its place in the spectrum and at 4.6:1 or better on its own tint, the selected cell and
+   the peer cell. */
 [data-theme="prism"][data-night="true"] :is(.cb-game, .cb-board, .pr-band)[data-size="6"] {
   --h1: oklch(0.78 0.128 28); --h2: oklch(0.84 0.138 75); --h3: oklch(0.84 0.17 135);
   --h4: oklch(0.8 0.136 195); --h5: oklch(0.8 0.102 255); --h6: oklch(0.8 0.148 315);
@@ -467,13 +468,8 @@
 [data-theme="prism"] .cb-tool.on { background: var(--pr-text); color: var(--cb-ground); }
 
 /* Page panels as glass tiles: the theme's thin lines are clear, so cards would have no edge. */
-[data-theme="prism"] :is(.cb-card, .cb-look-opt, .cb-run-box:not(.is-warn), .cb-learn-row, .cb-learn-figure) {
+[data-theme="prism"] :is(.cb-card, .cb-run-box:not(.is-warn), .cb-learn-row, .cb-learn-figure) {
   border-color: var(--pr-edge);
   border-radius: 12px;
   background: var(--pr-glass);
-}
-[data-theme="prism"] .cb-look-opt.on {
-  border-color: var(--pr-text);
-  box-shadow: inset 0 0 0 1px var(--pr-text);
-  background: var(--cb-sel);
 }

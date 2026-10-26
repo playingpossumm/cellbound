@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { EM_DASH } from '../test/copy';
 import { rootVars, themeCss } from '../test/cssvars';
 import { DEFAULT_THEME, getTheme, themes } from './index';
-import { buildItems, project } from './letters/cube';
-import { cellsLoops, cellsOutline, simplify, wavePath } from './shared/util';
-
-const ids = ['prism', 'letters'] as const;
+import { cellsLoops, cellsOutline, wavePath } from './shared/util';
 
 const REQUIRED = [
   'ground', 'board', 'ink', 'mine', 'hint', 'note', 'wrong', 'peer', 'same', 'sel', 'sel-ring', 'focus',
@@ -14,12 +11,11 @@ const REQUIRED = [
 ].map((n) => `--cb-${n}`);
 
 describe('theme registry', () => {
-  it('lists the two looks in picker order, the default first', () => {
-    expect(themes.map((t) => t.id)).toEqual([...ids]);
+  it('has Prism, the default look, and nothing else', () => {
+    expect(themes.map((t) => t.id)).toEqual(['prism']);
     expect(DEFAULT_THEME).toBe('prism');
-    expect(getTheme('letters').id).toBe('letters');
     // An id from an old save that slipped past the settings falls back to the default look.
-    expect(getTheme('atlas' as never).id).toBe('prism');
+    expect(getTheme('letters' as never).id).toBe('prism');
   });
 
   it('describes each theme in one plain line', () => {
@@ -32,13 +28,13 @@ describe('theme registry', () => {
     }
   });
 
-  it('opens Prism in night mode and Letters in space in day mode', () => {
-    expect(themes.filter((t) => t.defaultNight).map((t) => t.id)).toEqual(['prism']);
+  it('opens Prism in night mode', () => {
+    expect(getTheme('prism').defaultNight).toBe(true);
   });
 });
 
 describe('theme stylesheets', () => {
-  for (const id of ids) {
+  for (const { id } of themes) {
     for (const night of [false, true]) {
       it(`${id} sets every --cb variable in ${night ? 'dark' : 'light'}`, () => {
         const vars = rootVars(themeCss(id), id, night);
@@ -46,7 +42,6 @@ describe('theme stylesheets', () => {
       });
     }
   }
-
 });
 
 describe('shape helpers', () => {
@@ -68,35 +63,9 @@ describe('shape helpers', () => {
     expect(cellsOutline([0], 6, 60, 4)).toMatch(/^M.*Z$/);
   });
 
-  it('drops points on a straight run', () => {
-    expect(simplify([[0, 0], [1, 0], [2, 0], [2, 1]])).toEqual([[0, 0], [2, 0], [2, 1]]);
-  });
-
   it('draws a wavy line that ends where the polyline ends', () => {
     const d = wavePath([[0, 0], [100, 0]], 2, 20);
     expect(d.startsWith('M0 0')).toBe(true);
     expect(d.endsWith('100 0')).toBe(true);
-  });
-});
-
-describe('letters cube', () => {
-  it('has one letter per placed digit plus the twelve edges', () => {
-    const values = Array.from({ length: 36 }, (_, i) => (i % 3 === 0 ? (i % 6) + 1 : 0));
-    const placed = values.filter(Boolean).length;
-    expect(buildItems(values, 6)).toHaveLength(placed + 12 * 6);
-    expect(buildItems(Array(81).fill(0), 9)).toHaveLength(12 * 9);
-    expect(buildItems(Array(16).fill(0), 4)).toHaveLength(12 * 4);
-  });
-
-  it('projects every letter to finite numbers and lights the layer the band is on', () => {
-    const items = buildItems(Array.from({ length: 36 }, (_, i) => (i % 6) + 1), 6);
-    for (const it of items) {
-      const v = project(it, 6, 3.2, 0.1);
-      for (const n of [v.tx, v.ty, v.fs, v.o, v.z]) expect(Number.isFinite(n)).toBe(true);
-    }
-    // At t = 0 the band sits at layer -1, so the first digit layer is only just lit.
-    const first = items.find((it) => it.layer === 0)!;
-    expect(project(first, 6, 2, 0).hot).toBe(true);
-    expect(project(first, 6, 6, 0).hot).toBe(false);
   });
 });

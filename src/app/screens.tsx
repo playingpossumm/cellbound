@@ -8,17 +8,13 @@ import { formatDateLong, formatTime } from '../game/logic';
 import { useSettings, type MistakeSetting, type NightSetting } from '../game/settings';
 import { bestStreak, currentStreak, useStats } from '../game/stats';
 import type { ModeId } from '../game/types';
-import { themes } from '../themes';
-import type { ThemeDef } from '../themes/types';
 import { APP_NAME } from './brand';
 import { GameView } from './GameView';
 import { NewBoardIcon, RulesIcon } from './icons';
-import { LookPreview } from './LookPreview';
 import { TopBar } from './TopBar';
 import { ALL_KINDS, RULE_NAMES } from './rules';
 import { appUrl, decodeFree, encodeFree, type FreeOptions } from './share';
 import { useShell } from './shell';
-import { useNightFor } from './theme';
 
 function randomSeed(): string {
   const a = new Uint32Array(2);
@@ -433,39 +429,11 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   );
 }
 
-/** One look in the picker: a live preview, then its name. The description goes to screen readers. */
-function LookOption({ theme, on, onPick }: { theme: ThemeDef; on: boolean; onPick: () => void }) {
-  const night = useNightFor(theme);
-  const descId = `cb-look-${theme.id}`;
-  return (
-    <label className={`cb-look-opt${on ? ' on' : ''}`}>
-      <input type="radio" name="theme" checked={on} onChange={onPick} aria-describedby={descId} />
-      <LookPreview theme={theme} night={night} />
-      <span className="cb-look-name">{theme.name}</span>
-      <span id={descId} hidden>
-        {theme.blurb}
-      </span>
-    </label>
-  );
-}
-
 export function SettingsScreen() {
   const s = useSettings();
-  // Every look's fonts, so each preview is set in its own type.
-  useEffect(() => {
-    for (const t of themes) t.loadFonts().catch(() => undefined);
-  }, []);
   return (
     <Page title="Settings" back>
       <form className="cb-form" onSubmit={(e) => e.preventDefault()}>
-        <fieldset>
-          <legend>Look</legend>
-          <div className="cb-looks">
-            {themes.map((t) => (
-              <LookOption key={t.id} theme={t} on={s.theme === t.id} onPick={() => s.update({ theme: t.id })} />
-            ))}
-          </div>
-        </fieldset>
         <Choice<NightSetting>
           legend="Light or dark"
           name="night"

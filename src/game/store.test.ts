@@ -4,7 +4,7 @@ import { generate } from '../engine';
 import type { FogSpec } from '../engine/types';
 import { actions, getGame, heartsLeft, onGameEnd, resetStoreForTesting, sanitizeSaved, solveForTesting, startGame, tickClock, useFx } from './store';
 import { addResult, bestStreak, currentStreak } from './stats';
-import { fogGlyphs, formatDateLong, formatTime } from './logic';
+import { formatDateLong, formatTime } from './logic';
 import type { GameState } from './types';
 
 // The engine hint is real everywhere except where a test switches it off to reach the
@@ -210,8 +210,6 @@ describe('streaks and helpers', () => {
   it('formats', () => {
     expect(formatTime(252000)).toBe('4:12');
     expect(formatDateLong('2026-10-23')).toBe('Friday 23 October');
-    expect(fogGlyphs('a', 1)).toHaveLength(16);
-    expect(fogGlyphs('a', 1)).toBe(fogGlyphs('a', 1));
   });
 });
 

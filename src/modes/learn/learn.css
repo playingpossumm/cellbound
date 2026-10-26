@@ -257,7 +257,7 @@
 .cb-learn-board[data-size='4'] {
   max-width: 240px;
 }
-/* The ground first, then the board over it: some themes make the board see-through. */
+/* The ground first, then the board over it: Prism's board is see-through. */
 .cb-learn-bg {
   fill: var(--cb-ground);
 }
@@ -280,7 +280,7 @@
   stroke: var(--cb-accent);
   stroke-width: 2.5;
 }
-/* Thin lines from the text colour, because some themes draw theirs as gaps. */
+/* Thin lines from the text colour, because Prism draws its own as gaps. */
 .cb-learn-thin {
   stroke: color-mix(in srgb, var(--cb-text) 24%, transparent);
   stroke-width: 1;
