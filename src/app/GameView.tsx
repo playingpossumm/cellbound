@@ -43,6 +43,21 @@ export interface GameViewProps {
   next?: { label: string; run: () => void };
   /** Link placed in the shared result. Defaults to the app address. */
   shareUrl?: string;
+  /** Drawn in the band's place, for a mode whose status is the header (the Run's score). */
+  band?: ReactNode;
+  /** Chips placed before the rule chips, for example a Run boss rule. */
+  chipsLead?: ReactNode;
+  /** Laid over the board without taking input, for example the Run's placement popups. */
+  boardOverlay?: ReactNode;
+  /** A mode's own line for the message panel, with an optional action, shown like a rule's text. */
+  note?: GameNote | null;
+  /** Called when the message panel moves on from the note (another chip, Escape). */
+  onNoteDismiss?: () => void;
+}
+
+export interface GameNote {
+  text: string;
+  action?: { label: string; run: () => void; disabled?: boolean };
 }
 
 /** The two-column layout: a wide window, or a phone held sideways. Keep in step with base.css. */
@@ -146,10 +161,29 @@ function useBoardSide(playRef: React.RefObject<HTMLDivElement | null>, topRef: R
   return side;
 }
 
-/** What the band gives way to: a notice, a hint step, or the rule of the chip that is on. */
-type Message = { kind: 'notice' | 'hint'; text: string } | { kind: 'rule'; text: string; rule: ClueKind };
+/** What the band gives way to: a notice, a hint step, a mode's note, or the rule of the chip that is on. */
+type Message =
+  | { kind: 'notice' | 'hint'; text: string }
+  | { kind: 'rule'; text: string; rule: ClueKind }
+  | { kind: 'note'; text: string; action?: GameNote['action'] };
 
-export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, extra, hideRuleChips, endPanel, next, shareUrl }: GameViewProps) {
+export function GameView({
+  game,
+  title,
+  subtitle,
+  bandSubtitle = '',
+  onExit,
+  extra,
+  hideRuleChips,
+  endPanel,
+  next,
+  shareUrl,
+  band,
+  chipsLead,
+  boardOverlay,
+  note,
+  onNoteDismiss,
+}: GameViewProps) {
   const settings = useSettings();
   const theme = getTheme(settings.theme);
   const shell = useShell();
@@ -170,6 +204,11 @@ export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, ext
     setLit(null);
     setNotice(null);
   }, [game.key]);
+  // A mode's note takes the panel from a rule's text, as another chip would.
+  const noteText = note?.text ?? null;
+  useEffect(() => {
+    if (noteText) setLit(null);
+  }, [noteText]);
 
   const full = useMemo(() => fullGrid(p, game.values), [p, game.values]);
   const strict = checksSolution(game);
@@ -267,8 +306,10 @@ export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, ext
   }, []);
 
   const doHint = useCallback(() => {
+    const before = getGame();
     const step = actions.hint();
-    setNotice(step ? null : 'No hint is available here.');
+    const spent = !!before?.mods && before.mods.hints !== undefined && before.hintsUsed >= before.mods.hints;
+    setNotice(step ? null : spent ? 'No hints left on this board.' : 'No hint is available here.');
   }, []);
 
   // Keyboard play.
@@ -369,12 +410,13 @@ export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, ext
           actions.dismissHint();
           setLit(null);
           setNotice(null);
+          onNoteDismiss?.();
           return;
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [doHint, enter]);
+  }, [doHint, enter, onNoteDismiss]);
 
   const Band = theme.Band;
   const padCols = n === 9 ? 'nine' : n === 4 ? 'four' : 'six';
@@ -383,17 +425,21 @@ export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, ext
     ? { kind: 'notice', text: notice }
     : fx.hint
       ? { kind: 'hint', text: fx.hint.text }
-      : lit
-        ? { kind: 'rule', text: ruleText(lit, p), rule: lit }
-        : null;
+      : note
+        ? { kind: 'note', text: note.text, action: note.action }
+        : lit
+          ? { kind: 'rule', text: ruleText(lit, p), rule: lit }
+          : null;
   const toolsOff = ended || paused;
+  // A board with a set number of hints shows how many are left on the hint key.
+  const hintsLeft = game.mods?.hints === undefined ? null : Math.max(0, game.mods.hints - game.hintsUsed);
 
   return (
     <div className="cb-game" data-mode={game.mode} data-size={n} style={{ ['--cb-side' as string]: `${side}px` }}>
       <TopBar
         ref={topRef}
         title={title}
-        quietTitle={theme.bandShowsTitle}
+        quietTitle={band ? false : theme.bandShowsTitle}
         onBack={onExit}
         backLabel="Leave this board"
         right={
@@ -430,8 +476,12 @@ export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, ext
           page, so Tab and screen readers reach it first. */}
       <div className="cb-play" ref={playRef}>
         <div className="cb-band-wrap">
-          <Band title={title} subtitle={smallBand ? '' : bandSubtitle} puzzle={p} />
-          {smallBand && bandSubtitle && <p className="cb-band-line">{bandSubtitle}</p>}
+          {band ?? (
+            <>
+              <Band title={title} subtitle={smallBand ? '' : bandSubtitle} puzzle={p} />
+              {smallBand && bandSubtitle && <p className="cb-band-line">{bandSubtitle}</p>}
+            </>
+          )}
         </div>
 
         <div className="cb-stage">
@@ -458,6 +508,7 @@ export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, ext
               solved={game.status === 'solved'}
               onSelect={onSelect}
             />
+            {boardOverlay && <div className="cb-board-overlay">{boardOverlay}</div>}
             {paused && (
               <div className="cb-pause">
                 <button type="button" className="cb-btn primary cb-resume" onClick={actions.resume} autoFocus>
@@ -486,8 +537,9 @@ export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, ext
           </div>
         )}
 
-        {!hideRuleChips && kinds.length > 0 && (
+        {!hideRuleChips && (kinds.length > 0 || chipsLead) && (
           <div className="cb-chips" role="group" aria-label="Rules">
+            {chipsLead}
             {kinds.map((k) => (
               <RuleChip
                 key={k}
@@ -497,6 +549,7 @@ export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, ext
                 onToggle={() => {
                   setNotice(null);
                   actions.dismissHint();
+                  if (lit !== k) onNoteDismiss?.();
                   setLit(lit === k ? null : k);
                 }}
               />
@@ -522,6 +575,11 @@ export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, ext
             {message.kind === 'rule' && (
               <button type="button" className="cb-msg-btn" aria-label={`Open the ${RULE_NAMES[message.rule]} lesson`} onClick={() => shell.openLesson(message.rule)}>
                 Lesson
+              </button>
+            )}
+            {message.kind === 'note' && message.action && (
+              <button type="button" className="cb-msg-btn" onClick={message.action.run} disabled={message.action.disabled || toolsOff}>
+                {message.action.label}
               </button>
             )}
           </div>
@@ -570,8 +628,20 @@ export function GameView({ game, title, subtitle, bandSubtitle = '', onExit, ext
           >
             <NotesIcon />
           </button>
-          <button type="button" className="cb-tool" aria-label="Hint" title="Hint (H)" onClick={doHint} disabled={toolsOff}>
+          <button
+            type="button"
+            className="cb-tool"
+            aria-label={hintsLeft === null ? 'Hint' : `Hint, ${hintsLeft} left`}
+            title="Hint (H)"
+            onClick={doHint}
+            disabled={toolsOff}
+          >
             <HintIcon />
+            {hintsLeft !== null && (
+              <span className={`cb-tool-count${hintsLeft ? '' : ' is-zero'}`} aria-hidden="true">
+                {hintsLeft}
+              </span>
+            )}
           </button>
         </div>
       </div>

@@ -9,6 +9,7 @@ import type { GameMods, GameState, ModeId, Move } from './types';
 import {
   cellDistance,
   clearAround,
+  completedClues,
   completedUnits,
   doneRegions,
   fullGrid,
@@ -16,6 +17,8 @@ import {
   isSolvedGrid,
   localDate,
   peersOf,
+  type ClueHit,
+  type UnitHit,
 } from './logic';
 import { getSettings } from './settings';
 import { debouncedStorage } from './storage';
@@ -136,10 +139,78 @@ const useStore = create<Store>()(
 
 const endListeners = new Set<(g: GameState) => void>();
 
+/**
+ * One digit placed on the board. The Run scores these; other modes ignore them. Listeners run
+ * while the store is still taking the move in, before it is saved and before any game-end
+ * listener, so they see moves in order; they must not change the game themselves.
+ */
+export interface PlacementEvent {
+  key: string;
+  mode: ModeId;
+  puzzle: Puzzle;
+  cell: CellIndex;
+  digit: Digit;
+  /** Givens plus entries before the placement, wrong digits included. */
+  before: Digit[];
+  correct: boolean;
+  /** player: typed or tapped; hint: placed by the hint ladder; reveal: filled in by a card or a rule. */
+  source: 'player' | 'hint' | 'reveal';
+  /** The player typed the digit that a hint on show was leading to. */
+  assisted: boolean;
+  /** Rows, columns and boxes the digit completed. Empty for a wrong digit. */
+  units: UnitHit[];
+  /** Clues the digit completed. Empty for a wrong digit. */
+  clues: ClueHit[];
+  /** The game after the placement. */
+  game: GameState;
+}
+
+const placeListeners = new Set<(e: PlacementEvent) => void>();
+
+/** Hears every digit placed on any board. Returns an unsubscribe function. */
+export function onPlacement(listener: (e: PlacementEvent) => void): () => void {
+  placeListeners.add(listener);
+  return () => placeListeners.delete(listener);
+}
+
+function emitPlacement(e: PlacementEvent) {
+  placeListeners.forEach((l) => {
+    try {
+      l(e);
+    } catch (err) {
+      console.error(err);
+    }
+  });
+}
+
+/** Run boards keep each cell's history (notes, mistakes, help) for the Run's clean units. */
+const keepsHistory = (g: GameState) => g.mode === 'run';
+
+/** noted with every cell that holds a note now; the same array when nothing changed. */
+function withNoted(g: GameState): GameState {
+  if (!g.noted) return g;
+  let noted = g.noted;
+  for (let i = 0; i < g.notes.length; i++) {
+    if (g.notes[i] && !noted[i]) {
+      if (noted === g.noted) noted = noted.slice();
+      noted[i] = true;
+    }
+  }
+  return noted === g.noted ? g : { ...g, noted };
+}
+
+/** A copy of a history array with cell i set, or the same array when it is set already. */
+function mark(list: boolean[] | undefined, i: CellIndex): boolean[] | undefined {
+  if (!list || list[i]) return list;
+  const out = list.slice();
+  out[i] = true;
+  return out;
+}
+
 function setGame(input: GameState) {
   const s = useStore.getState();
   const before = s.game?.key === input.key ? s.game : (s.games[input.key] ?? null);
-  let g = input;
+  let g = withNoted(input);
   if (carry > 0 && s.game?.key === g.key) g = { ...g, elapsedMs: g.elapsedMs + carry };
   carry = 0;
   // A finished board cannot be undone; drop its history to keep saves small.
@@ -183,17 +254,27 @@ function freshGame(o: StartOptions): GameState {
     hinted: new Array(n).fill(false),
     startedOn: localDate(),
   };
+  if (keepsHistory(g)) {
+    g.noted = new Array(n).fill(false);
+    g.missed = new Array(n).fill(false);
+    g.helped = new Array(n).fill(false);
+  }
   if (o.mods?.reveal) {
     const empty = g.puzzle.givens.map((d, i) => (d ? -1 : i)).filter((i) => i >= 0);
     empty.sort((a, b) => hashString(`${g.puzzle.seed}:${a}`) - hashString(`${g.puzzle.seed}:${b}`));
     for (const i of empty.slice(0, o.mods.reveal)) {
       g.values[i] = g.puzzle.solution[i];
       g.hinted![i] = true;
+      if (g.helped) g.helped[i] = true;
       if (g.fog) g.fog.cleared = clearAround(g.fog.cleared, g.puzzle.size, i, g.fog.radius);
     }
     g.doneBoxes = doneRegions(g.puzzle, fullGrid(g.puzzle, g.values), []);
   }
   if (o.mods?.autoNotes || getSettings().autoNotes) g.notes = candidateNotes(g);
+  else if (o.mods?.notesIn?.length) {
+    const cands = candidateNotes(g);
+    for (const i of o.mods.notesIn) if (i >= 0 && i < n && !g.values[i] && !g.puzzle.givens[i]) g.notes[i] = cands[i];
+  }
   return g;
 }
 
@@ -293,10 +374,14 @@ function autoNotesOn(g: GameState): boolean {
   return !!g.mods?.autoNotes || getSettings().autoNotes;
 }
 
-/** Places digit d in cell i: mistakes, fog, unit flashes, done boxes, status. */
-function place(g: GameState, i: CellIndex, d: Digit, kind: 'value' | 'hint'): GameState {
+/**
+ * Places digit d in cell i: mistakes, fog, unit flashes, done boxes, status, and the placement
+ * event. source tells a typed digit from one a hint or a card put there.
+ */
+function place(g: GameState, i: CellIndex, d: Digit, kind: 'value' | 'hint', source: PlacementEvent['source'] = kind === 'hint' ? 'hint' : 'player', assisted = false): GameState {
   const n = g.puzzle.size;
   const group = groupSeq++;
+  const before = fullGrid(g.puzzle, g.values);
   const values = g.values.slice();
   const notes = g.notes.slice();
   const hinted = (g.hinted ?? new Array(n * n).fill(false)).slice();
@@ -307,6 +392,8 @@ function place(g: GameState, i: CellIndex, d: Digit, kind: 'value' | 'hint'): Ga
   const correct = d === g.puzzle.solution[i];
   let mistakes = g.mistakes;
   if (!correct && kind === 'value') mistakes++;
+  const missed = correct ? g.missed : mark(g.missed, i);
+  const helped = source !== 'player' || assisted ? mark(g.helped, i) : g.helped;
   if (autoNotesOn(g)) {
     for (const j of peersOf(g.puzzle, i)) {
       if (values[j] || g.puzzle.givens[j] || !(notes[j] & (1 << d))) continue;
@@ -327,13 +414,14 @@ function place(g: GameState, i: CellIndex, d: Digit, kind: 'value' | 'hint'): Ga
   let doneBoxes = g.doneBoxes;
   let status: GameState['status'] = g.status;
   if (isSolvedGrid(g.puzzle, grid)) status = 'solved';
+  const units = correct ? completedUnits(g.puzzle, grid, i) : [];
   if (correct) {
     // The last digit flashes the whole board, in the theme's unit flash, as a wave
     // that spreads from that cell; any other digit flashes the units it completes.
-    const units = status === 'solved' ? [{ cells: Array.from({ length: n * n }, (_, j) => j) }] : completedUnits(g.puzzle, grid, i);
-    if (units.length) {
+    const flashed = status === 'solved' ? [{ cells: Array.from({ length: n * n }, (_, j) => j) }] : units;
+    if (flashed.length) {
       const flash: Record<number, number> = {};
-      for (const u of units) for (const j of u.cells) flash[j] = cellDistance(n, i, j);
+      for (const u of flashed) for (const j of u.cells) flash[j] = cellDistance(n, i, j);
       fxPatch.flash = flash;
       fxPatch.flashCount = fx.flashCount + 1;
     }
@@ -351,10 +439,34 @@ function place(g: GameState, i: CellIndex, d: Digit, kind: 'value' | 'hint'): Ga
     status,
     undo: [...g.undo, ...moves].slice(-MAX_UNDO),
     redo: [],
+    ...(g.missed ? { missed } : {}),
+    ...(g.helped ? { helped } : {}),
   };
   const hearts = heartsLeft(next);
   if (status === 'playing' && hearts !== null && hearts <= 0) next.status = 'failed';
+  if (placeListeners.size) {
+    emitPlacement({
+      key: g.key,
+      mode: g.mode,
+      puzzle: g.puzzle,
+      cell: i,
+      digit: d,
+      before,
+      correct,
+      source,
+      assisted,
+      units,
+      clues: correct ? completedClues(g.puzzle, grid, i) : [],
+      game: next,
+    });
+  }
   return next;
+}
+
+/** The cell and digit the hint ladder in progress leads to, if it leads to a placement. */
+function ladderMove(g: GameState): { cell: CellIndex; digit: Digit } | null {
+  if (!ladder || ladder.key !== g.key) return null;
+  return ladder.steps.find((s) => s.move)?.move ?? null;
 }
 
 function applyMoves(g: GameState, moves: Move[], dir: 'undo' | 'redo'): GameState {
@@ -469,8 +581,11 @@ export const actions = {
       actions.erase();
       return;
     }
+    // A digit the hint on show was leading to counts as helped, whoever types it.
+    const led = ladderMove(g);
+    const assisted = !!led && led.cell === i && led.digit === d;
     clearHint();
-    setGame(place(g, i, d, 'value'));
+    setGame(place(g, i, d, 'value', 'player', assisted));
   },
   erase(): void {
     const g = getGame();
@@ -518,7 +633,10 @@ export const actions = {
     const sig = signature(g);
     let current = ladder && ladder.key === g.key && ladder.sig === sig ? ladder : null;
     let counted = g.hintsUsed;
+    let helped = g.helped;
     if (!current) {
+      // A board with a set number of hints gives no new one once they are used.
+      if (g.mods?.hints !== undefined && g.hintsUsed >= g.mods.hints) return null;
       const wrong = wrongCells(g);
       let steps: HintStep[] | null = null;
       if (wrong.length) steps = mistakeSteps(g, wrong);
@@ -532,15 +650,19 @@ export const actions = {
       }
       if (!steps || !steps.length) return null;
       steps = steps.slice().sort((a, b) => a.level - b.level);
-      current = { key: g.key, sig, steps, next: 0 };
+      // A quick hint skips where to look and which rule, and goes straight to the move.
+      const quick = g.hintsUsed < (g.mods?.quickHints ?? 0);
+      current = { key: g.key, sig, steps, next: quick ? steps.length - 1 : 0 };
       counted++;
+      const move = steps.find((s) => s.move)?.move;
+      if (move) helped = mark(helped, move.cell);
     }
     const step = current.steps[Math.min(current.next, current.steps.length - 1)];
     current.next++;
     ladder = current;
     useFx.setState({ hint: step });
     if (step.level === 3 && step.move && canPlaceHint(g, step.move.cell)) {
-      const placed = place({ ...g, hintsUsed: counted }, step.move.cell, step.move.digit, 'hint');
+      const placed = place({ ...g, hintsUsed: counted, ...(helped ? { helped } : {}) }, step.move.cell, step.move.digit, 'hint');
       ladder = null;
       setGame({ ...placed, selected: step.move.cell });
       useFx.setState({ hint: step });
@@ -561,12 +683,12 @@ export const actions = {
       }
       if (moves.length) {
         ladder = null;
-        setGame({ ...g, hintsUsed: counted, notes, undo: [...g.undo, ...moves].slice(-MAX_UNDO), redo: [] });
+        setGame({ ...g, hintsUsed: counted, notes, ...(helped ? { helped } : {}), undo: [...g.undo, ...moves].slice(-MAX_UNDO), redo: [] });
         useFx.setState({ hint: step });
         return step;
       }
     }
-    if (counted !== g.hintsUsed) setGame({ ...g, hintsUsed: counted });
+    if (counted !== g.hintsUsed || helped !== g.helped) setGame({ ...g, hintsUsed: counted, ...(helped ? { helped } : {}) });
     return step;
   },
   /** Hides the hint on show without placing anything. */
@@ -601,6 +723,53 @@ export const actions = {
     });
     if (!moves.length) return;
     setGame({ ...g, notes: g.notes.map((old, i) => (g.values[i] || g.puzzle.givens[i] ? old : notes[i])), undo: [...g.undo, ...moves].slice(-MAX_UNDO), redo: [] });
+  },
+  /**
+   * Fills in the right digit, as a card or a rule does (a Run's Peek, Thief or Reveal ink). With no
+   * cell it takes the selected empty cell, or else the first empty one in the board's own order.
+   * It uses no hint. Returns the cell filled, or null.
+   */
+  reveal(cell?: CellIndex): CellIndex | null {
+    const g = getGame();
+    if (!g || g.status !== 'playing') return null;
+    const open = (i: CellIndex) => !g.puzzle.givens[i] && g.values[i] !== g.puzzle.solution[i] && (!g.fog || g.fog.cleared[i]);
+    let i = cell ?? null;
+    if (i === null) {
+      if (g.selected !== null && open(g.selected)) i = g.selected;
+      else {
+        const order = g.puzzle.givens.map((_, k) => k).filter(open);
+        order.sort((a, b) => hashString(`${g.puzzle.seed}:${a}`) - hashString(`${g.puzzle.seed}:${b}`));
+        i = order[0] ?? null;
+      }
+    }
+    if (i === null || i < 0 || i >= g.values.length || g.puzzle.givens[i] || g.values[i] === g.puzzle.solution[i]) return null;
+    clearHint();
+    setGame(place(g, i, g.puzzle.solution[i], 'hint', 'reveal'));
+    return i;
+  },
+  /** Clears the fog around a cell, as a correct digit there would, or all of it. */
+  clearFog(cell: CellIndex | 'all'): void {
+    const g = getGame();
+    if (!g || !g.fog || (g.status !== 'playing' && g.status !== 'paused')) return;
+    const n = g.puzzle.size;
+    const cleared = cell === 'all' ? g.fog.cleared.map(() => true) : clearAround(g.fog.cleared, n, cell, g.fog.radius);
+    setGame({ ...g, fog: { ...g.fog, cleared } });
+  },
+  /** Changes the current board's modifiers, for example when a Run card lifts a rule. */
+  updateMods(patch: Partial<GameMods>): void {
+    const g = getGame();
+    if (!g) return;
+    const mods: GameMods = { ...(g.mods ?? {}), ...patch };
+    for (const k of Object.keys(mods) as (keyof GameMods)[]) if (mods[k] === undefined) delete mods[k];
+    setGame({ ...g, mods, notesMode: mods.noNotes ? false : g.notesMode });
+  },
+  /** Ends the current board as failed, for a rule outside the store (a Run out of hearts). */
+  failGame(): void {
+    const g = getGame();
+    if (!g || (g.status !== 'playing' && g.status !== 'paused')) return;
+    commitClock();
+    clearHint();
+    setGame({ ...getGame()!, status: 'failed' });
   },
 };
 

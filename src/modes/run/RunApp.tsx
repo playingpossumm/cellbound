@@ -1,16 +1,17 @@
-// The Run screen: home, collection, board, card choice and summary, chosen by the run's phase.
-import { useEffect, useLayoutEffect, useState, type ComponentType } from 'react';
+// The Run screen: the home and the Collection, then the run's own screens by its phase: the ante,
+// the board and its tally, the reward pick, the shop and the summary.
+import { useState, type ComponentType } from 'react';
 import { GameView, type GameViewProps } from '../../app/GameView';
 import { dailyDate } from '../../engine';
-import { getGame, startGame, useGame } from '../../game/store';
 import './run.css';
-import { fogOf, gameKey, loadBoard } from './board';
-import { BOARD_COUNT } from './boards';
 import { runActions, useRunStore } from './store';
-import { Hud, Track } from './ui/Hud';
-import { Choose, Collection, Home, Page, formatDay } from './ui/Home';
-import { ResultPanel, Summary } from './ui/Panels';
-import type { RunState } from './state';
+import { BoardScreen } from './ui/Board';
+import { Collection } from './ui/Collection';
+import { Home } from './ui/Home';
+import { Reward } from './ui/Reward';
+import { Select } from './ui/Select';
+import { Shop } from './ui/Shop';
+import { Summary } from './ui/Summary';
 
 export interface RunAppProps {
   onExit: () => void;
@@ -22,6 +23,8 @@ export function RunApp({ onExit, GameViewComponent = GameView }: RunAppProps) {
   const run = useRunStore((s) => s.run);
   const data = useRunStore((s) => s.data);
   const fresh = useRunStore((s) => s.fresh);
+  const ready = useRunStore((s) => s.ready);
+  const legacy = useRunStore((s) => s.legacy);
   const [view, setView] = useState<'home' | 'collection'>('home');
   const today = dailyDate();
 
@@ -31,6 +34,7 @@ export function RunApp({ onExit, GameViewComponent = GameView }: RunAppProps) {
       <Home
         today={today}
         stats={data.stats}
+        legacy={legacy}
         current={data.current}
         last={data.last}
         onBack={onExit}
@@ -43,10 +47,38 @@ export function RunApp({ onExit, GameViewComponent = GameView }: RunAppProps) {
       />
     );
   }
-  if (run.phase === 'choose') return <Choose run={run} onPick={runActions.pick} onHome={runActions.home} />;
-  if (run.phase === 'done') {
-    return (
-      <Page onBack={runActions.home}>
+  switch (run.phase) {
+    case 'select':
+      return (
+        <Select
+          run={run}
+          ready={ready}
+          onPlay={runActions.play}
+          onSkip={runActions.skip}
+          onRetry={runActions.retry}
+          onHome={runActions.home}
+          onMove={runActions.move}
+          onUse={(k) => runActions.useItem(k)}
+        />
+      );
+    case 'reward':
+      return <Reward run={run} onTake={runActions.take} onPass={runActions.pass} onHome={runActions.home} />;
+    case 'shop':
+      return (
+        <Shop
+          run={run}
+          onBuyLens={runActions.buyLens}
+          onBuyItem={runActions.buyItem}
+          onSell={runActions.sell}
+          onMove={runActions.move}
+          onReroll={runActions.reroll}
+          onUse={(k) => runActions.useItem(k)}
+          onLeave={runActions.leaveShop}
+          onHome={runActions.home}
+        />
+      );
+    case 'done':
+      return (
         <Summary
           run={run}
           dailyBest={run.daily ? (data.stats.dailyBest[run.daily]?.score ?? null) : null}
@@ -54,90 +86,8 @@ export function RunApp({ onExit, GameViewComponent = GameView }: RunAppProps) {
           onFree={() => runActions.start('free')}
           onHome={runActions.home}
         />
-      </Page>
-    );
+      );
+    default:
+      return <BoardScreen run={run} GameViewComponent={GameViewComponent} />;
   }
-  return <BoardView run={run} GameViewComponent={GameViewComponent} />;
-}
-
-function BoardView({ run, GameViewComponent }: { run: RunState; GameViewComponent: ComponentType<GameViewProps> }) {
-  const game = useGame();
-  const key = gameKey(run.seed, run.index, run.createdAt);
-  const [failed, setFailed] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-  const loaded = !!game && game.key === key;
-
-  // Build the board and hand it to the game store. A game already in the store under this key is kept.
-  useEffect(() => {
-    if (run.phase !== 'board' || getGame()?.key === key) return;
-    let dead = false;
-    setFailed(false);
-    loadBoard(run.setup.options)
-      .then((puzzle) => {
-        if (dead) return;
-        startGame({ key, mode: 'run', puzzle, fog: fogOf(run.setup.options, puzzle), mods: run.setup.mods });
-      })
-      .catch(() => {
-        if (!dead) setFailed(true);
-      });
-    return () => {
-      dead = true;
-    };
-  }, [key, run.phase, run.setup, attempt]);
-
-  // Tell the run when the board ends, whichever way.
-  useLayoutEffect(() => {
-    if (!game || game.key !== key || run.phase !== 'board') return;
-    if (game.status === 'solved' || game.status === 'failed') {
-      runActions.reportBoard({
-        status: game.status,
-        mistakes: game.mistakes,
-        hintsUsed: game.hintsUsed,
-        elapsedMs: game.elapsedMs,
-      });
-    }
-  }, [game, key, run.phase]);
-
-  if (run.phase === 'result' && !loaded) {
-    // Reopened on a finished board: there is no board to show, only the result.
-    return (
-      <Page onBack={runActions.home}>
-        <ResultPanel run={run} onNext={runActions.next} />
-      </Page>
-    );
-  }
-  if (!loaded) {
-    return (
-      <Page onBack={runActions.home}>
-        {failed ? (
-          <div className="cb-run-box is-warn" role="alert">
-            <p>The board could not be built.</p>
-            <div className="cb-run-actions">
-              <button type="button" className="cb-run-btn is-primary" onClick={() => setAttempt((n) => n + 1)}>
-                Try again
-              </button>
-              <button type="button" className="cb-run-btn" onClick={runActions.home}>
-                Run home
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="cb-run-loading" role="status">
-            <Track results={run.results} at={run.index} label={`Preparing board ${run.index + 1} of ${BOARD_COUNT}`} />
-            <span className="cb-run-spinner" aria-hidden="true" />
-          </div>
-        )}
-      </Page>
-    );
-  }
-  return (
-    <GameViewComponent
-      game={game}
-      title="Run"
-      subtitle={run.daily ? formatDay(run.daily) : 'Free run'}
-      extra={<Hud run={run} game={game} />}
-      endPanel={run.phase === 'result' ? <ResultPanel run={run} onNext={runActions.next} /> : undefined}
-      onExit={runActions.home}
-    />
-  );
 }

@@ -1,214 +1,209 @@
+// @vitest-environment jsdom
+// The Run store on the real game store: boards get ready with their targets, every placement is
+// scored off the input path and in order, the hearts and the board's end follow, and saves go to
+// cellbound:run:v2 only.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { LYRA } from '../../engine/fixtures';
-import type { GeneratedPuzzle, GenerateOptions } from '../../engine/types';
-import { attemptsFor, gameKey, generateWithFallback, loadBoard } from './board';
-import { randomSeed, resetRunStore, runActions, unlockedByRun, useRunStore } from './store';
+import { TECHNIQUES, type TechniqueId } from '../../engine/techniques';
+import type { Digit, Puzzle } from '../../engine/types';
+import { actions, getGame, resetStoreForTesting, startGame } from '../../game/store';
 
-const solved = { status: 'solved' as const, mistakes: 0, hintsUsed: 0, elapsedMs: 70_000 };
+const engine = vi.hoisted(() => ({ technique: null as string | null, calls: [] as { values: number[]; cell: number; digit: number }[] }));
+vi.mock('../../engine/techniques', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../engine/techniques')>();
+  return {
+    ...real,
+    classifyPlacementAsync: async (p: Puzzle, values: Digit[], cell: number, digit: Digit) => {
+      engine.calls.push({ values: values.slice(), cell, digit });
+      const t = engine.technique as TechniqueId | null;
+      return t ? { technique: t, tier: real.TECHNIQUES[t].tier, name: real.TECHNIQUES[t].name, focus: [cell] } : real.classifyPlacementAsync(p, values, cell, digit);
+    },
+  };
+});
+
+import type { Prepared } from './board';
+import { LEGACY_KEY, RUN_KEY } from './storage';
+import { playedBoard, resetRunStore, runActions, settled, useRunStore } from './store';
+
 const state = () => useRunStore.getState();
 
-/** Plays a whole run through the controller, taking the first card each time. */
-function playAll(mistakesOnFirst = 0) {
-  for (let b = 0; b < 5; b++) {
-    runActions.reportBoard(b === 0 ? { ...solved, mistakes: mistakesOnFirst } : solved, '2026-10-23');
-    runActions.next();
-    if (b < 4) runActions.pick(state().run!.offer[0]);
+async function until(cond: () => boolean, what: string, ms = 15_000) {
+  const t0 = Date.now();
+  while (!cond()) {
+    if (Date.now() - t0 > ms) throw new Error(`timed out waiting for ${what}`);
+    await new Promise((r) => setTimeout(r, 10));
   }
 }
 
-describe('the run controller', () => {
-  beforeEach(() => resetRunStore());
+/** Plays the board on the select screen as the board view does: start it, then hand the game over. */
+async function playBoard(): Promise<Puzzle> {
+  const slot = state().run!.slot;
+  await until(() => !!state().ready[slot], 'the board');
+  runActions.play();
+  const run = state().run!;
+  const { puzzle, fog } = playedBoard(run, state().ready[slot] as Prepared);
+  startGame({ key: run.live!.key, mode: 'run', puzzle, fog, mods: run.live!.mods, resume: false });
+  runActions.sync(getGame()!);
+  return puzzle;
+}
 
-  it('starts a daily run with the shared seed and counts the start', () => {
-    runActions.start('daily', 1000, '2026-10-23');
-    const run = state().run!;
-    expect(run.daily).toBe('2026-10-23');
-    expect(run.seed).toBe('run:2026-10-23');
-    expect(state().data.current).toEqual(run);
-    expect(state().data.stats.started).toBe(1);
-    expect(state().data.stats.topBoard).toBe(1);
+const emptyCells = (p: Puzzle) => p.givens.map((d, i) => (d ? -1 : i)).filter((i) => i >= 0);
+function type(cell: number, d: number) {
+  actions.select(cell);
+  actions.input(d);
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  resetStoreForTesting();
+  resetRunStore();
+  engine.technique = null;
+  engine.calls = [];
+});
+
+describe('the Run store', () => {
+  it('gets the first board ready and keeps its target in the run', async () => {
+    runActions.start('free', 1000, '2026-10-26');
+    expect(state().run!.phase).toBe('select');
+    await until(() => state().run!.targets[0] !== null, 'the target');
+    expect(state().run!.targets[0]).toBeGreaterThan(0);
+    expect(JSON.parse(localStorage.getItem(RUN_KEY)!).current.targets[0]).toBe(state().run!.targets[0]);
   });
 
-  it('starts free runs with different random seeds', () => {
-    const seeds = new Set<string>();
-    for (let i = 0; i < 20; i++) seeds.add(randomSeed());
-    expect(seeds.size).toBe(20);
-    for (const s of seeds) expect(s).toMatch(/^free:[0-9a-z]{14}$/);
+  it('scores a placement a moment after the tap, from the board before it, never during it', async () => {
+    runActions.start('free', 1000, '2026-10-26');
+    const p = await playBoard();
+    engine.technique = 'hiddenSingle';
+    const [a, b] = emptyCells(p);
+    // A wrong digit in b first: the engine must not see it when a is classified.
+    type(b, (p.solution[b] % 9) + 1);
+    type(a, p.solution[a]);
+    expect(getGame()!.values[a]).toBe(p.solution[a]);
+    expect(state().run!.live!.score).toBe(0);
+    await settled();
+    const live = state().run!.live!;
+    expect(live.score).toBe(20);
+    expect(live.tech).toEqual({ hiddenSingle: { n: 1, points: 20, top: 20 } });
+    expect(live.hearts).toBe(2);
+    const call = engine.calls.find((c) => c.cell === a)!;
+    expect(call.values[a]).toBe(0);
+    expect(call.values[b]).toBe(0);
+    expect(call.values.filter(Boolean).length).toBe(p.givens.filter(Boolean).length);
+    expect(state().fx.popups.at(-1)).toMatchObject({ cell: a, name: 'Hidden single', points: 20 });
   });
 
-  it('still makes a seed when the browser has no secure random generator', () => {
-    vi.stubGlobal('crypto', {
-      getRandomValues() {
-        throw new Error('not available');
-      },
-    });
-    try {
-      const a = randomSeed();
-      const b = randomSeed();
-      expect(a).toMatch(/^free:[0-9a-z]{14}$/);
-      expect(a).not.toBe(b);
-    } finally {
-      vi.unstubAllGlobals();
-    }
+  it('applies placements in the order they went in, however fast they come', async () => {
+    runActions.start('free', 1000, '2026-10-26');
+    const p = await playBoard();
+    engine.technique = 'nakedSingle';
+    const cells = emptyCells(p).slice(0, 12);
+    for (const c of cells) type(c, p.solution[c]);
+    await settled();
+    const live = state().run!.live!;
+    expect(live.scored).toEqual(cells);
+    // The flow climbs 0.1 a placement: 10, 11, 12 and so on, before any unit finishes.
+    expect(live.streak).toBe(12);
+    expect(live.score).toBeGreaterThanOrEqual(cells.reduce((s, _, k) => s + Math.round(10 * Math.min(2, 1 + 0.1 * k)), 0));
   });
 
-  it('plays through to a finished run, records it and clears the saved run', () => {
-    runActions.start('free', 1000, '2026-10-23');
-    playAll();
-    const run = state().run!;
-    expect(run.outcome).toBe('finished');
-    expect(state().data.current).toBeNull();
-    expect(state().data.last?.score).toBe(run.score);
-    expect(state().data.stats.finished).toBe(1);
-    expect(state().data.stats.bestFree?.score).toBe(run.score);
-    expect(state().fresh).toEqual(expect.arrayContaining(['first-run', 'full-hearts']));
-    runActions.next();
-    expect(state().run!.phase).toBe('done');
-  });
-
-  it('announces every card a run opened, including ones opened on earlier boards', () => {
-    runActions.start('free', 1000, '2026-10-23');
-    // Reaching board 3 opens Insight while the run is still going.
-    runActions.reportBoard(solved);
-    runActions.next();
-    runActions.pick(state().run!.offer[0]);
-    runActions.reportBoard(solved);
-    runActions.next();
-    runActions.pick(state().run!.offer[0]);
-    expect(state().data.stats.topBoard).toBe(3);
-    runActions.reportBoard(solved);
-    runActions.next();
-    runActions.pick(state().run!.offer[0]);
-    runActions.reportBoard(solved);
-    runActions.next();
-    runActions.pick(state().run!.offer[0]);
-    runActions.reportBoard(solved);
-    expect(state().run!.outcome).toBe('finished');
-    expect(state().fresh).toEqual(expect.arrayContaining(['board-3', 'first-run']));
-    expect(unlockedByRun(state().run!, state().data.stats)).toEqual(state().fresh);
-  });
-
-  it('keeps an unfinished run when leaving to the home screen, and resumes it', () => {
-    runActions.start('free', 1000, '2026-10-23');
-    runActions.reportBoard(solved);
-    runActions.next();
+  it('still scores a digit placed just before going back to the Run home, without bringing the run back', async () => {
+    runActions.start('free', 1000, '2026-10-26');
+    const p = await playBoard();
+    engine.technique = 'hiddenSingle';
+    const [a] = emptyCells(p);
+    type(a, p.solution[a]);
     runActions.home();
+    await settled();
     expect(state().run).toBeNull();
-    expect(state().data.current?.phase).toBe('choose');
-    runActions.resume();
-    expect(state().run?.phase).toBe('choose');
+    expect(state().data.current!.live!.score).toBe(20);
+    expect(JSON.parse(localStorage.getItem(RUN_KEY)!).current.live.scored).toEqual([a]);
   });
 
-  it('ends the run on a failed board and says why', () => {
-    runActions.start('free', 1000, '2026-10-23');
-    runActions.reportBoard({ status: 'failed', mistakes: 3, hintsUsed: 0, elapsedMs: 10_000 });
-    expect(state().run!.outcome).toBe('failed');
-    expect(state().data.stats.failed).toBe(1);
+  it('ends the board when the hearts run out, and the run with it', async () => {
+    runActions.start('free', 1000, '2026-10-26');
+    const p = await playBoard();
+    const c = emptyCells(p)[0];
+    // Three different wrong digits: typing the same one twice would erase it.
+    for (const d of [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((x) => x !== p.solution[c]).slice(0, 3)) type(c, d);
+    await until(() => state().run!.phase !== 'board', 'the end of the board');
+    await settled();
+    const run = state().run!;
+    expect(run.phase).toBe('tally');
+    expect(run.outcome).toBe('lost');
+    expect(run.results[0].status).toBe('out');
     expect(state().data.current).toBeNull();
+    expect(state().data.stats.lost).toBe(1);
   });
 
-  it('ignores a board report outside the board phase', () => {
-    runActions.start('free', 1000, '2026-10-23');
-    runActions.reportBoard(solved);
-    const after = state().run;
-    runActions.reportBoard(solved);
-    expect(state().run).toBe(after);
-  });
-
-  it('gives up an unfinished run when a new one starts, and it counts as an attempt', () => {
-    runActions.start('daily', 1000, '2026-10-23');
-    runActions.reportBoard(solved, '2026-10-23');
-    runActions.start('free', 2000, '2026-10-23');
-    const stats = state().data.stats;
-    expect(stats.abandoned).toBe(1);
-    expect(stats.dailyBest['2026-10-23']?.outcome).toBe('abandoned');
-    expect(state().data.last?.outcome).toBe('abandoned');
-    expect(state().run?.daily).toBeNull();
-  });
-
-  it('marks a second daily run of the same date as a replay that keeps the first score', () => {
-    runActions.start('daily', 1000, '2026-10-23');
-    expect(state().run!.replay).toBe(false);
-    playAll(2);
-    const first = state().data.stats.dailyBest['2026-10-23'].score;
-    runActions.home();
-    runActions.start('daily', 5000, '2026-10-23');
-    expect(state().run!.replay).toBe(true);
-    playAll(0);
-    expect(state().data.stats.dailyBest['2026-10-23'].score).toBe(first);
-  });
-
-  it('uses the starter pool only on a daily run', () => {
-    runActions.start('daily', 1000, '2026-10-23');
-    runActions.reportBoard(solved, '2026-10-23');
+  it('tallies a solved board, then moves on to a pick or the next board', async () => {
+    runActions.start('free', 1000, '2026-10-26');
+    const p = await playBoard();
+    engine.technique = 'nakedSingle';
+    for (const c of emptyCells(p)) type(c, p.solution[c]);
+    await until(() => state().run!.phase === 'tally', 'the tally');
+    const run = state().run!;
+    const r = run.results[0];
+    expect(['cleared', 'missed']).toContain(r.status);
+    expect(r.score).toBe(run.score);
+    expect(r.tech.nakedSingle!.n).toBe(emptyCells(p).length);
+    expect(state().data.stats.codex.nakedSingle!.n).toBe(emptyCells(p).length);
     runActions.next();
-    const offered = state().run!.offer;
-    expect(offered).toHaveLength(3);
-    for (const id of offered) expect(['clear-sight', 'insight', 'steady-hand', 'packed-house', 'beacon']).not.toContain(id);
+    expect(state().run!.phase).toBe(r.status === 'cleared' ? 'reward' : 'select');
   });
 
-  it('can pick only an offered card', () => {
-    runActions.start('free', 1000, '2026-10-23');
-    runActions.reportBoard(solved);
-    runActions.next();
-    const before = state().run;
-    runActions.pick('not-a-card');
-    expect(state().run).toBe(before);
-    runActions.pick(before!.offer[1]);
-    expect(state().run!.phase).toBe('board');
-    expect(state().run!.index).toBe(1);
-    expect(state().data.stats.topBoard).toBe(2);
+  it('uses inks on the board: a hint charge, a revealed cell, and Void lifts the boss rule', async () => {
+    runActions.start('free', 1000, '2026-10-26');
+    await until(() => !!state().ready[0], 'the board');
+    // Put the run on a Mute boss with three inks to hand.
+    const run = state().run!;
+    useRunStore.setState({ run: { ...run, slot: 2, bosses: ['mute', 'fog', 'clock'], items: ['inkHint', 'inkReveal'] } });
+    runActions.retry();
+    const p = await playBoard();
+    expect(getGame()!.mods).toMatchObject({ noNotes: true, hints: 1 });
+    expect(runActions.useItem(0)).toBe(true);
+    expect(getGame()!.mods!.hints).toBe(2);
+    expect(state().run!.items).toEqual(['inkReveal']);
+    actions.select(null);
+    expect(runActions.useItem(0)).toBe(true);
+    await settled();
+    expect(state().run!.items).toEqual([]);
+    expect(getGame()!.values.filter((d, i) => !p.givens[i] && d).length).toBe(1);
+    expect(state().run!.live!.score).toBe(0);
+    useRunStore.setState({ run: { ...state().run!, items: ['inkVoid'] } });
+    expect(runActions.useItem(0)).toBe(true);
+    expect(getGame()!.mods!.noNotes).toBeUndefined();
+    expect(state().run!.live!.rule).toBeNull();
+  });
+
+  it('never writes the first Run\'s key, and counts its runs', async () => {
+    const v1 = JSON.stringify({ v: 1, current: null, last: null, stats: { started: 4 } });
+    localStorage.setItem(LEGACY_KEY, v1);
+    resetRunStore();
+    runActions.start('free', 1000, '2026-10-26');
+    await playBoard();
+    runActions.giveUp('2026-10-26');
+    expect(localStorage.getItem(LEGACY_KEY)).toBe(v1);
+    expect(Object.keys(localStorage).sort()).toEqual(['cellbound:run:v1', 'cellbound:run:v2', 'cellbound:v1'].filter((k) => localStorage.getItem(k) !== null).sort());
   });
 });
 
-describe('board loading', () => {
-  const opts: GenerateOptions = { size: 6, seed: 'run:x:2', rules: ['thermo', 'xv'], difficulty: 3, hiddenCageTotals: true };
-  const puzzle = (o: GenerateOptions): GeneratedPuzzle => ({ ...LYRA, id: o.seed, seed: o.seed });
-
-  it('builds the retry ladder the same way every time', () => {
-    const a = attemptsFor(opts);
-    expect(a).toEqual(attemptsFor(opts));
-    expect(a[0]).toEqual(opts);
-    expect(a.map((x) => x.seed)).toEqual(['run:x:2', 'run:x:2:b', 'run:x:2:c', 'run:x:2:d', 'run:x:2:e', 'run:x:2:f']);
-    expect(a[2].difficulty).toBe(2);
-    expect(a[3].hiddenCageTotals).toBe(false);
-    // The last two attempts cannot fail for want of a rule mix: one rule, then classic rules.
-    expect(a[4].rules).toEqual(['thermo']);
-    expect(a[5].rules).toEqual([]);
-  });
-
-  it('falls back when the generator throws, and gives up after the last attempt', async () => {
-    let calls = 0;
-    const flaky = async (o: GenerateOptions) => {
-      calls++;
-      if (calls < 3) throw new Error('no puzzle');
-      return puzzle(o);
+describe('the daily run', () => {
+  it('gives everyone the same bosses, boards and targets on a date', async () => {
+    const look = async (now: number) => {
+      resetRunStore();
+      runActions.start('daily', now, '2026-11-05');
+      await until(() => [0, 1, 2].every((s) => state().ready[s]), 'the ante');
+      const run = state().run!;
+      return {
+        seed: run.seed,
+        bosses: run.bosses,
+        boards: [0, 1, 2].map((s) => (state().ready[s] as Prepared).puzzle.id),
+        targets: run.targets.slice(0, 3),
+      };
     };
-    const p = await generateWithFallback(opts, flaky);
-    expect(p.seed).toBe('run:x:2:c');
-    await expect(
-      generateWithFallback(opts, async () => {
-        throw new Error('never');
-      }),
-    ).rejects.toThrow('never');
-  });
-
-  it('caches a board so re-entering it does not generate again', async () => {
-    let calls = 0;
-    const gen = async (o: GenerateOptions) => {
-      calls++;
-      return puzzle(o);
-    };
-    const o = { ...opts, seed: 'cache-test' };
-    const [a, b] = await Promise.all([loadBoard(o, gen), loadBoard(o, gen)]);
-    expect(a).toBe(b);
-    await loadBoard(o, gen);
-    expect(calls).toBe(1);
-  });
-
-  it('keeps game keys unique per attempt', () => {
-    expect(gameKey('run:2026-10-23', 3, 1000)).toBe('run:2026-10-23:3@' + (1000).toString(36));
-    expect(gameKey('run:2026-10-23', 3, 1000)).not.toBe(gameKey('run:2026-10-23', 3, 2000));
-    expect(gameKey('free:abc', 0, 5)).toMatch(/^run:free:abc:0@/);
+    const first = await look(1000);
+    const later = await look(9_999_999);
+    expect(later).toEqual(first);
+    expect(first.targets.every((t) => typeof t === 'number' && t > 0)).toBe(true);
+    expect(TECHNIQUES.xWing.tier).toBe(6);
   });
 });

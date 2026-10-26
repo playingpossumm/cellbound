@@ -1,80 +1,81 @@
 import { describe, expect, it } from 'vitest';
-import { dailyDate, dailyRunSeed } from '../../engine';
-import { CARDS, cardPool } from './cards';
-import { OFFER_SIZE, offerFor } from './offers';
+import type { Category, OfferKind, RunState } from './model';
+import { CATEGORIES, categoryWeight, eligible, makeOffer } from './offers';
+import { rewardById, rewardPool } from './rewards';
+import { newRun } from './state';
 
-const starter = cardPool(new Set(), true);
-const everything = cardPool(new Set(['first-run', 'board-3', 'full-hearts', 'cursed-board', 'daily-3']), false);
-const ids = (cs: { id: string }[]) => cs.map((c) => c.id);
+const starter = rewardPool(new Set(), true);
+const everything = rewardPool(new Set(['boss', 'ante3', 'win', 'xwing', 'chain', 'clean', 'daily3']), false);
+const run = (seed: string, over: Partial<RunState> = {}): RunState => ({ ...newRun(seed, null, 1), ...over });
+const cats = (r: RunState, kind: OfferKind = 'reward') => makeOffer(r, kind, starter).cards.map((c) => rewardById(c)!.category);
 
-describe('offers', () => {
-  it('give three distinct cards from three different families', () => {
-    for (let s = 0; s < 60; s++) {
-      for (let n = 1; n <= 4; n++) {
-        const o = offerFor('t:' + s, n, starter);
-        expect(o.length).toBe(OFFER_SIZE);
-        expect(new Set(ids(o)).size).toBe(OFFER_SIZE);
-        expect(new Set(o.map((c) => c.family)).size).toBe(OFFER_SIZE);
+describe('reward offers', () => {
+  it('are the same for the same run and state, on every call', () => {
+    for (let k = 0; k < 20; k++) {
+      const r = run(`seed${k}`, { slot: k % 9 });
+      expect(makeOffer(r, 'reward', starter)).toEqual(makeOffer({ ...r }, 'reward', [...starter].reverse()));
+    }
+  });
+
+  it('never show one card twice, and hold three, four after a boss with a rare, or two commons for a tag', () => {
+    for (let k = 0; k < 200; k++) {
+      const r = run(`dup${k}`, { slot: k % 9 });
+      for (const [kind, size] of [['reward', 3], ['boss', 4], ['tag', 2]] as [OfferKind, number][]) {
+        const o = makeOffer(r, kind, everything);
+        expect(o.cards).toHaveLength(size);
+        expect(new Set(o.cards).size).toBe(size);
+        if (kind === 'boss') expect(o.cards.some((c) => rewardById(c)!.rarity === 'rare')).toBe(true);
+        if (kind === 'tag') expect(o.cards.every((c) => rewardById(c)!.rarity === 'common')).toBe(true);
       }
     }
   });
 
-  it('always include a boon and a card with a price', () => {
-    for (let s = 0; s < 60; s++) {
-      const o = offerFor('t:' + s, 1, everything);
-      expect(o.some((c) => c.kind === 'boon')).toBe(true);
-      expect(o.some((c) => c.kind !== 'boon')).toBe(true);
+  it('change with the board and the seed', () => {
+    const a = makeOffer(run('x', { slot: 1 }), 'reward', starter).cards;
+    const b = makeOffer(run('x', { slot: 4 }), 'reward', starter).cards;
+    const c = makeOffer(run('y', { slot: 1 }), 'reward', starter).cards;
+    expect(a.join() === b.join() && a.join() === c.join()).toBe(false);
+  });
+
+  it('spread over the categories: one card of each at most, most of the time', () => {
+    let spread = 0;
+    for (let k = 0; k < 300; k++) if (new Set(cats(run(`spread${k}`, { slot: k % 9 }))).size === 3) spread++;
+    expect(spread / 300).toBeGreaterThan(0.8);
+  });
+
+  it('show every category regularly, and favour one the last offer left out', () => {
+    const count: Record<Category, number> = { hearts: 0, hints: 0, mult: 0, score: 0 };
+    let r = run('rotate', { hearts: 3 });
+    for (let k = 0; k < 400; k++) {
+      const c = cats({ ...r, seed: `rotate${k}`, slot: k % 9 });
+      c.forEach((x) => count[x]++);
+      r = { ...r, lastCats: c };
     }
+    const total = Object.values(count).reduce((a, b) => a + b, 0);
+    for (const cat of CATEGORIES) expect(count[cat] / total, cat).toBeGreaterThan(0.12);
+    expect(categoryWeight('hearts', run('w', { lastCats: ['hints', 'mult', 'score'] }))).toBeGreaterThan(categoryWeight('hints', run('w', { lastCats: ['hints', 'mult', 'score'] })));
   });
 
-  it('are the same for the same seed and board, whatever the order of the pool', () => {
-    const a = offerFor('run:2026-10-23', 2, starter);
-    const b = offerFor('run:2026-10-23', 2, starter);
-    const c = offerFor('run:2026-10-23', 2, starter.slice().reverse());
-    expect(ids(a)).toEqual(ids(b));
-    expect(ids(a)).toEqual(ids(c));
+  it('lean on the state: more heart cards when hearts are low, more hint cards after hints were used', () => {
+    const share = (over: Partial<RunState>, cat: Category) => {
+      let n = 0;
+      for (let k = 0; k < 400; k++) n += cats(run(`lean${k}`, { slot: k % 9, ...over })).filter((c) => c === cat).length;
+      return n / 1200;
+    };
+    expect(share({ hearts: 1 }, 'hearts')).toBeGreaterThan(share({ hearts: 3 }, 'hearts') + 0.05);
+    expect(share({ hintsLast: 3 }, 'hints')).toBeGreaterThan(share({ hintsLast: 0 }, 'hints') + 0.05);
   });
 
-  it('are the same for every player on a daily run, because the pool is starter only', () => {
-    const date = dailyDate(new Date(2026, 9, 23));
-    const seed = dailyRunSeed(date);
-    const fresh = cardPool(new Set(), true);
-    const veteran = cardPool(new Set(['first-run', 'board-3', 'full-hearts', 'cursed-board', 'daily-3']), true);
-    for (let n = 1; n <= 4; n++) expect(ids(offerFor(seed, n, fresh))).toEqual(ids(offerFor(seed, n, veteran)));
-  });
-
-  it('differ between boards and between days', () => {
-    const seen = new Set<string>();
-    for (let d = 1; d <= 28; d++) {
-      const seed = dailyRunSeed(`2026-10-${String(d).padStart(2, '0')}`);
-      seen.add(ids(offerFor(seed, 1, starter)).join());
-    }
-    expect(seen.size).toBeGreaterThan(8);
-    const boards = new Set([1, 2, 3, 4].map((n) => ids(offerFor('run:2026-10-23', n, starter)).join()));
-    expect(boards.size).toBeGreaterThan(1);
-  });
-
-  it('can offer Hard turn for the final board too, now that every board has a time window', () => {
-    let seen = 0;
-    for (let s = 0; s < 120; s++) if (offerFor('t:' + s, 4, everything).some((c) => c.id === 'hard-turn')) seen++;
-    expect(seen).toBeGreaterThan(0);
-  });
-
-  it('only offer cards from the pool they are given', () => {
-    const o = offerFor('t:pool', 3, starter);
-    for (const c of o) expect(starter).toContain(c);
-    expect(CARDS.length).toBeGreaterThan(starter.length);
-  });
-
-  it('shows rare cards less often than common ones', () => {
-    let rare = 0;
-    let common = 0;
-    for (let s = 0; s < 400; s++) {
-      for (const c of offerFor('w:' + s, 2, everything)) {
-        if (c.rarity === 'rare') rare++;
-        if (c.rarity === 'common') common++;
-      }
-    }
-    expect(common).toBeGreaterThan(rare * 2);
+  it('leave out cards that could do nothing, cards held to their limit and cards not open yet', () => {
+    const full = run('full', { hearts: 3, maxHearts: 3, shield: 3, perks: { scout: 1, sharpEye: 1, cascade: 1 } });
+    const ids = eligible(full, 'reward', starter).map((c) => c.id);
+    expect(ids).not.toContain('mend');
+    expect(ids).not.toContain('shield');
+    expect(ids).not.toContain('scout');
+    expect(ids).not.toContain('cascade');
+    expect(ids).toContain('bigHeart');
+    expect(eligible(full, 'reward', starter).map((c) => c.id)).not.toContain('fishbowl');
+    expect(eligible(full, 'reward', everything).map((c) => c.id)).toContain('fishbowl');
+    expect(eligible(run('tag'), 'tag', starter).map((c) => c.id)).not.toContain('doubleOrNothing');
   });
 });

@@ -12,7 +12,7 @@ export const extraModes: ModeEntry[] = [
   {
     id: 'run',
     name: 'Run',
-    blurb: 'Five boards, three hearts and a card between each, with a new daily run every day.',
+    blurb: 'Three antes of boards, scored by the techniques you solve with, with lenses, hearts and a shop. A new daily run every day.',
     Screen: RunScreen,
   },
   {

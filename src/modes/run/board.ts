@@ -1,10 +1,16 @@
-// Getting a board's puzzle: one cache so re-entering a board never regenerates it, and a
-// fixed ladder of retries so a generator failure cannot strand a run. The ladder is the
-// same for everyone, so a daily run still gives every player the same boards.
+// Getting a board ready: its puzzle (from one cache, so re-entering a board never regenerates it,
+// with a fixed ladder of retries so a generator failure cannot strand a run), its target from the
+// engine's tier profile, and what its boss rule needs: Fish Market's board, Thief's hidden givens.
+// The ladder of retries is the same for everyone, so a daily run gives every player the same boards.
 import { fogFor } from '../../engine';
 import { generateAsync } from '../../engine/client';
-import type { GeneratedPuzzle, GenerateOptions } from '../../engine/types';
-import type { FogSpec } from '../../engine/types';
+import { tierProfileAsync, type TierProfile } from '../../engine/techniques';
+import type { FogSpec, GeneratedPuzzle, GenerateOptions, Puzzle, PuzzleShape } from '../../engine/types';
+import { optionsFor } from './boards';
+import { pickFishBoard, thiefCells } from './bosses';
+import type { RunState } from './model';
+import { ruleOf } from './state';
+import { targetFor } from './targets';
 
 type Generator = (o: GenerateOptions) => Promise<GeneratedPuzzle>;
 
@@ -47,13 +53,58 @@ export function loadBoard(o: GenerateOptions, gen: Generator = generateAsync): P
   return p;
 }
 
-/** Fog layout for a board that asked for fog: the generator's, or the engine default. */
-export function fogOf(o: GenerateOptions, puzzle: GeneratedPuzzle): FogSpec | undefined {
-  if (!o.fog) return undefined;
-  return puzzle.fog ?? fogFor(puzzle);
+/** A board ready to show and to play. */
+export interface Prepared {
+  slot: number;
+  puzzle: GeneratedPuzzle;
+  profile: TierProfile;
+  target: number;
+  /** Thief's hidden givens. */
+  stolen: number[];
 }
 
-/** The key the game store saves a board under. Unique per attempt, so a replay starts clean. */
-export function gameKey(seed: string, index: number, createdAt: number): string {
-  return `run:${seed.replace(/^run:/, '')}:${index}@${createdAt.toString(36)}`;
+export interface PrepareDeps {
+  gen?: Generator;
+  profileOf?: (p: Puzzle) => TierProfile | Promise<TierProfile>;
+  isUnique?: (shape: PuzzleShape) => boolean;
+}
+
+const prepared = new Map<string, Promise<Prepared>>();
+
+/** Builds a slot's board and works out its target. Same run seed and slot, same board, same target. */
+export function prepareBoard(run: Pick<RunState, 'seed' | 'bosses'>, slot: number, deps: PrepareDeps = {}): Promise<Prepared> {
+  const key = `${run.seed}|${slot}|${run.bosses.join(',')}`;
+  const ready = deps.gen || deps.profileOf || deps.isUnique ? undefined : prepared.get(key);
+  if (ready) return ready;
+  const job = (async (): Promise<Prepared> => {
+    const options = optionsFor(run.seed, slot);
+    const rule = ruleOf(run, slot);
+    const load = (o: GenerateOptions) => loadBoard(o, deps.gen);
+    // The profile runs on the engine's worker, so the screen never waits for it.
+    const profileOf = deps.profileOf ?? tierProfileAsync;
+    let puzzle: GeneratedPuzzle;
+    let profile: TierProfile;
+    if (rule === 'fish') ({ puzzle, profile } = await pickFishBoard(options, load, profileOf));
+    else {
+      puzzle = await load(options);
+      profile = await profileOf(puzzle);
+    }
+    const stolen = rule === 'thief' ? thiefCells(puzzle, undefined, deps.isUnique) : [];
+    return { slot, puzzle, profile, target: targetFor(slot, profile), stolen };
+  })();
+  if (!deps.gen && !deps.profileOf && !deps.isUnique) {
+    prepared.set(key, job);
+    job.catch(() => prepared.delete(key));
+  }
+  return job;
+}
+
+/** The fog over a board played in fog: the engine's layout for this very board, so its target stands. */
+export function fogOf(puzzle: Puzzle): FogSpec {
+  return fogFor(puzzle);
+}
+
+/** The key the game store saves a board under. Unique per run, so a replay starts clean. */
+export function gameKey(seed: string, slot: number, createdAt: number): string {
+  return `run2:${seed.replace(/^run:/, '')}:${slot}@${createdAt.toString(36)}`;
 }

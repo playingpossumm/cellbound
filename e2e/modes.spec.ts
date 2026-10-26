@@ -30,49 +30,6 @@ async function solve(page: Page) {
   });
 }
 
-test('every board of a run is a 9x9, and the track draws five of them', async ({ page }) => {
-  await openFresh(page);
-  await openScreen(page, 'Run');
-  await expect(page.locator('.cb-run-shape .cb-run-pip-board.is-nine')).toHaveCount(5);
-  await page.getByRole('button', { name: 'Start free run' }).click();
-  for (let board = 1; board <= 5; board++) {
-    await expect(page.locator('.cb-run-hud')).toContainText(`Board ${board} of 5`);
-    await expect(page.locator('.cb-board[data-size="9"]')).toBeVisible();
-    await expect(page.locator('.cb-key')).toHaveCount(9);
-    await solve(page);
-    if (board === 5) break;
-    await page.locator('.cb-run-panel').getByRole('button', { name: 'Choose a card' }).click();
-    // A card with a clock names the minutes of the board it is for, not the range of every board.
-    await expect(page.locator('.cb-run-offers')).not.toContainText(/\d+ to \d+ minutes/);
-    await page.locator('.cb-run-offers .cb-run-card').first().click();
-    await page.getByRole('button', { name: /^Take / }).click();
-  }
-  await expect(page.locator('.cb-run-panel')).toContainText('Board 5 cleared');
-  await page.locator('.cb-run-panel').getByRole('button', { name: 'See summary' }).click();
-  await expect(page.locator('.cb-run-title')).toHaveText('Run complete');
-});
-
-test('a run goes from board to card to the next board, and the menu returns to the Run home', async ({ page }) => {
-  await openFresh(page);
-  await openScreen(page, 'Run');
-  await page.getByRole('button', { name: 'Start free run' }).click();
-  await expect(page.locator('.cb-run-hud')).toContainText('Board 1 of 5');
-  await expect(page.getByRole('button', { name: 'Menu' })).toBeVisible();
-  await solve(page);
-  await expect(page.locator('.cb-run-panel')).toContainText('Board 1 cleared');
-  await page.locator('.cb-run-panel').getByRole('button', { name: 'Choose a card' }).click();
-  const cards = page.locator('.cb-run-offers .cb-run-card');
-  await expect(cards).toHaveCount(3);
-  await cards.first().click();
-  await page.getByRole('button', { name: /^Take / }).click();
-  await expect(page.locator('.cb-run-hud')).toContainText('Board 2 of 5');
-  // The menu takes you back to the Run home, with the run waiting.
-  await openScreen(page, 'Run');
-  await expect(page.getByRole('button', { name: 'Resume run' })).toBeVisible();
-  await page.getByRole('button', { name: 'Resume run' }).click();
-  await expect(page.locator('.cb-run-hud')).toContainText('Board 2 of 5');
-});
-
 test('a new rule chip leads to its lesson, and finishing the lesson takes its dot away', async ({ page }) => {
   await openFresh(page);
   const chip = page.locator('.cb-chip').first();

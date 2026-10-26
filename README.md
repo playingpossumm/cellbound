@@ -10,7 +10,7 @@ Play it at [cellbound-sudoku.vercel.app](https://cellbound-sudoku.vercel.app).
 
 The Daily is one 9x9 puzzle a day, the same for everyone. It climbs from a gentle Monday with one rule to a hard Saturday, and Sunday brings a longer board with three rules. Each Daily is named after a constellation, and solving it on its own day keeps your streak going.
 
-Run is a roguelite. You play five 9x9 boards in a row with three hearts, and every wrong digit costs a heart. Each board asks a little more than the last, from a gentle board with one rule to a medium final with three, so a whole run takes an experienced player about 45 minutes. Between boards you take one of three cards. A boon helps on the next board, a curse makes it harder and raises its score, and a bargain does a little of both. There is a daily run with the same boards and offers for everyone, free runs that are new every time, and five more cards to unlock by reaching milestones.
+Run is a roguelite in which how you solve is the score. A run is three antes of three 9x9 boards, a Small, a Big and a Boss, from gentle boards to a hard final. Every correct digit scores by the technique that proves it at that moment: chips from the technique's tier, times a mult that grows when the digit finishes a row, column, box or clue, climbs with an unbroken streak, and multiplies when a unit is finished clean, with no notes, hints or mistakes in it. So a hard deduction pays only while it is still hard. Each board shows its target before it starts. Finishing under it costs one of your hearts, and finishing over it pays coins and a pick of three cards, from hearts, hints, multipliers, score and bargains with a cost. A Small or Big board can be skipped for a smaller pick. Every boss board has a rule, such as fog, no notes, a clock, hidden givens, glass that breaks on a mistake, or a fish market that pays for X-Wings, and after it comes a shop of lenses, which fire on every placement in the order they sit, Spectra, which raise a technique's chips for the run, and one-shot inks. There is a daily run with the same boards for everyone, free runs that are new every time, and lenses and cards to unlock, with a codex of every technique you have placed.
 
 Fog opens on a 9x9 and hides most of the board. A correct digit clears the cells around it and shows the givens and clues underneath, while a wrong digit clears nothing.
 
@@ -38,7 +38,7 @@ Every board keeps the classic rule that each row, column and box holds each digi
 
 Tap or click a cell, then a number. On a keyboard, type the digit, move with the arrow keys or WASD, and erase with Backspace, Delete or 0. N switches to notes and Shift with a digit writes a single note, Z undoes and Y redoes (Ctrl+Z and Ctrl+Y work too), H asks for a hint, P pauses and Escape clears the selection.
 
-A hint comes in three steps for the same deduction. The first shows where to look, the second names the rule that does the work, and the third places the digit and explains why. Mistake checking can be off, can show only digits that break a rule, or can mark every digit that differs from the solution. Fog and Run always check against the solution, because clearing fog and losing hearts depend on it.
+A hint comes in three steps for the same deduction. The first shows where to look, the second names the rule that does the work, and the third places the digit and explains why. Mistake checking can be off, can show only digits that break a rule, or can mark every digit that differs from the solution. Fog and Run always check against the solution, because clearing fog and losing hearts depend on it. A Run board allows a set number of hints, shown on the hint key, and a digit a hint gives scores nothing.
 
 ![A Daily on a laptop](docs/laptop.png)
 
@@ -70,6 +70,7 @@ Then open the address Vite prints. `npm run build` makes a production build in `
 - `npm run e2e:edge` runs the Edge projects only, which is the quick check.
 - `npm run gen:daily` regenerates the stored Daily puzzles. Pass a range of months to choose them, for example `npm run gen:daily -- 2028-01 2028-12`.
 - `npm run gen:practice` regenerates the Learn practice puzzles.
+- `npm run calibrate:run` plays sample Run boards three ways and prints their scores against their targets, for tuning `src/modes/run/tuning.ts`. Pass a number of seeds to sample more, for example `npm run calibrate:run -- 12`.
 
 ## How it is built
 
@@ -85,7 +86,7 @@ The puzzle engine in `src/engine` is plain TypeScript. It has a solver that prov
 | `src/board` | The board and its layers |
 | `src/themes` | The look, Prism |
 | `src/modes` | Run and Learn |
-| `scripts` | Puzzle generation for Dailies and lessons |
+| `scripts` | Puzzle generation for Dailies and lessons, and Run calibration |
 | `e2e` | Browser tests |
 
 Unit tests use Vitest and browser tests use Playwright. The app's name is set once in `src/app/brand.ts`.

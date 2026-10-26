@@ -55,7 +55,10 @@ test('works offline after the first visit', async ({ page, context }) => {
   await page.getByRole('button', { name: 'Menu' }).first().click();
   await page.locator('dialog.cb-menu').getByRole('button', { name: /^Run/ }).click();
   await page.getByRole('button', { name: 'Start free run' }).click();
-  await expect(page.locator('.cb-run-hud')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeEnabled({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(page.locator('.cb-board[data-size="9"]')).toBeVisible();
+  await expect(page.locator('.cb-run-band')).toBeVisible();
   await page.getByRole('button', { name: 'Menu' }).first().click();
   await page.locator('dialog.cb-menu').getByRole('button', { name: /^Learn/ }).click();
   await expect(page.locator('.cb-learn-list')).toBeVisible();

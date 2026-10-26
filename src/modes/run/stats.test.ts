@@ -1,186 +1,130 @@
 import { describe, expect, it } from 'vitest';
-import { cardPool } from './cards';
-import { abandon, advance, choose, finishBoard, newRun, type BoardEnd, type RunState } from './state';
-import {
-  MILESTONES,
-  bestDaily,
-  cardsUnlockedBy,
-  emptyStats,
-  newlyUnlocked,
-  onBoardEnd,
-  onBoardStart,
-  onRunEnd,
-  onRunStart,
-  unlockedSet,
-} from './stats';
-import { RUN_KEY, emptyStorage, loadRunStorage, saveRunStorage, type StorageLike } from './storage';
+import { LENSES } from './lenses';
+import type { BoardResult, RunState } from './model';
+import { REWARDS } from './rewards';
+import { newRun } from './state';
+import { addToCodex, bestDaily, emptyStats, MILESTONES, onBoardEnd, onBoardStart, onRunEnd, onRunStart, opensWith, unlockedNames, unlockedSet } from './stats';
+import { emptyStorage, isRunState, LEGACY_KEY, legacyRuns, loadRunStorage, RUN_KEY, saveRunStorage, type StorageLike } from './storage';
 
-const pool = cardPool(new Set(), true);
-const clean: BoardEnd = { status: 'solved', mistakes: 0, hintsUsed: 0, elapsedMs: 60_000 };
-
-function finishedRun(seed: string, daily: string | null, mistakes = 0): RunState {
-  let r = newRun(seed, daily, 1);
-  for (let i = 0; i < 4; i++) {
-    r = advance(finishBoard(r, i === 0 ? { ...clean, mistakes } : clean), pool);
-    r = choose(r, r.offer[0]);
-  }
-  return finishBoard(r, clean);
+function memory(seed: Record<string, string> = {}): StorageLike & { map: Map<string, string> } {
+  const map = new Map(Object.entries(seed));
+  return { map, getItem: (k) => map.get(k) ?? null, setItem: (k, v) => void map.set(k, v) };
 }
 
-describe('unlock milestones', () => {
-  it('start locked on a fresh install', () => {
+const result = (over: Partial<BoardResult> = {}): BoardResult => ({
+  slot: 0,
+  status: 'cleared',
+  score: 1000,
+  target: 800,
+  coins: null,
+  heartsLost: 0,
+  heartsAfter: 3,
+  mistakes: 0,
+  hintsUsed: 0,
+  elapsedMs: 1,
+  tech: {},
+  best: null,
+  clean: 0,
+  rule: null,
+  ...over,
+});
+const ended = (over: Partial<RunState>): RunState => ({ ...newRun('t:s', null, 1), ...over });
+
+describe('run stats', () => {
+  it('count runs, wins, losses and the furthest ante', () => {
+    let s = onRunStart(emptyStats());
+    s = onBoardStart(s, 4);
+    expect(s).toMatchObject({ started: 1, topAnte: 2 });
+    s = onRunEnd(s, ended({ outcome: 'won', score: 5000 }), '2026-10-26');
+    s = onRunEnd(s, ended({ outcome: 'lost', score: 9000 }), '2026-10-27');
+    s = onRunEnd(s, ended({ outcome: 'abandoned', score: 10 }), '2026-10-27');
+    expect(s).toMatchObject({ won: 1, lost: 1, abandoned: 1, bestFree: { score: 9000, date: '2026-10-27' } });
+  });
+
+  it('keep the first attempt of a daily run as its best, never a replay', () => {
+    let s = emptyStats();
+    s = onRunEnd(s, ended({ daily: '2026-10-26', outcome: 'lost', score: 3000, results: [result()] }), '2026-10-26');
+    s = onRunEnd(s, ended({ daily: '2026-10-26', outcome: 'won', score: 9000, replay: true }), '2026-10-26');
+    expect(s.dailyBest['2026-10-26']).toEqual({ score: 3000, cleared: 1, outcome: 'lost' });
+    expect(bestDaily(s)).toEqual({ date: '2026-10-26', score: 3000 });
+  });
+
+  it('fill the codex with placements and the best single placement per technique', () => {
+    let s = addToCodex(emptyStats(), { xWing: { n: 2, points: 900, top: 600 }, nakedSingle: { n: 30, points: 600, top: 40 } }, { technique: 'xWing', points: 600 });
+    s = addToCodex(s, { xWing: { n: 1, points: 200, top: 200 } }, { technique: 'xWing', points: 200 });
+    expect(s.codex.xWing).toEqual({ n: 3, best: 600 });
+    expect(s.codex.nakedSingle).toEqual({ n: 30, best: 40 });
+    expect(s.best).toEqual({ technique: 'xWing', points: 600 });
+  });
+
+  it('count a cleared boss and a board finished with every box clean', () => {
+    const s = onBoardEnd(emptyStats(), result({ rule: 'fog' }), true);
+    expect(s).toMatchObject({ bosses: 1, cleanBoards: 1 });
+    expect(onBoardEnd(emptyStats(), result({ rule: 'fog', status: 'missed' }), false).bosses).toBe(0);
+  });
+});
+
+describe('unlocks', () => {
+  it('open from the milestones, each opening at least one lens or card', () => {
+    for (const m of MILESTONES) {
+      const o = opensWith(m.id);
+      expect(o.lenses.length + o.rewards.length, m.id).toBeGreaterThan(0);
+    }
+    // Every locked lens and card has a milestone.
+    for (const x of [...LENSES, ...REWARDS]) if (x.unlock) expect(MILESTONES.some((m) => m.id === x.unlock)).toBe(true);
+  });
+
+  it('follow the counters: an X-Wing opens Fishbowl and Fisheye, a win opens Mirror and Compound', () => {
     expect(unlockedSet(emptyStats()).size).toBe(0);
-  });
-
-  it('first run: opens after one finished run', () => {
-    const s = onRunEnd(onRunStart(emptyStats()), finishedRun('t:1', null), '2026-10-23');
-    expect(unlockedSet(s).has('first-run')).toBe(true);
-    expect(s.finished).toBe(1);
-  });
-
-  it('board 3: opens when the third board starts', () => {
-    let s = emptyStats();
-    s = onBoardStart(s, 1);
-    s = onBoardStart(s, 2);
-    expect(unlockedSet(s).has('board-3')).toBe(false);
-    s = onBoardStart(s, 3);
-    expect(unlockedSet(s).has('board-3')).toBe(true);
-    expect(onBoardStart(s, 2).topBoard).toBe(3);
-  });
-
-  it('full hearts: needs a finished run with 2 hearts or more left, not a failed one', () => {
-    const run = finishedRun('t:2', null);
-    expect(unlockedSet(onRunEnd(emptyStats(), { ...run, hearts: 1 }, 'x')).has('full-hearts')).toBe(false);
-    expect(unlockedSet(onRunEnd(emptyStats(), { ...run, hearts: 2 }, 'x')).has('full-hearts')).toBe(true);
-    const failed = finishBoard(newRun('t:3', null, 1), { status: 'failed', mistakes: 3, hintsUsed: 0, elapsedMs: 1 });
-    expect(unlockedSet(onRunEnd(emptyStats(), failed, 'x')).has('full-hearts')).toBe(false);
-  });
-
-  it('cursed board: counts only cleared boards with a curse or bargain', () => {
-    let r = newRun('t:4', null, 1);
-    r = advance(finishBoard(r, clean), pool);
-    r = choose({ ...r, offer: ['lantern', 'fog'] }, 'lantern');
-    const plain = finishBoard(r, clean).results[1];
-    expect(onBoardEnd(emptyStats(), plain).cursedCleared).toBe(0);
-    let c = advance(finishBoard(newRun('t:5', null, 1), clean), pool);
-    c = choose({ ...c, offer: ['hush'] }, 'hush');
-    const cursed = finishBoard(c, clean).results[1];
-    const s = onBoardEnd(emptyStats(), cursed);
-    expect(s.cursedCleared).toBe(1);
-    expect(unlockedSet(s).has('cursed-board')).toBe(true);
-    const failed = finishBoard(c, { status: 'failed', mistakes: 3, hintsUsed: 0, elapsedMs: 1 }).results[1];
-    expect(onBoardEnd(emptyStats(), failed).cursedCleared).toBe(0);
-  });
-
-  it('daily x3: needs three different dates, not three attempts of one date', () => {
-    let s = emptyStats();
-    for (const d of ['2026-10-21', '2026-10-21', '2026-10-21']) s = onRunEnd(s, finishedRun('run:' + d, d), d);
-    expect(unlockedSet(s).has('daily-3')).toBe(false);
-    s = onRunEnd(s, finishedRun('run:2026-10-22', '2026-10-22'), '2026-10-22');
-    s = onRunEnd(s, finishedRun('run:2026-10-23', '2026-10-23'), '2026-10-23');
-    expect(unlockedSet(s).has('daily-3')).toBe(true);
-  });
-
-  it('daily x3: a day where no board was cleared does not count', () => {
-    let s = emptyStats();
-    for (const d of ['2026-10-20', '2026-10-21', '2026-10-22']) s = onRunEnd(s, abandon(newRun('run:' + d, d, 1)), d);
-    expect(Object.keys(s.dailyBest)).toHaveLength(3);
-    expect(unlockedSet(s).has('daily-3')).toBe(false);
-  });
-
-  it('every milestone opens at least one card, and reports newly opened ones once', () => {
-    for (const m of MILESTONES) expect(cardsUnlockedBy([m.id]).length).toBeGreaterThan(0);
-    const before = emptyStats();
-    const after = onRunEnd(before, finishedRun('t:6', null), 'x');
-    expect(newlyUnlocked(before, after)).toEqual(expect.arrayContaining(['first-run', 'full-hearts']));
-    expect(newlyUnlocked(after, after)).toEqual([]);
+    const fish = addToCodex(emptyStats(), { xWing: { n: 1, points: 150, top: 150 } }, null);
+    expect([...unlockedSet(fish)]).toEqual(['xwing']);
+    expect(unlockedNames(['xwing']).sort()).toEqual(['Fishbowl', 'Fisheye']);
+    expect(unlockedNames(['win']).sort()).toEqual(['Compound', 'Mirror']);
   });
 });
 
-describe('stats', () => {
-  it('daily best is set by the first attempt only', () => {
-    const date = '2026-10-23';
-    const first = finishedRun('run:' + date, date, 2);
-    const replay = finishedRun('run:' + date, date, 0);
-    expect(replay.score).toBeGreaterThan(first.score);
-    let s = onRunEnd(emptyStats(), first, date);
-    s = onRunEnd(s, replay, date);
-    expect(s.dailyBest[date].score).toBe(first.score);
-    expect(bestDaily(s)).toEqual({ date, score: first.score });
+describe('saves', () => {
+  it('live under cellbound:run:v2 and come back the same', () => {
+    const store = memory();
+    const data = { ...emptyStorage(), current: newRun('t:save', null, 7) };
+    expect(saveRunStorage(data, store)).toBe(true);
+    expect([...store.map.keys()]).toEqual([RUN_KEY]);
+    expect(RUN_KEY).toBe('cellbound:run:v2');
+    expect(loadRunStorage(store)).toEqual(data);
   });
 
-  it('a failed first attempt still sets the daily best', () => {
-    const date = '2026-10-24';
-    let r = newRun('run:' + date, date, 1);
-    r = finishBoard(r, { status: 'failed', mistakes: 3, hintsUsed: 0, elapsedMs: 1 });
-    const s = onRunEnd(emptyStats(), r, date);
-    expect(s.dailyBest[date]).toMatchObject({ score: 0, boards: 0, outcome: 'failed' });
-    expect(s.failed).toBe(1);
+  it('never resume or rewrite a run of the first Run, and still count its runs', () => {
+    const v1 = JSON.stringify({ v: 1, current: { v: 1, seed: 'run:2026-10-20', index: 2 }, last: null, stats: { started: 7, finished: 2 } });
+    const store = memory({ [LEGACY_KEY]: v1 });
+    expect(LEGACY_KEY).toBe('cellbound:run:v1');
+    expect(loadRunStorage(store).current).toBeNull();
+    saveRunStorage({ ...emptyStorage(), current: newRun('t:new', null, 1) }, store);
+    expect(store.map.get(LEGACY_KEY)).toBe(v1);
+    expect(legacyRuns(store)).toBe(7);
+    expect(legacyRuns(memory())).toBe(0);
+    expect(legacyRuns(memory({ [LEGACY_KEY]: '{oops' }))).toBe(0);
   });
 
-  it('keeps the best free run only', () => {
-    const lo = finishedRun('t:lo', null, 2);
-    const hi = finishedRun('t:hi', null, 0);
-    let s = onRunEnd(emptyStats(), hi, 'a');
-    s = onRunEnd(s, lo, 'b');
-    expect(s.bestFree).toEqual({ score: hi.score, date: 'a' });
-    expect(Object.keys(s.dailyBest)).toHaveLength(0);
-  });
-
-  it('does not record a free run that scored nothing as a best', () => {
-    let r = newRun('t:zero', null, 1);
-    r = abandon(r);
-    expect(onRunEnd(emptyStats(), r, 'x').bestFree).toBeNull();
-  });
-
-  it('ignores a run that has no outcome yet', () => {
-    const s = emptyStats();
-    expect(onRunEnd(s, newRun('t:open', null, 1), 'x')).toBe(s);
-  });
-});
-
-function memory(): StorageLike & { data: Record<string, string> } {
-  const data: Record<string, string> = {};
-  return { data, getItem: (k) => data[k] ?? null, setItem: (k, v) => void (data[k] = v) };
-}
-
-describe('storage', () => {
-  it('uses the versioned key and starts empty', () => {
-    expect(RUN_KEY).toBe('cellbound:run:v1');
-    expect(loadRunStorage(memory())).toEqual(emptyStorage());
-  });
-
-  it('round trips an unfinished run and the stats', () => {
-    const m = memory();
-    const run = advance(finishBoard(newRun('t:save', '2026-10-23', 5), clean), pool);
-    const stats = onRunStart(emptyStats());
-    expect(saveRunStorage({ v: 1, current: run, last: null, stats }, m)).toBe(true);
-    const back = loadRunStorage(m);
-    expect(back.current).toEqual(run);
-    expect(back.stats).toEqual(stats);
-  });
-
-  it('survives damaged data, wrong versions and missing storage', () => {
-    const m = memory();
-    m.data[RUN_KEY] = '{not json';
-    expect(loadRunStorage(m)).toEqual(emptyStorage());
-    m.data[RUN_KEY] = JSON.stringify({ v: 2, current: 1 });
-    expect(loadRunStorage(m)).toEqual(emptyStorage());
-    m.data[RUN_KEY] = JSON.stringify({ v: 1, current: { v: 1, seed: 3 }, stats: { finished: 'many' } });
-    const back = loadRunStorage(m);
-    expect(back.current).toBeNull();
-    expect(back.stats.finished).toBe(0);
+  it('drop a damaged run or stats rather than crash', () => {
+    const run = newRun('t:bad', null, 1);
+    expect(isRunState(run)).toBe(true);
+    for (const bad of [
+      { ...run, v: 1 },
+      { ...run, slot: 12 },
+      { ...run, phase: 'dancing' },
+      { ...run, bosses: ['fog', 'fog'] },
+      { ...run, levels: [1, 2] },
+      { ...run, live: { key: 3 } },
+      { ...run, results: [{ slot: 'x' }] },
+    ]) {
+      expect(isRunState(bad)).toBe(false);
+    }
+    const store = memory({ [RUN_KEY]: JSON.stringify({ v: 2, current: { ...run, slot: -1 }, last: run, stats: { started: 'many', won: 2, codex: { xWing: { n: 1 } } } }) });
+    const loaded = loadRunStorage(store);
+    expect(loaded.current).toBeNull();
+    expect(loaded.last).toEqual(run);
+    expect(loaded.stats).toMatchObject({ started: 0, won: 2, codex: { xWing: { n: 1, best: 0 } } });
+    expect(loadRunStorage(memory({ [RUN_KEY]: 'not json' }))).toEqual(emptyStorage());
     expect(loadRunStorage(null)).toEqual(emptyStorage());
-    expect(saveRunStorage(emptyStorage(), null)).toBe(false);
-  });
-
-  it('does not throw when storage refuses a write', () => {
-    const full: StorageLike = {
-      getItem: () => null,
-      setItem: () => {
-        throw new Error('quota');
-      },
-    };
-    expect(saveRunStorage(emptyStorage(), full)).toBe(false);
   });
 });

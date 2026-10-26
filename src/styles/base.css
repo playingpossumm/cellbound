@@ -1091,6 +1091,42 @@ button {
   height: 24px;
 }
 
+/* Hints left, on a board that sets how many it allows (a Run board). */
+.cb-tool {
+  position: relative;
+}
+
+.cb-tool-count {
+  position: absolute;
+  top: 5px;
+  left: calc(50% + 9px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--cb-accent);
+  color: var(--cb-ground);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  font-variant-numeric: lining-nums tabular-nums;
+  text-align: center;
+}
+
+.cb-tool-count.is-zero {
+  background: transparent;
+  color: var(--cb-text-dim);
+  box-shadow: inset 0 0 0 1px var(--cb-line-box);
+}
+
+/* A mode's layer over the board, such as the Run's placement popups. It never takes a tap. */
+.cb-board-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
 @media (hover: hover) {
   .cb-tool:hover:not(:disabled) {
     background: var(--cb-peer);

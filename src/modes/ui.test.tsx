@@ -10,11 +10,11 @@ import { LearnApp } from './learn/LearnApp';
 import { LESSONS } from './learn/lessons';
 import { isLessonDone, openLesson, peekLessonRequest, resetLearnStore } from './learn/store';
 import { RunApp } from './run/RunApp';
-import { resetRunStore, runActions, useRunStore } from './run/store';
+import { resetRunStore, runActions, settled, useRunStore } from './run/store';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-/** A play surface that shows what the modes hand it: the title, the extra panel and the end panel. */
+/** A play surface that shows what the modes hand it: the title, the band, the extra panel, the chips, the note and the end panel. */
 function FakeGameView(props: GameViewProps) {
   const over = props.game.status === 'solved' || props.game.status === 'failed';
   return (
@@ -22,7 +22,16 @@ function FakeGameView(props: GameViewProps) {
       <h1>
         {props.title} / {props.subtitle}
       </h1>
+      {props.band}
       {props.extra}
+      {props.chipsLead}
+      {props.note && <p data-testid="note">{props.note.text}</p>}
+      {props.note?.action && (
+        <button type="button" onClick={props.note.action.run} disabled={props.note.action.disabled}>
+          {props.note.action.label}
+        </button>
+      )}
+      <div data-testid="overlay">{props.boardOverlay}</div>
       {props.onExit && (
         <button type="button" onClick={props.onExit}>
           Leave this board
@@ -146,13 +155,33 @@ describe('Learn screen', () => {
   });
 });
 
+
 describe('Run screen', () => {
   const run = () => mount(<RunApp onExit={() => undefined} GameViewComponent={FakeGameView} />);
+  const state = () => useRunStore.getState();
+  /** Waits for the board on the ante screen to be built, then plays it. */
+  const playBoard = async () => {
+    await until(() => !!button('Play') && !button('Play')!.disabled, 'the board to be ready', 20_000);
+    await click(button('Play'));
+    await until(() => !!host.querySelector('[data-testid="game"]'), 'the board', 20_000);
+  };
+  /** Types every remaining digit of the board through the store's own actions. */
+  const solve = async () => {
+    await act(async () => {
+      const g = getGame()!;
+      g.puzzle.givens.forEach((d, i) => {
+        if (d || getGame()!.values[i] === g.puzzle.solution[i]) return;
+        actions.select(i);
+        actions.input(g.puzzle.solution[i]);
+      });
+      await settled();
+    });
+  };
 
   it('moves focus to the page when a screen opens, so keyboard users start at the top', async () => {
     await run();
     expect(document.activeElement).toBe(host.querySelector('.cb-run-page'));
-    await click(button(/Collection/));
+    await click(button('Collection'));
     expect(document.activeElement).toBe(host.querySelector('.cb-run-page'));
   });
 
@@ -161,64 +190,98 @@ describe('Run screen', () => {
     expect(button('Start daily run')).toBeDefined();
     expect(button('Start free run')).toBeDefined();
     expect(text()).toContain('Not played');
-    expect(button(/^Collection/)?.textContent).toContain('16 of 21');
-    // Five boards, every one a 9x9, and three hearts.
-    expect(host.querySelectorAll('.cb-run-shape .cb-run-pip-board')).toHaveLength(5);
-    expect(host.querySelectorAll('.cb-run-shape .cb-run-pip-board.is-nine')).toHaveLength(5);
+    // Three antes of three boards, every boss drawn larger, and three hearts.
+    expect(host.querySelectorAll('.cb-run-shape .cb-run-pip')).toHaveLength(9);
+    expect(host.querySelectorAll('.cb-run-shape .cb-run-pip.is-boss')).toHaveLength(3);
     expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('3 hearts');
-    // No explanations: the home is the two ways to start and the scores.
     expect(text()).not.toMatch(/How a run works|Everyone gets the same boards/);
   });
 
-  it('plays a board, takes a card and starts the next board with it', async () => {
+  it('counts the runs of the first Run on the home', async () => {
+    useRunStore.setState({ legacy: 5 });
+    await run();
+    expect(host.querySelector('.cb-run-stats')?.textContent).toContain('Runs5');
+  });
+
+  it('shows the ante with each target before the board starts, then plays it with the score band', async () => {
     await run();
     await click(button('Start free run'));
-    await until(() => !!host.querySelector('.cb-run-hud'), 'the first board');
-    expect(text()).toContain('Board 1 of 5');
-    expect(getGame()?.key.startsWith('run:')).toBe(true);
-    expect(getGame()?.mods).toMatchObject({ hearts: 3, shield: 0 });
-    expect(host.querySelector('.cb-run-hearts')?.getAttribute('aria-label')).toBe('3 hearts');
+    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 1');
+    expect(host.querySelectorAll('.cb-run-board')).toHaveLength(3);
+    await until(() => state().run!.targets[0] !== null, 'the first target', 20_000);
+    const digits = (s: string | null | undefined) => (s ?? '').replace(/\D/g, '');
+    expect(digits(host.querySelector('.cb-run-board.is-now .cb-run-board-target')?.textContent)).toBe(String(state().run!.targets[0]));
+    await playBoard();
+    expect(getGame()?.key.startsWith('run2:')).toBe(true);
+    expect(getGame()?.mods).toMatchObject({ hints: 1 });
+    expect(host.querySelector('.cb-run-band-score')?.textContent).toBe('0');
+    expect(text()).toContain('Ante 1, Small');
+    // A placement scores once the engine has classified it: the popup and the band follow.
+    await act(async () => {
+      const g = getGame()!;
+      const i = g.puzzle.givens.findIndex((d) => !d);
+      actions.select(i);
+      actions.input(g.puzzle.solution[i]);
+      await settled();
+    });
+    expect(state().run!.live!.scored).toHaveLength(1);
+    expect(host.querySelectorAll('[data-testid="overlay"] .cb-run-pop')).toHaveLength(1);
+  });
 
-    await act(async () => solveForTesting());
-    await until(() => text().includes('Board 1 cleared'), 'the board result');
-    expect(text()).toContain('Run total');
-    await click(button('Choose a card'));
+  it('tallies a solved board, then goes on to a card pick or the next board', async () => {
+    await run();
+    await click(button('Start free run'));
+    await playBoard();
+    await solve();
+    await until(() => !!host.querySelector('.cb-run-panel'), 'the tally', 20_000);
+    const r = state().run!.results[0];
+    expect(host.querySelector('.cb-run-panel-title')?.textContent).toBe(r.status === 'cleared' ? 'Cleared' : 'Missed');
+    expect(host.querySelectorAll('.cb-run-techs tr').length).toBeGreaterThan(0);
+    await click(button(r.status === 'cleared' ? 'Pick a card' : 'Next board'));
+    if (r.status === 'cleared') {
+      expect(host.querySelectorAll('.cb-run-offers button')).toHaveLength(3);
+      expect(button(/^Pick a card/)?.disabled).toBe(true);
+      await click(host.querySelector('.cb-run-offers button') ?? undefined);
+      expect(host.querySelector('.cb-run-offers button')?.getAttribute('aria-pressed')).toBe('true');
+      await click(button(/^Take /));
+    }
+    expect(state().run!.phase).toBe('select');
+    expect(state().run!.slot).toBe(1);
+    expect(host.querySelector('.cb-run-board.is-now .cb-run-board-kind')?.textContent).toBe('Big');
+  });
 
-    expect(host.querySelectorAll('.cb-run-offers button')).toHaveLength(3);
-    expect(button(/^Pick a card/)?.disabled).toBe(true);
+  it('skips a Small board for a tag of two cards', async () => {
+    await run();
+    await click(button('Start free run'));
+    await click(host.querySelector('button[aria-label="Skip for a tag"]') ?? undefined);
+    expect(host.querySelectorAll('.cb-run-offers button')).toHaveLength(2);
     await click(host.querySelector('.cb-run-offers button') ?? undefined);
-    expect(host.querySelector('.cb-run-offers button')?.getAttribute('aria-pressed')).toBe('true');
-    expect(host.querySelectorAll('.cb-run-offers .cb-run-picked-icon')).toHaveLength(1);
-    const taken = useRunStore.getState().run!.offer[0];
     await click(button(/^Take /));
-    await until(() => !!host.querySelector('.cb-run-hud') && text().includes('Board 2 of 5'), 'the second board');
-    expect(useRunStore.getState().run!.setup.cardIds).toContain(taken);
-    expect(getGame()?.key).toContain(':1@');
+    expect(state().run!.slot).toBe(1);
+    expect(state().run!.results[0].status).toBe('skipped');
   });
 
   it('ends the run when the hearts run out and shows the summary', async () => {
     await run();
     await click(button('Start free run'));
-    await until(() => !!host.querySelector('.cb-run-hud'), 'the first board');
-    // Three wrong digits through the store's own rules.
-    for (let i = 0; i < 3; i++) {
-      await act(async () => {
-        const g = getGame()!;
-        const cell = g.puzzle.givens.findIndex((d, k) => d === 0 && !g.values[k]);
+    await playBoard();
+    await act(async () => {
+      const g = getGame()!;
+      const cell = g.puzzle.givens.findIndex((d) => !d);
+      for (const d of [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((x) => x !== g.puzzle.solution[cell]).slice(0, 3)) {
         actions.select(cell);
-        actions.input((g.puzzle.solution[cell] % g.puzzle.size) + 1);
-      });
-    }
-    await until(() => text().includes('Run over'), 'the failure panel');
-    expect(text()).toContain('out of hearts on board 1 of 5');
+        actions.input(d);
+      }
+      await settled();
+    });
+    await until(() => text().includes('Out of hearts'), 'the tally');
     await click(button('See summary'));
-    expect(text()).toContain('Run over');
-    // The result text shows only when sharing fails, so it can be copied by hand. Here there is no share sheet and no clipboard.
+    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Run over');
     expect(host.querySelector('.cb-run-share')).toBeNull();
     await click(button('Share result'));
     await until(() => !!host.querySelector('.cb-run-share'), 'the result text');
-    expect(host.querySelector('.cb-run-share')?.textContent).toContain('Out of hearts on board 1 of 5');
-    expect(useRunStore.getState().data.stats.failed).toBe(1);
+    expect(host.querySelector('.cb-run-share')?.textContent).toContain('Out of hearts on Ante 1, Small');
+    expect(state().data.stats.lost).toBe(1);
     await click(button('Run home'));
     expect(text()).toContain('Last run');
   });
@@ -226,19 +289,18 @@ describe('Run screen', () => {
   it('offers to resume a run that was left, and resumes it on the same board', async () => {
     await run();
     await click(button('Start free run'));
-    await until(() => !!host.querySelector('.cb-run-hud'), 'the first board');
+    await playBoard();
     await click(button('Leave this board'));
     expect(text()).toContain('Run in progress');
     await click(button('Resume run'));
-    await until(() => !!host.querySelector('.cb-run-hud'), 'the board again');
-    expect(text()).toContain('Board 1 of 5');
+    await until(() => !!host.querySelector('[data-testid="game"]'), 'the board again', 20_000);
+    expect(text()).toContain('Ante 1, Small');
   });
 
   it('asks before a new run replaces one in progress, and ends it on request', async () => {
     await run();
     await click(button('Start free run'));
-    await until(() => !!host.querySelector('.cb-run-hud'), 'the first board');
-    await click(button('Leave this board'));
+    await click(host.querySelector('button[aria-label="Back"]') ?? undefined);
     await click(button('Start free run'));
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('ends the one in progress');
     await click(button('Keep playing'));
@@ -246,31 +308,70 @@ describe('Run screen', () => {
     await click(button('End run'));
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('End this run?');
     await click(host.querySelector('[role="alert"] .is-primary') ?? undefined);
-    expect(text()).toContain('Run ended');
-    expect(useRunStore.getState().data.current).toBeNull();
+    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Run ended');
+    expect(state().data.current).toBeNull();
   });
 
-  it('shows the daily run as running once started, with a resume button', async () => {
-    runActions.start('daily', 1000, '2099-01-01');
-    runActions.home();
+  it('runs the shop: buy a lens, see it in a slot, sell it, reroll, and go on to the next ante', async () => {
+    runActions.start('free', 1000, '2099-01-01');
+    const r = state().run!;
+    useRunStore.setState({ run: { ...r, phase: 'shop', slot: 2, coins: 30, shop: { ante: 1, rerolls: 0, lenses: ['loupe', 'spyglass'], items: ['spectra1', 'inkHint'] } } });
     await run();
-    // The home looks for today's date, so only a run for today counts as the daily in progress.
-    expect(text()).toContain('Run in progress');
+    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Shop');
+    await click(host.querySelector('button[aria-label="Buy Loupe for 4 coins"]') ?? undefined);
+    expect(state().run!.lenses).toEqual([{ id: 'loupe' }]);
+    expect(state().run!.coins).toBe(26);
+    await click(host.querySelector('.cb-run-loadout button[aria-label^="Loupe"]') ?? undefined);
+    await click(host.querySelector('button[aria-label="Sell for 2 coins"]') ?? undefined);
+    expect(state().run!.lenses).toEqual([]);
+    expect(state().run!.coins).toBe(28);
+    await click(host.querySelector('button[aria-label="Reroll for 2 coins"]') ?? undefined);
+    expect(state().run!.shop!.rerolls).toBe(1);
+    expect(state().run!.coins).toBe(26);
+    await click(button('On to ante 2'));
+    expect(state().run!).toMatchObject({ phase: 'select', slot: 3 });
+    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 2');
   });
 
-  it('shows locked cards with how to unlock them in the Collection', async () => {
+  it('shows a lens or the boss rule in the message panel on the board, and uses an item from there', async () => {
+    runActions.start('free', 1000, '2099-01-01');
+    const r = state().run!;
+    useRunStore.setState({ run: { ...r, slot: 2, bosses: ['mute', 'fog', 'clock'], lenses: [{ id: 'loupe' }], items: ['inkHint'] } });
+    runActions.retry();
     await run();
-    await click(button(/Collection/));
-    expect(host.querySelectorAll('.cb-run-card.is-locked')).toHaveLength(5);
-    expect(text()).toContain('Finish a run.');
+    await playBoard();
+    await click(host.querySelector('button[aria-label^="Loupe"]') ?? undefined);
+    expect(host.querySelector('[data-testid="note"]')?.textContent).toContain('Loupe.');
+    await click(host.querySelector('.cb-run-bosschip') ?? undefined);
+    expect(host.querySelector('[data-testid="note"]')?.textContent).toContain('No notes on this board.');
+    await click(host.querySelector('button[aria-label^="Hint Ink"]') ?? undefined);
+    await click(button('Use'));
+    expect(getGame()!.mods!.hints).toBe(2);
+    expect(state().run!.items).toEqual([]);
+  });
+
+  it('shows locked lenses and cards with how to open them, and the codex, in the Collection', async () => {
+    await run();
+    await click(button('Collection'));
+    expect(host.querySelectorAll('.cb-run-grid > li')).toHaveLength(20);
+    expect(host.querySelectorAll('.cb-run-grid > li.is-locked')).toHaveLength(8);
+    expect(text()).toContain('Win a run.');
+    await click(button('Cards'));
+    expect(host.querySelectorAll('.cb-run-grid > li.is-locked')).toHaveLength(2);
+    await click(button('Codex'));
+    expect(text()).toContain('X-Wing');
+    expect(host.querySelectorAll('.cb-run-codex-tier')).toHaveLength(8);
     await click(host.querySelector('button[aria-label="Back"]') ?? undefined);
     expect(button('Start daily run')).toBeDefined();
   });
 
-  it('keeps the menu one tap away on the home and the Collection', async () => {
+  it('keeps the menu one tap away on every Run page', async () => {
     await run();
     expect(host.querySelector('header.cb-top button[aria-label="Menu"]')).not.toBeNull();
-    await click(button(/Collection/));
+    await click(button('Collection'));
+    expect(host.querySelector('header.cb-top button[aria-label="Menu"]')).not.toBeNull();
+    await click(host.querySelector('button[aria-label="Back"]') ?? undefined);
+    await click(button('Start free run'));
     expect(host.querySelector('header.cb-top button[aria-label="Menu"]')).not.toBeNull();
   });
 });

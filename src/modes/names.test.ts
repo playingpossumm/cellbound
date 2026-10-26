@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EM_DASH } from '../test/copy';
-import { ALL_KINDS } from './run/cards';
+import { ALL_KINDS } from '../app/rules';
 import { DIFFICULTY_NAMES, RULE_NAMES, RULE_TEXTS, listRules } from './names';
 
 describe('rule names and texts', () => {

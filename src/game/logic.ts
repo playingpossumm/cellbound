@@ -1,5 +1,5 @@
 // Pure board helpers shared by the store and the board. No React, no state.
-import type { CellIndex, Digit, Puzzle } from '../engine/types';
+import type { CellIndex, Clue, ClueKind, Digit, Puzzle } from '../engine/types';
 
 export function rowOf(n: number, i: CellIndex): number {
   return Math.floor(i / n);
@@ -72,6 +72,47 @@ export function completedUnits(p: Puzzle, grid: Digit[], i: CellIndex): UnitHit[
     { kind: 'box', index: regionOf(p, i), cells: regionCells(p, regionOf(p, i)) },
   ];
   return units.filter((u) => u.cells.every((j) => grid[j] === p.solution[j]));
+}
+
+export interface ClueHit {
+  /** Index into puzzle.clues. */
+  index: number;
+  kind: ClueKind;
+  cells: CellIndex[];
+}
+
+/** The cells of a clue, as lists: a line or a cage is one, the diagonal rule is its two diagonals, anti-knight none. */
+export function clueParts(clue: Clue, n: number): CellIndex[][] {
+  switch (clue.kind) {
+    case 'thermo':
+    case 'cage':
+    case 'renban':
+    case 'whisper':
+      return [clue.cells];
+    case 'arrow':
+      return [[clue.circle, ...clue.path]];
+    case 'kropki':
+    case 'xv':
+      return [[clue.a, clue.b]];
+    case 'diagonal':
+      return [
+        Array.from({ length: n }, (_, r) => r * n + r),
+        Array.from({ length: n }, (_, r) => r * n + (n - 1 - r)),
+      ];
+    default:
+      return [];
+  }
+}
+
+/** Clues through cell i whose every cell now matches the solution. Each finished diagonal counts once. */
+export function completedClues(p: Puzzle, grid: Digit[], i: CellIndex): ClueHit[] {
+  const out: ClueHit[] = [];
+  p.clues.forEach((clue, index) => {
+    for (const cells of clueParts(clue, p.size)) {
+      if (cells.includes(i) && cells.every((j) => grid[j] === p.solution[j])) out.push({ index, kind: clue.kind, cells });
+    }
+  });
+  return out;
 }
 
 /** Regions whose every cell matches the solution, keeping the order of `previous` first. */

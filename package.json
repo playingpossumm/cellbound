@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "gen:daily": "tsx scripts/gen-daily.ts",
     "gen:practice": "tsx scripts/craft-practice.ts",
+    "calibrate:run": "tsx scripts/calibrate-run.ts",
     "e2e": "playwright test",
     "e2e:edge": "playwright test --project=phone --project=laptop --project=production"
   },

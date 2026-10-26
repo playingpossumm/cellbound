@@ -28,6 +28,12 @@ export interface GameMods {
   autoNotes?: boolean;
   /** Cells revealed (as hints) when the board starts. */
   reveal?: number;
+  /** Hint ladders the board allows: each new deduction asked for uses one. Unlimited when absent. */
+  hints?: number;
+  /** The first this many hint ladders go straight to the move and place its digit. */
+  quickHints?: number;
+  /** Candidate notes are filled in these cells when the board starts. */
+  notesIn?: CellIndex[];
 }
 
 export interface GameState {
@@ -58,4 +64,10 @@ export interface GameState {
   hinted?: boolean[];
   /** Local date (YYYY-MM-DD) the game was started on. */
   startedOn?: string;
+  /** Run boards only: noted[i] turns true once cell i has held a note on this board. */
+  noted?: boolean[];
+  /** Run boards only: missed[i] turns true once a wrong digit went into cell i. */
+  missed?: boolean[];
+  /** Run boards only: helped[i] turns true once a hint led to cell i or a card revealed it. */
+  helped?: boolean[];
 }

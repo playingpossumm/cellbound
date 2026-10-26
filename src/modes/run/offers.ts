@@ -1,54 +1,69 @@
-// Card offers between boards. Pure and seeded: the same run seed and board give the
-// same three cards on every device, whatever the player did before.
+// Reward offers after a board. Seeded by the run seed and the board, so a run in the same state
+// is offered the same cards on every device. The draw leans on the run's state (heart cards when
+// hearts are low, hint cards after hints were used), never shows a card twice, spreads the cards
+// over the categories and favours a category the last offer left out, so every one comes round.
 import { makeRng } from '../../engine';
-import type { Card, Rarity } from './cards';
+import { maxHeartsOf } from './lenses';
+import type { Category, Offer, OfferKind, RunState } from './model';
+import { canOffer, isBargain, type RewardDef } from './rewards';
+import { OFFERS } from './tuning';
 
-export const OFFER_SIZE = 3;
+export const CATEGORIES: readonly Category[] = ['hearts', 'hints', 'mult', 'score'];
 
-const WEIGHT: Record<Rarity, number> = { common: 6, uncommon: 3, rare: 1 };
-
-function pickWeighted(rng: () => number, list: Card[]): Card | undefined {
-  if (!list.length) return undefined;
-  const total = list.reduce((s, c) => s + WEIGHT[c.rarity], 0);
-  let r = rng() * total;
-  for (const c of list) {
-    r -= WEIGHT[c.rarity];
-    if (r < 0) return c;
-  }
-  return list[list.length - 1];
+export function offerSize(kind: OfferKind): number {
+  return kind === 'boss' ? OFFERS.bossSize : kind === 'tag' ? OFFERS.tagSize : OFFERS.size;
 }
 
-/**
- * Three cards for the board about to start (index 1 to 4). The first is always a
- * boon, so a safe pick exists; the second is a curse or a bargain; the third is
- * anything. No two cards share a family. The order on screen is shuffled.
- */
-export function offerFor(runSeed: string, nextIndex: number, pool: Card[]): Card[] {
-  const rng = makeRng(`${runSeed}:offer:${nextIndex}`);
-  // Sort by id so the result does not depend on the order of the pool.
-  const usable = pool.slice().sort((a, b) => (a.id < b.id ? -1 : 1));
-  const chosen: Card[] = [];
-  const free = () => usable.filter((c) => !chosen.some((x) => x.id === c.id || x.family === c.family));
+/** How much a category weighs for this run right now. */
+export function categoryWeight(cat: Category, run: RunState): number {
+  let w = 1;
+  if (cat === 'hearts') w += OFFERS.perMissingHeart * Math.max(0, maxHeartsOf(run) - run.hearts);
+  if (cat === 'hints') w += OFFERS.perHintUsed * Math.min(3, Math.max(0, run.hintsLast));
+  if (run.lastCats.length && !run.lastCats.includes(cat)) w *= OFFERS.unseen;
+  return w;
+}
 
-  const boon = pickWeighted(
-    rng,
-    free().filter((c) => c.kind === 'boon'),
-  );
-  if (boon) chosen.push(boon);
-  const risk = pickWeighted(
-    rng,
-    free().filter((c) => c.kind !== 'boon'),
-  );
-  if (risk) chosen.push(risk);
-  while (chosen.length < OFFER_SIZE) {
-    const next = pickWeighted(rng, free());
+/** The cards that can be offered: open, usable now, and for a tag only commons. */
+export function eligible(run: RunState, kind: OfferKind, pool: readonly RewardDef[]): RewardDef[] {
+  return pool
+    .filter((c) => canOffer(c, run, kind) && (kind !== 'tag' || c.rarity === 'common'))
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
+export function makeOffer(run: RunState, kind: OfferKind, pool: readonly RewardDef[]): Offer {
+  const rng = makeRng(`${run.seed}:offer:${kind}:${run.slot}`);
+  const cards = eligible(run, kind, pool);
+  const chosen: RewardDef[] = [];
+  const weight = (c: RewardDef) =>
+    OFFERS.rarity[c.rarity] *
+    categoryWeight(c.category, run) *
+    (isBargain(c) ? OFFERS.bargain : 1) *
+    (chosen.some((x) => x.category === c.category) ? OFFERS.repeat : 1);
+  const draw = (list: RewardDef[]): RewardDef | undefined => {
+    if (!list.length) return undefined;
+    const total = list.reduce((s, c) => s + weight(c), 0);
+    let r = rng() * total;
+    for (const c of list) {
+      r -= weight(c);
+      if (r < 0) return c;
+    }
+    return list[list.length - 1];
+  };
+  // After a boss, one place is a rare.
+  if (kind === 'boss') {
+    const rare = draw(cards.filter((c) => c.rarity === 'rare'));
+    if (rare) chosen.push(rare);
+  }
+  const size = offerSize(kind);
+  while (chosen.length < size) {
+    const next = draw(cards.filter((c) => !chosen.includes(c)));
     if (!next) break;
     chosen.push(next);
   }
-  // Fisher-Yates with the same stream.
+  // Fisher-Yates with the same stream, so the rare is not always first.
   for (let i = chosen.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [chosen[i], chosen[j]] = [chosen[j], chosen[i]];
   }
-  return chosen;
+  return { kind, slot: run.slot, cards: chosen.map((c) => c.id) };
 }

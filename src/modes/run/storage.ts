@@ -1,12 +1,16 @@
-// localStorage for Run: one key, one versioned object. Every access is wrapped, because
-// storage can be missing, full or blocked (private windows, previews).
+// localStorage for the Run: one key, one versioned object, and every access guarded, because
+// storage can be missing, full or blocked (private windows, previews). The first Run kept its
+// saves under cellbound:run:v1. That key is read for its run count only and never written: its
+// run in progress is not resumed, and its runs still count.
+import { BOSS_RULES } from './bosses';
+import type { RunState } from './model';
 import { emptyStats, type RunStats } from './stats';
-import type { RunState } from './state';
 
-export const RUN_KEY = 'cellbound:run:v1';
+export const RUN_KEY = 'cellbound:run:v2';
+export const LEGACY_KEY = 'cellbound:run:v1';
 
 export interface RunStorage {
-  v: 1;
+  v: 2;
   /** The unfinished run, if any. */
   current: RunState | null;
   /** The run that ended most recently, for the summary on the Run home. */
@@ -17,7 +21,7 @@ export interface RunStorage {
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
 export function emptyStorage(): RunStorage {
-  return { v: 1, current: null, last: null, stats: emptyStats() };
+  return { v: 2, current: null, last: null, stats: emptyStats() };
 }
 
 function browserStorage(): StorageLike | null {
@@ -29,53 +33,99 @@ function browserStorage(): StorageLike | null {
 }
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
+const isNum = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
+const PHASES = ['select', 'board', 'tally', 'reward', 'shop', 'done'];
+const numbers = (x: unknown, length: number) => Array.isArray(x) && x.length === length && x.every((v) => v === null || isNum(v));
 
-/** Light shape check so a damaged save cannot crash the screen. */
+/** A shape check deep enough that a damaged save cannot crash a screen. */
 export function isRunState(x: unknown): x is RunState {
-  if (!isObj(x) || x.v !== 1) return false;
+  if (!isObj(x) || x.v !== 2) return false;
+  const live = x.live;
+  const liveOk =
+    live === null ||
+    (isObj(live) &&
+      typeof live.key === 'string' &&
+      isNum(live.slot) &&
+      isNum(live.score) &&
+      isNum(live.target) &&
+      isNum(live.hearts) &&
+      Array.isArray(live.scored) &&
+      Array.isArray(live.units) &&
+      Array.isArray(live.clues) &&
+      Array.isArray(live.stolen) &&
+      isObj(live.tech) &&
+      isObj(live.hints) &&
+      isObj(live.mods));
   return (
+    liveOk &&
     typeof x.seed === 'string' &&
-    typeof x.index === 'number' &&
-    typeof x.hearts === 'number' &&
-    typeof x.shield === 'number' &&
-    typeof x.score === 'number' &&
-    typeof x.phase === 'string' &&
+    (x.daily === null || typeof x.daily === 'string') &&
+    isNum(x.slot) &&
+    x.slot >= 0 &&
+    x.slot < 9 &&
+    PHASES.includes(x.phase as string) &&
+    isNum(x.hearts) &&
+    isNum(x.maxHearts) &&
+    isNum(x.shield) &&
+    isNum(x.coins) &&
+    isNum(x.hintPool) &&
+    isNum(x.score) &&
+    isNum(x.bonus) &&
+    numbers(x.levels, 9) &&
+    numbers(x.targets, 9) &&
+    Array.isArray(x.bosses) &&
+    x.bosses.length === 3 &&
+    x.bosses.every((b) => BOSS_RULES.includes(b as never)) &&
+    Array.isArray(x.lenses) &&
+    x.lenses.every((l) => isObj(l) && typeof l.id === 'string') &&
+    Array.isArray(x.items) &&
     Array.isArray(x.results) &&
-    Array.isArray(x.perks) &&
-    Array.isArray(x.offer) &&
-    isObj(x.setup) &&
-    isObj(x.setup.options) &&
-    isObj(x.setup.mods)
+    x.results.every((r) => isObj(r) && isNum(r.slot) && typeof r.status === 'string' && isNum(r.score) && isObj(r.tech)) &&
+    Array.isArray(x.lastCats) &&
+    isObj(x.perks) &&
+    isObj(x.next) &&
+    (x.offer === null || (isObj(x.offer) && Array.isArray(x.offer.cards))) &&
+    (x.shop === null || (isObj(x.shop) && Array.isArray(x.shop.lenses) && Array.isArray(x.shop.items))) &&
+    (x.pending === null || (isObj(x.pending) && isNum(x.pending.score)))
   );
 }
 
 function sanitizeStats(x: unknown): RunStats {
   const base = emptyStats();
   if (!isObj(x)) return base;
-  const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
-  const best = isObj(x.bestFree) && typeof x.bestFree.score === 'number' ? x.bestFree : null;
-  const daily: RunStats['dailyBest'] = {};
+  const num = (v: unknown, d: number) => (isNum(v) ? v : d);
+  const bestFree = isObj(x.bestFree) && isNum(x.bestFree.score) ? { score: x.bestFree.score, date: String(x.bestFree.date ?? '') } : null;
+  const dailyBest: RunStats['dailyBest'] = {};
   if (isObj(x.dailyBest)) {
     for (const [date, r] of Object.entries(x.dailyBest)) {
-      if (isObj(r) && typeof r.score === 'number') {
-        daily[date] = {
+      if (isObj(r) && isNum(r.score)) {
+        dailyBest[date] = {
           score: r.score,
-          boards: num(r.boards, 0),
-          outcome: r.outcome === 'finished' || r.outcome === 'failed' || r.outcome === 'abandoned' ? r.outcome : 'failed',
+          cleared: num(r.cleared, 0),
+          outcome: r.outcome === 'won' || r.outcome === 'lost' || r.outcome === 'abandoned' ? r.outcome : 'lost',
         };
       }
     }
   }
+  const codex: RunStats['codex'] = {};
+  if (isObj(x.codex)) {
+    for (const [id, c] of Object.entries(x.codex)) {
+      if (isObj(c) && isNum(c.n)) codex[id as keyof RunStats['codex']] = { n: c.n, best: num(c.best, 0) };
+    }
+  }
+  const best = isObj(x.best) && typeof x.best.technique === 'string' && isNum(x.best.points) ? (x.best as unknown as RunStats['best']) : null;
   return {
     started: num(x.started, 0),
-    finished: num(x.finished, 0),
-    failed: num(x.failed, 0),
+    won: num(x.won, 0),
+    lost: num(x.lost, 0),
     abandoned: num(x.abandoned, 0),
-    bestFree: best ? { score: best.score as number, date: String(best.date ?? '') } : null,
-    dailyBest: daily,
-    topBoard: num(x.topBoard, 0),
-    bestHearts: num(x.bestHearts, 0),
-    cursedCleared: num(x.cursedCleared, 0),
+    bestFree,
+    dailyBest,
+    topAnte: num(x.topAnte, 0),
+    bosses: num(x.bosses, 0),
+    cleanBoards: num(x.cleanBoards, 0),
+    codex,
+    best,
   };
 }
 
@@ -85,9 +135,9 @@ export function loadRunStorage(storage: StorageLike | null = browserStorage()): 
     const raw = storage.getItem(RUN_KEY);
     if (!raw) return emptyStorage();
     const parsed: unknown = JSON.parse(raw);
-    if (!isObj(parsed) || parsed.v !== 1) return emptyStorage();
+    if (!isObj(parsed) || parsed.v !== 2) return emptyStorage();
     return {
-      v: 1,
+      v: 2,
       current: isRunState(parsed.current) ? parsed.current : null,
       last: isRunState(parsed.last) ? parsed.last : null,
       stats: sanitizeStats(parsed.stats),
@@ -104,5 +154,19 @@ export function saveRunStorage(data: RunStorage, storage: StorageLike | null = b
     return true;
   } catch {
     return false;
+  }
+}
+
+/** Runs the first Run counted, read from its own key, which is left as it is. */
+export function legacyRuns(storage: StorageLike | null = browserStorage()): number {
+  if (!storage) return 0;
+  try {
+    const raw = storage.getItem(LEGACY_KEY);
+    if (!raw) return 0;
+    const parsed: unknown = JSON.parse(raw);
+    const started = isObj(parsed) && isObj(parsed.stats) ? parsed.stats.started : 0;
+    return isNum(started) && started > 0 ? Math.floor(started) : 0;
+  } catch {
+    return 0;
   }
 }
