@@ -637,8 +637,8 @@ function closed7AtMost(p: Puzzle, maxTier: number): Grid {
   return g;
 }
 
-const CHIPS = [0, 10, 20, 30, 50, 80, 150, 250, 400];
-const chips = (xs: number[]) => xs.reduce((a, x, i) => a + x * CHIPS[i], 0);
+const MARKS = [0, 10, 20, 30, 50, 80, 150, 250, 400];
+const marks = (xs: number[]) => xs.reduce((a, x, i) => a + x * MARKS[i], 0);
 
 describe('tier profile', () => {
   it('counts every empty cell once, for both players, and the expert scores at least the typical player', () => {
@@ -650,7 +650,7 @@ describe('tier profile', () => {
       expect(expert).toHaveLength(9);
       expect(typical.reduce((a, b) => a + b, 0), p.id).toBe(empty);
       expect(expert.reduce((a, b) => a + b, 0), p.id).toBe(empty);
-      expect(chips(expert), p.id).toBeGreaterThanOrEqual(chips(typical));
+      expect(marks(expert), p.id).toBeGreaterThanOrEqual(marks(typical));
       // The Dailies are solvable with tier 8 held to its limits, so nobody guesses.
       if (p.id.startsWith('daily-')) expect([typical[0], expert[0]], p.id).toEqual([0, 0]);
     }
@@ -658,7 +658,7 @@ describe('tier profile', () => {
 
   it('rises with the level on 9x9 Dailies', () => {
     const byLevel: number[][] = [[], [], [], [], []];
-    for (const p of nineDays.slice(0, 63)) byLevel[p.difficulty].push(chips(profile(p).typical) / p.givens.filter((d) => !d).length);
+    for (const p of nineDays.slice(0, 63)) byLevel[p.difficulty].push(marks(profile(p).typical) / p.givens.filter((d) => !d).length);
     const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
     for (let d = 2; d <= 4; d++) expect(mean(byLevel[d]), `level ${d}`).toBeGreaterThan(mean(byLevel[d - 1]));
   }, 120000);

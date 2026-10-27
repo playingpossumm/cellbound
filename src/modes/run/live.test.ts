@@ -59,7 +59,7 @@ describe('the board in play', () => {
     const a = empty[0];
     const first = applyPlaced(run, event(values, a, P.solution[a]), cls('hiddenSingle'));
     expect(first.out.popup).toMatchObject({ cell: a, name: 'Hidden single', points: 20, tier: 2 });
-    expect(first.out.tally).toMatchObject({ chips: 20, mult: 1, points: 20 });
+    expect(first.out.tally).toMatchObject({ marks: 20, mult: 1, points: 20 });
     run = first.run;
     expect(run.live!.score).toBe(20);
     // Undone and typed again: the cell has scored already.

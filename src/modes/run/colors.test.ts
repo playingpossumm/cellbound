@@ -1,4 +1,4 @@
-// The Run's colour tokens carry meaning in text (chips, mult, coins, the reward categories and the
+// The Run's colour tokens carry meaning in text (marks, mult, coins, the reward categories and the
 // technique tiers), so each must read at 4.5:1 on the ground, on glass and on the popup panel, in
 // light and in dark.
 import { readFileSync } from 'node:fs';
@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { contrast, over, parseColor, rootVars, themeCss } from '../../test/cssvars';
 
 const runCss = readFileSync(fileURLToPath(new URL('./run.css', import.meta.url)), 'utf8');
-const TOKENS = ['--rn-chips', '--rn-mult', '--rn-coins', '--rn-hearts', '--rn-hints', '--rn-violet', '--rn-score', ...[1, 2, 3, 4, 5, 6, 7, 8].map((t) => `--rn-t${t}`)];
+const TOKENS = ['--rn-marks', '--rn-mult', '--rn-coins', '--rn-hearts', '--rn-hints', '--rn-violet', '--rn-score', ...[1, 2, 3, 4, 5, 6, 7, 8].map((t) => `--rn-t${t}`)];
 
 describe('Run colours', () => {
   for (const night of [false, true]) {

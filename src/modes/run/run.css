@@ -1,11 +1,11 @@
 /* Run mode, in Prism: glass tiles, light type and the spectrum. Only --cb-* and Prism's --pr-*
-   variables and cb-run-* classes. The colour tokens below carry meaning (chips blue, mult red,
+   variables and cb-run-* classes. The colour tokens below carry meaning (marks blue, mult red,
    coins amber, the four reward categories, and the eight technique tiers climbing like rarity from
    plain white through cyan, green, blue, violet and magenta to orange and gold) and are
    text-safe on the ground in light and dark; colors.test.ts checks their contrast. */
 
 [data-theme="prism"][data-night="false"] {
-  --rn-chips: oklch(0.47 0.15 255);
+  --rn-marks: oklch(0.47 0.15 255);
   --rn-mult: oklch(0.5 0.19 25);
   --rn-coins: oklch(0.5 0.11 75);
   --rn-hearts: oklch(0.5 0.19 22);
@@ -25,7 +25,7 @@
 }
 
 [data-theme="prism"][data-night="true"] {
-  --rn-chips: oklch(0.78 0.12 250);
+  --rn-marks: oklch(0.78 0.12 250);
   --rn-mult: oklch(0.76 0.15 25);
   --rn-coins: oklch(0.84 0.13 80);
   --rn-hearts: oklch(0.74 0.16 20);
@@ -326,7 +326,7 @@
 .cb-run-shield-icon {
   width: 18px;
   height: 18px;
-  color: var(--rn-chips);
+  color: var(--rn-marks);
 }
 .cb-run-coins {
   display: inline-flex;
@@ -494,8 +494,8 @@ button.cb-run-item {
   font-variant-numeric: lining-nums tabular-nums;
   white-space: nowrap;
 }
-.cb-run-lens-badge.is-chips {
-  color: var(--rn-chips);
+.cb-run-lens-badge.is-marks {
+  color: var(--rn-marks);
 }
 .cb-run-lens-badge.is-mult {
   color: var(--rn-mult);
@@ -861,7 +861,7 @@ button.cb-run-board-rule {
   gap: 12px;
   min-height: 28px;
 }
-/* One placement's chips times mult: the chips, then the mult, then the points come in a beat apart
+/* One placement's marks times mult: the marks, then the mult, then the points come in a beat apart
    as each digit lands, so the sum reads in its own order. */
 .cb-run-tally {
   display: inline-flex;
@@ -888,7 +888,7 @@ button.cb-run-board-rule {
     opacity: 1;
   }
 }
-.cb-run-chips,
+.cb-run-marks,
 .cb-run-mult {
   min-width: 34px;
   padding: 3px 9px;
@@ -898,10 +898,10 @@ button.cb-run-board-rule {
   line-height: 1.2;
   text-align: center;
 }
-.cb-run-chips {
-  color: var(--rn-chips);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--rn-chips) 55%, transparent);
-  background: color-mix(in oklch, var(--rn-chips) 10%, transparent);
+.cb-run-marks {
+  color: var(--rn-marks);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--rn-marks) 55%, transparent);
+  background: color-mix(in oklch, var(--rn-marks) 10%, transparent);
 }
 .cb-run-mult {
   color: var(--rn-mult);
@@ -942,7 +942,7 @@ button.cb-run-board-rule {
   position: absolute;
   inset: 0;
   transform-origin: left center;
-  background: var(--rn-chips);
+  background: var(--rn-marks);
   transition: transform 0.2s var(--rn-ease-out);
 }
 .cb-run-flow.is-full .cb-run-flow-fill {
@@ -1522,7 +1522,7 @@ button.cb-run-card:active {
   color: var(--rn-t);
 }
 /* What a placement of the tier is worth before the mult, beside its name. */
-.cb-run-codex-chips {
+.cb-run-codex-marks {
   margin-left: 10px;
   font-size: 12px;
   font-weight: 500;
@@ -1617,7 +1617,7 @@ button.cb-run-card:active {
   .cb-run-band-score {
     font-size: 28px;
   }
-  .cb-run-chips,
+  .cb-run-marks,
   .cb-run-mult {
     padding: 1px 8px;
     font-size: 15px;
@@ -1655,7 +1655,7 @@ button.cb-run-card:active {
   .cb-run-tally.is-empty {
     min-height: 40px;
   }
-  .cb-run-chips,
+  .cb-run-marks,
   .cb-run-mult {
     min-width: 40px;
     padding: 4px 12px;

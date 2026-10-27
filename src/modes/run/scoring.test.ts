@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { TechniqueTier } from '../../engine/techniques';
 import type { LensSlot } from './model';
-import { allScoringOf, chipsFor, flowCap, flowOf, scorePlacement, type PlacementFacts, type ScoreSetup } from './scoring';
-import { CHIPS, CLEAN, FLOW, LENS, REWARD, SPECTRA_CHIPS } from './tuning';
+import { allScoringOf, marksFor, flowCap, flowOf, scorePlacement, type PlacementFacts, type ScoreSetup } from './scoring';
+import { MARKS, CLEAN, FLOW, LENS, REWARD, SPECTRA_MARKS } from './tuning';
 
 const facts = (over: Partial<PlacementFacts> = {}): PlacementFacts => ({
   tier: 1,
@@ -26,23 +26,23 @@ const setup = (over: Partial<ScoreSetup> = {}): ScoreSetup => ({
 const lenses = (...ids: LensSlot['id'][]): LensSlot[] => ids.map((id) => ({ id }));
 const fresh = { streak: 0, chain: 0 };
 
-describe('a placement scores chips times mult', () => {
-  it('takes its chips from the tier of the technique, with the spec table', () => {
-    expect(CHIPS).toEqual([0, 10, 20, 30, 50, 80, 150, 250, 400]);
+describe('a placement scores marks times mult', () => {
+  it('takes its marks from the tier of the technique, with the spec table', () => {
+    expect(MARKS).toEqual([0, 10, 20, 30, 50, 80, 150, 250, 400]);
     for (let t = 1; t <= 8; t++) {
       const s = scorePlacement(facts({ tier: t as TechniqueTier }), setup(), fresh);
-      expect(s.chips).toBe(CHIPS[t]);
+      expect(s.marks).toBe(MARKS[t]);
       expect(s.mult).toBe(1);
-      expect(s.points).toBe(CHIPS[t]);
+      expect(s.points).toBe(MARKS[t]);
     }
   });
 
   it('adds the Spectra levels of the tier: 3 a level for singles, 10 for tiers 2 and 3, 25 for 4 and 5, 50 for 6 to 8', () => {
-    expect(SPECTRA_CHIPS.slice(1)).toEqual([3, 10, 10, 25, 25, 50, 50, 50]);
+    expect(SPECTRA_MARKS.slice(1)).toEqual([3, 10, 10, 25, 25, 50, 50, 50]);
     const levels = [0, 2, 0, 0, 1, 0, 3, 0, 0];
-    expect(chipsFor(1, levels)).toBe(16);
-    expect(chipsFor(4, levels)).toBe(75);
-    expect(chipsFor(6, levels)).toBe(300);
+    expect(marksFor(1, levels)).toBe(16);
+    expect(marksFor(4, levels)).toBe(75);
+    expect(marksFor(6, levels)).toBe(300);
     expect(scorePlacement(facts({ tier: 4 }), setup({ levels }), fresh).points).toBe(75);
   });
 
@@ -92,8 +92,8 @@ describe('a placement scores chips times mult', () => {
     expect(s.next).toEqual({ streak: 7, chain: 3 });
   });
 
-  it('rounds chips times mult to whole points', () => {
-    // 20 chips, mult (1 + 1) x 1.3 x 1.5 = 3.9
+  it('rounds marks times mult to whole points', () => {
+    // 20 marks, mult (1 + 1) x 1.3 x 1.5 = 3.9
     const s = scorePlacement(facts({ tier: 2, units: 1, clean: 1 }), setup(), { streak: 3, chain: 0 });
     expect(s.mult).toBe(3.9);
     expect(s.points).toBe(78);
@@ -150,7 +150,7 @@ describe('perks and the boss rule', () => {
 });
 
 describe('lenses fire in slot order', () => {
-  it('adds chips, adds mult or multiplies the mult, each on its own condition', () => {
+  it('adds marks, adds mult or multiplies the mult, each on its own condition', () => {
     expect(scorePlacement(facts({ tier: 1 }), setup({ lenses: lenses('loupe') }), fresh).points).toBe(10 + LENS.loupe);
     expect(scorePlacement(facts({ tier: 3 }), setup({ lenses: lenses('loupe') }), fresh).fired).toEqual([]);
     expect(scorePlacement(facts({ tier: 4 }), setup({ lenses: lenses('monocle') }), fresh).points).toBe(50 * (1 + LENS.monocle));
@@ -174,13 +174,13 @@ describe('lenses fire in slot order', () => {
     // A clue single forced by another kind of clue leaves the Thermo Lens dark.
     expect(scorePlacement({ ...thermo, clue: 'arrow' }, setup({ lenses: lenses('thermo') }), fresh).fired).toEqual([]);
     const cage = facts({ clues: [{ kind: 'cage', total: 23 }] });
-    expect(scorePlacement(cage, setup({ lenses: lenses('cage') }), fresh).chips).toBe(33);
+    expect(scorePlacement(cage, setup({ lenses: lenses('cage') }), fresh).marks).toBe(33);
     const arrows = facts({ clues: [{ kind: 'arrow', total: 9 }, { kind: 'arrow', total: 6 }] });
     expect(scorePlacement(arrows, setup({ lenses: lenses('arrow') }), fresh).mult).toBe(3 * LENS.arrow ** 2);
     const dots = facts({ clues: [{ kind: 'kropki', total: 3 }, { kind: 'xv', total: 10 }] });
-    expect(scorePlacement(dots, setup({ lenses: lenses('dot') }), fresh).chips).toBe(10 + 2 * LENS.dot);
+    expect(scorePlacement(dots, setup({ lenses: lenses('dot') }), fresh).marks).toBe(10 + 2 * LENS.dot);
     expect(scorePlacement(facts({ digit: 9 }), setup({ lenses: lenses('redShift') }), fresh).mult).toBe(1 + LENS.redShift);
-    expect(scorePlacement(facts({ digit: 1 }), setup({ lenses: lenses('blueShift') }), fresh).chips).toBe(10 + LENS.blueShift);
+    expect(scorePlacement(facts({ digit: 1 }), setup({ lenses: lenses('blueShift') }), fresh).marks).toBe(10 + LENS.blueShift);
   });
 
   it('lifts the flow cap with Undertow and pays Riptide while the flow is full', () => {

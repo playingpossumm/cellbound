@@ -2,7 +2,7 @@
 // the run, Inks are one-shot effects used on a board.
 import type { TechniqueTier } from '../../engine/techniques';
 import type { InkId, ItemId, SpectraId } from './model';
-import { PRICES, SPECTRA_CHIPS } from './tuning';
+import { PRICES, SPECTRA_MARKS } from './tuning';
 
 /** Each tier's name, as the codex and the Spectra use it. Tier 0 is a guess. */
 export const TIER_NAMES: readonly string[] = ['Guesses', 'Singles', 'Hidden singles', 'Clues', 'Pointing', 'Pairs', 'X-Wings', 'Wings', 'Chains'];
@@ -20,7 +20,7 @@ export interface ItemDef {
 const spectra = (tier: TechniqueTier): ItemDef => ({
   id: `spectra${tier}` as SpectraId,
   name: `${TIER_NAMES[tier]} Spectrum`,
-  text: `+${SPECTRA_CHIPS[tier]} chips on ${TIER_NAMES[tier].toLowerCase()} for the rest of the run.`,
+  text: `+${SPECTRA_MARKS[tier]} marks on ${TIER_NAMES[tier].toLowerCase()} for the rest of the run.`,
   price: PRICES.spectra,
   kind: 'spectra',
   tier,

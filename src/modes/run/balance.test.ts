@@ -2,7 +2,7 @@
 // families a player can lean on (the common placements, the clues, the digits) stay within a band
 // of each other, so a build is a choice and not a rule. A small sample of real boards played by a
 // typical player (notes in every cell), scored through the real scoring with each build held; npm
-// run balance:run prints the whole table. Retune LENS, SPECTRA_CHIPS and REWARD in tuning.ts when
+// run balance:run prints the whole table. Retune LENS, SPECTRA_MARKS and REWARD in tuning.ts when
 // this fails.
 import { beforeAll, describe, expect, it } from 'vitest';
 import { generate } from '../../engine';

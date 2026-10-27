@@ -1,5 +1,5 @@
 // The board in play, on the shared play screen: the score band in the band's place (score against
-// target, the last chips times mult, the flow, hearts and coins), the lenses and items under it,
+// target, the last marks times mult, the flow, hearts and coins), the lenses and items under it,
 // the boss rule as a chip, popups over the cells, and the board's tally when it ends.
 import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import type { GameNote, GameViewProps } from '../../../app/GameView';
@@ -24,12 +24,12 @@ import { Coins, Hearts, ItemTile, LensTile, Meter, Page, TierDot, useCountUp } f
 
 // ---- the score band --------------------------------------------------------------------
 
-/** One placement's chips times mult, fading in as it lands. */
+/** One placement's marks times mult, fading in as it lands. */
 function TallyLine({ t }: { t: TallyFx | null }) {
   if (!t) return <span className="cb-run-tally is-empty" aria-hidden="true" />;
   return (
     <span key={t.id} className="cb-run-tally" aria-hidden="true">
-      <span className="cb-run-chips">{formatScore(t.chips)}</span>
+      <span className="cb-run-marks">{formatScore(t.marks)}</span>
       <span className="cb-run-times">×</span>
       <span className="cb-run-mult">{formatMult(t.mult)}</span>
       <span className="cb-run-points">+{formatScore(t.points)}</span>

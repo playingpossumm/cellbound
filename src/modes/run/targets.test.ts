@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import type { TierProfile } from '../../engine/techniques';
 import { KINDS, SLOT_COUNT, slotOf } from './boards';
-import { chipsOfTiers, roundTarget, slotFactor, targetFor } from './targets';
+import { marksOfTiers, roundTarget, slotFactor, targetFor } from './targets';
 import { TARGET } from './tuning';
 
 const profile: TierProfile = { typical: [0, 30, 15, 5, 0, 0, 0, 0, 0], expert: [0, 20, 15, 10, 3, 2, 0, 0, 0] };
 
 describe('score targets', () => {
-  it('start from the chips a typical tier mix earns', () => {
-    expect(chipsOfTiers(profile.typical)).toBe(30 * 10 + 15 * 20 + 5 * 30);
-    expect(chipsOfTiers([0, 0, 0, 0, 0, 0, 2, 1, 1], 8)).toBe(2 * 150 + 250 + 400);
+  it('start from the marks a typical tier mix earns', () => {
+    expect(marksOfTiers(profile.typical)).toBe(30 * 10 + 15 * 20 + 5 * 30);
+    expect(marksOfTiers([0, 0, 0, 0, 0, 0, 2, 1, 1], 8)).toBe(2 * 150 + 250 + 400);
   });
 
-  it('count a forced placement above tier 5 at tier 5 chips, so one chain cannot put a board out of reach', () => {
+  it('count a forced placement above tier 5 at tier 5 marks, so one chain cannot put a board out of reach', () => {
     expect(TARGET.tierCap).toBe(5);
-    expect(chipsOfTiers([0, 40, 0, 0, 0, 1, 0, 0, 2])).toBe(400 + 80 + 2 * 80);
+    expect(marksOfTiers([0, 40, 0, 0, 0, 1, 0, 0, 2])).toBe(400 + 80 + 2 * 80);
   });
 
   it('ask 1.25 times as much on a Big board and 1.5 times on a boss, and grow by the same factor each ante', () => {

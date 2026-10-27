@@ -7,7 +7,7 @@ import { LENSES } from '../lenses';
 import type { UnlockId } from '../model';
 import { REWARDS } from '../rewards';
 import { formatScore } from '../state';
-import { CHIPS } from '../tuning';
+import { MARKS } from '../tuning';
 import { milestoneOf, unlockedSet, type RunStats } from '../stats';
 import { LockIcon } from './icons';
 import { CardBody, cardClass, LensCard, Page, TierDot } from './parts';
@@ -120,7 +120,7 @@ export function Collection({ stats, onBack }: { stats: RunStats; onBack: () => v
                     <th scope="colgroup" colSpan={3} className="cb-run-codex-h">
                       <TierDot tier={tier} />
                       {TIER_NAMES[tier]}
-                      <span className="cb-run-codex-chips">{CHIPS[tier]} chips</span>
+                      <span className="cb-run-codex-marks">{MARKS[tier]} marks</span>
                     </th>
                   </tr>
                   {ids.map((id) => {

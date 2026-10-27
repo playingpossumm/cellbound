@@ -38,7 +38,7 @@ import {
 import { onBoardEnd, onBoardStart, onRunEnd, onRunStart, unlockedSet, type RunStats } from './stats';
 import { legacyRuns, loadRunStorage, saveRunStorage, type RunStorage } from './storage';
 
-/** What the board shows for a moment: popups over the cells and the last chips times mult. */
+/** What the board shows for a moment: popups over the cells and the last marks times mult. */
 export interface RunFx {
   popups: Popup[];
   tally: TallyFx | null;

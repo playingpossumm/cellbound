@@ -5,7 +5,7 @@ import { generate } from '../src/engine';
 import { tierProfile } from '../src/engine/techniques';
 import { anteOf, kindOf, optionsFor, SLOT_COUNT } from '../src/modes/run/boards';
 import { playAs, type Style } from '../src/modes/run/calibrate';
-import { chipsOfTiers, targetFor } from '../src/modes/run/targets';
+import { marksOfTiers, targetFor } from '../src/modes/run/targets';
 import { TARGET } from '../src/modes/run/tuning';
 
 const count = Number(process.argv[2] ?? 6);
@@ -15,8 +15,8 @@ const median = (xs: number[]) => xs.slice().sort((a, b) => a - b)[xs.length >> 1
 const pad = (s: string | number, w: number) => String(s).padStart(w);
 const t0 = performance.now();
 
-console.log(`Targets: typical chips x scale ${TARGET.scale} x kind ${JSON.stringify(TARGET.kind)} x ${TARGET.anteGrowth} per ante. ${count} seeds, medians.`);
-console.log(['slot', 'board', 'empty', 'chips', 'target', 'typical', 'clean', 'expert', 'typ/tgt', 'cln/tgt', 'exp/tgt', 'expert tiers 1-8'].map((h, i) => pad(h, i === 11 ? 18 : i === 1 ? 7 : 8)).join(' '));
+console.log(`Targets: typical marks x scale ${TARGET.scale} x kind ${JSON.stringify(TARGET.kind)} x ${TARGET.anteGrowth} per ante. ${count} seeds, medians.`);
+console.log(['slot', 'board', 'empty', 'marks', 'target', 'typical', 'clean', 'expert', 'typ/tgt', 'cln/tgt', 'exp/tgt', 'expert tiers 1-8'].map((h, i) => pad(h, i === 11 ? 18 : i === 1 ? 7 : 8)).join(' '));
 for (let slot = 0; slot < SLOT_COUNT; slot++) {
   const rows = seeds.map((seed) => {
     const p = generate(optionsFor(seed, slot));
@@ -24,17 +24,17 @@ for (let slot = 0; slot < SLOT_COUNT; slot++) {
     const played = Object.fromEntries(styles.map((s) => [s, playAs(p, s, seed)])) as Record<Style, ReturnType<typeof playAs>>;
     return {
       empty: p.givens.filter((d) => !d).length,
-      chips: chipsOfTiers(profile.typical),
+      marks: marksOfTiers(profile.typical),
       target: targetFor(slot, profile),
       ...Object.fromEntries(styles.map((s) => [s, played[s].score])),
       tiers: played.expert.tiers,
-    } as { empty: number; chips: number; target: number; typical: number; clean: number; expert: number; tiers: number[] };
+    } as { empty: number; marks: number; target: number; typical: number; clean: number; expert: number; tiers: number[] };
   });
-  const m = (k: 'empty' | 'chips' | 'target' | 'typical' | 'clean' | 'expert') => median(rows.map((r) => r[k]));
+  const m = (k: 'empty' | 'marks' | 'target' | 'typical' | 'clean' | 'expert') => median(rows.map((r) => r[k]));
   const ratio = (k: 'typical' | 'clean' | 'expert') => median(rows.map((r) => r[k] / r.target)).toFixed(2);
   const tiers = Array.from({ length: 8 }, (_, t) => median(rows.map((r) => r.tiers[t + 1]))).join(',');
   console.log(
-    [slot, `A${anteOf(slot)} ${kindOf(slot)}`, m('empty'), m('chips'), m('target'), m('typical'), m('clean'), m('expert'), ratio('typical'), ratio('clean'), ratio('expert'), tiers]
+    [slot, `A${anteOf(slot)} ${kindOf(slot)}`, m('empty'), m('marks'), m('target'), m('typical'), m('clean'), m('expert'), ratio('typical'), ratio('clean'), ratio('expert'), tiers]
       .map((v, i) => pad(v, i === 11 ? 18 : i === 1 ? 7 : 8))
       .join(' '),
   );

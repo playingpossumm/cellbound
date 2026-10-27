@@ -1,16 +1,16 @@
-// Score targets. A board's target is the chips a typical player's tier mix earns on it (the
-// engine's tierProfile times the chip table), scaled by the board's kind and its ante, so it
+// Score targets. A board's target is the marks a typical player's tier mix earns on it (the
+// engine's tierProfile times the marks table), scaled by the board's kind and its ante, so it
 // follows the board itself: a harder board asks for more. All the factors live in tuning.ts.
 import type { TierProfile } from '../../engine/techniques';
 import { anteOf, kindOf } from './boards';
-import { CHIPS, TARGET } from './tuning';
+import { MARKS, TARGET } from './tuning';
 
-/** Chips that a count of placements per tier earns toward a target, at Spectra level 0, tiers above TARGET.tierCap counted at its chips. */
-export function chipsOfTiers(counts: readonly number[], cap: number = TARGET.tierCap): number {
-  return counts.reduce((sum, k, t) => sum + Math.max(0, k) * (CHIPS[Math.min(t, cap)] ?? 0), 0);
+/** Marks that a count of placements per tier earns toward a target, at Spectra level 0, tiers above TARGET.tierCap counted at its marks. */
+export function marksOfTiers(counts: readonly number[], cap: number = TARGET.tierCap): number {
+  return counts.reduce((sum, k, t) => sum + Math.max(0, k) * (MARKS[Math.min(t, cap)] ?? 0), 0);
 }
 
-/** The factor a slot puts on the typical chips: its kind, then the growth of every ante past the first. */
+/** The factor a slot puts on the typical marks: its kind, then the growth of every ante past the first. */
 export function slotFactor(slot: number): number {
   return TARGET.scale * TARGET.kind[kindOf(slot)] * TARGET.anteGrowth ** (anteOf(slot) - 1);
 }
@@ -22,5 +22,5 @@ export function roundTarget(x: number): number {
 }
 
 export function targetFor(slot: number, profile: TierProfile): number {
-  return roundTarget(chipsOfTiers(profile.typical) * slotFactor(slot));
+  return roundTarget(marksOfTiers(profile.typical) * slotFactor(slot));
 }

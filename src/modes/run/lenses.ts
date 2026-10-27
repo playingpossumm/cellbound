@@ -1,5 +1,5 @@
 // Lenses: the run's scoring engine. Up to five sit in slots and fire in slot order on every
-// scoring placement, each adding chips, adding mult or multiplying the mult, usually on a
+// scoring placement, each adding marks, adding mult or multiplying the mult, usually on a
 // condition. Every lens is data plus pure functions, so scoring.ts and the tests share them.
 import type { TechniqueId, TechniqueTier } from '../../engine/techniques';
 import type { ClueKind, Digit } from '../../engine/types';
@@ -24,9 +24,9 @@ export interface LensCtx {
   hearts: number;
 }
 
-/** What a lens adds: chips and mult are added, xmult multiplies the mult. */
+/** What a lens adds: marks and mult are added, xmult multiplies the mult. */
 export interface LensFx {
-  chips?: number;
+  marks?: number;
   mult?: number;
   xmult?: number;
 }
@@ -37,7 +37,7 @@ export interface CashCtx {
   cleanBoxes: number;
 }
 
-export type LensTone = 'chips' | 'mult' | 'coins' | 'hearts';
+export type LensTone = 'marks' | 'mult' | 'coins' | 'hearts';
 
 export interface LensDef {
   id: LensId;
@@ -50,7 +50,7 @@ export interface LensDef {
   unlock?: UnlockId;
   /** What the lens's tile shows, for example "+6" or "×2". */
   badge(slot: LensSlot): string;
-  /** The colour of the badge: chips blue, mult red, coins amber. */
+  /** The colour of the badge: marks blue, mult red, coins amber. */
   tone: LensTone;
   score?(ctx: LensCtx, slot: LensSlot): LensFx | null;
   /** Coins when a board is cashed out. */
@@ -73,13 +73,13 @@ export const LENSES: readonly LensDef[] = [
   {
     id: 'loupe',
     name: 'Loupe',
-    text: `Singles and hidden singles: +${LENS.loupe} chips.`,
+    text: `Singles and hidden singles: +${LENS.loupe} marks.`,
     price: 4,
     rarity: 'common',
     tiers: [1, 2],
-    tone: 'chips',
+    tone: 'marks',
     badge: () => plus(LENS.loupe),
-    score: (c) => (c.tier === 1 || c.tier === 2 ? { chips: LENS.loupe } : null),
+    score: (c) => (c.tier === 1 || c.tier === 2 ? { marks: LENS.loupe } : null),
   },
   {
     id: 'monocle',
@@ -140,14 +140,14 @@ export const LENSES: readonly LensDef[] = [
   {
     id: 'cage',
     name: 'Cage Lens',
-    text: 'A finished cage adds its total to the chips.',
+    text: 'A finished cage adds its total to the marks.',
     price: 5,
     rarity: 'common',
-    tone: 'chips',
+    tone: 'marks',
     badge: () => '+Σ',
     score: (c) => {
       const total = c.clues.filter((x) => x.kind === 'cage').reduce((s, x) => s + x.total, 0);
-      return total ? { chips: total } : null;
+      return total ? { marks: total } : null;
     },
   },
   {
@@ -166,14 +166,14 @@ export const LENSES: readonly LensDef[] = [
   {
     id: 'dot',
     name: 'Dot Lens',
-    text: `+${LENS.dot} chips for each dot, X or V finished.`,
+    text: `+${LENS.dot} marks for each dot, X or V finished.`,
     price: 4,
     rarity: 'common',
-    tone: 'chips',
+    tone: 'marks',
     badge: () => plus(LENS.dot),
     score: (c) => {
       const k = c.clues.filter((x) => x.kind === 'kropki' || x.kind === 'xv').length;
-      return k ? { chips: LENS.dot * k } : null;
+      return k ? { marks: LENS.dot * k } : null;
     },
   },
   {
@@ -189,12 +189,12 @@ export const LENSES: readonly LensDef[] = [
   {
     id: 'blueShift',
     name: 'Blue Shift',
-    text: `Placing a 1: +${LENS.blueShift} chips.`,
+    text: `Placing a 1: +${LENS.blueShift} marks.`,
     price: 4,
     rarity: 'common',
-    tone: 'chips',
+    tone: 'marks',
     badge: () => plus(LENS.blueShift),
-    score: (c) => (c.digit === 1 ? { chips: LENS.blueShift } : null),
+    score: (c) => (c.digit === 1 ? { marks: LENS.blueShift } : null),
   },
   {
     id: 'undertow',

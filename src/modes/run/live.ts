@@ -40,10 +40,10 @@ export interface Popup {
   note?: string;
 }
 
-/** One placement's chips times mult, for the tally in the header. */
+/** One placement's marks times mult, for the tally in the header. */
 export interface TallyFx {
   id: number;
-  chips: number;
+  marks: number;
   mult: number;
   points: number;
   flow: number;
@@ -210,7 +210,7 @@ export function applyPlaced(run: RunState, e: Placed, cls: PlacementClass | null
     // it would always be the best placement of a run: the best is the best deduction.
     if (id !== 'fullHouse' && (!next.best || sc.points > next.best.points)) next.best = { technique: id, points: sc.points };
     out.popup = { id: next.seq, cell: e.cell, name: cls?.name ?? 'Guess', points: sc.points, tier, clean: sc.clean };
-    if (tier > 0) out.tally = { id: next.seq, chips: sc.chips, mult: sc.mult, points: sc.points, flow: sc.flow, fired: sc.fired, tier };
+    if (tier > 0) out.tally = { id: next.seq, marks: sc.marks, mult: sc.mult, points: sc.points, flow: sc.flow, fired: sc.fired, tier };
   }
 
   // Finished boxes: Kaleidoscope grows, and a clean one may heal.

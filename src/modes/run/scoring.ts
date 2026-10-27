@@ -1,15 +1,15 @@
-// Scoring one correct placement. Chips come from the tier of the technique that proves it (the
+// Scoring one correct placement. Marks come from the tier of the technique that proves it (the
 // hardest one with Microscope, which the store asks the engine for) plus its Spectra levels; mult
 // starts at 1, gains 1 for each unit and clue the digit finishes, then is multiplied by the flow,
 // by every unit finished clean and by the technique boosts; the lenses fire in slot order; the
-// all-scoring multipliers come last. Points are chips times mult, rounded, plus any flat points.
+// all-scoring multipliers come last. Points are marks times mult, rounded, plus any flat points.
 // Pure, so the popup, the tally and the tests share one sum.
 import type { TechniqueId, TechniqueTier } from '../../engine/techniques';
 import type { ClueKind, Digit } from '../../engine/types';
 import type { BossRule } from './bosses';
 import { effectiveLens, flowCapOf, type LensCtx } from './lenses';
 import type { LensSlot, RewardId } from './model';
-import { BOSS, CHIPS, CLEAN, FLOW, REWARD, SPECTRA_CHIPS } from './tuning';
+import { BOSS, MARKS, CLEAN, FLOW, REWARD, SPECTRA_MARKS } from './tuning';
 
 export interface PlacementFacts {
   tier: TechniqueTier;
@@ -52,14 +52,14 @@ export interface Streak {
 
 export interface PlacementScore {
   points: number;
-  chips: number;
+  marks: number;
   /** The final mult, all multipliers in. */
   mult: number;
   /** The flow this placement scored at. */
   flow: number;
   /** What its clean units multiplied the mult by: 1 when none was clean. */
   clean: number;
-  /** Points added after chips times mult (Expert Pay). */
+  /** Points added after marks times mult (Expert Pay). */
   flat: number;
   /** Lens slots that fired, in slot order. */
   fired: number[];
@@ -79,9 +79,9 @@ export function flowOf(streak: number, setup: Pick<ScoreSetup, 'perks' | 'lenses
   return Math.min(flowCap(setup), round2(1 + step * Math.max(0, streak)));
 }
 
-/** Chips for a tier at its Spectra level. */
-export function chipsFor(tier: number, levels: readonly number[]): number {
-  return (CHIPS[tier] ?? 0) + (SPECTRA_CHIPS[tier] ?? 0) * (levels[tier] ?? 0);
+/** Marks for a tier at its Spectra level. */
+export function marksFor(tier: number, levels: readonly number[]): number {
+  return (MARKS[tier] ?? 0) + (SPECTRA_MARKS[tier] ?? 0) * (levels[tier] ?? 0);
 }
 
 /** The multiplier on all scoring: Prism Shards and Glass Hearts add up, and Daredevil multiplies them. */
@@ -94,13 +94,13 @@ function round2(x: number): number {
   return Math.round(x * 100) / 100;
 }
 
-const nothing = (next: Streak): PlacementScore => ({ points: 0, chips: 0, mult: 0, flow: 1, clean: 1, flat: 0, fired: [], next });
+const nothing = (next: Streak): PlacementScore => ({ points: 0, marks: 0, mult: 0, flow: 1, clean: 1, flat: 0, fired: [], next });
 
 export function scorePlacement(f: PlacementFacts, s: ScoreSetup, at: Streak): PlacementScore {
   if (f.source === 'reveal') return nothing(at);
   if (f.source === 'hint' || f.tier === 0) return nothing({ streak: 0, chain: 0 });
 
-  let chips = chipsFor(f.tier, s.levels);
+  let marks = marksFor(f.tier, s.levels);
   let mult = 1 + f.units + f.clues.length;
   const flow = flowOf(at.streak, s);
   mult *= flow;
@@ -128,7 +128,7 @@ export function scorePlacement(f: PlacementFacts, s: ScoreSetup, at: Streak): Pl
     const e = effectiveLens(s.lenses, k);
     const fx = e?.def.score?.(ctx, e.slot);
     if (!fx) return;
-    chips += fx.chips ?? 0;
+    marks += fx.marks ?? 0;
     mult += fx.mult ?? 0;
     mult *= fx.xmult ?? 1;
     fired.push(k);
@@ -137,5 +137,5 @@ export function scorePlacement(f: PlacementFacts, s: ScoreSetup, at: Streak): Pl
 
   const flat = f.tier >= REWARD.expertTier ? REWARD.expertPay * perk(s, 'expertPay') : 0;
   mult = round2(mult);
-  return { points: Math.round(chips * mult) + flat, chips, mult, flow, clean: round2(clean), flat, fired, next: { streak: at.streak + 1, chain } };
+  return { points: Math.round(marks * mult) + flat, marks, mult, flow, clean: round2(clean), flat, fired, next: { streak: at.streak + 1, chain } };
 }

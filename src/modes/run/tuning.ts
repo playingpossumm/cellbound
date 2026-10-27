@@ -2,16 +2,16 @@
 // once the real technique detector lands they are recalibrated here: `npm run calibrate:run`
 // plays sample boards and prints what these numbers give (scripts/calibrate-run.ts).
 
-/** Chips a correct placement earns, by the tier of the technique that proves it (0 to 8). */
-export const CHIPS: readonly number[] = [0, 10, 20, 30, 50, 80, 150, 250, 400];
+/** Marks a correct placement earns, by the tier of the technique that proves it (0 to 8). */
+export const MARKS: readonly number[] = [0, 10, 20, 30, 50, 80, 150, 250, 400];
 
 /**
- * Extra chips per Spectra level, by tier. Singles are about nine placements in ten and a single is
- * worth 10 chips, so a level there is worth far more than a level anywhere else: at +10 a Singles
+ * Extra marks per Spectra level, by tier. Singles are about nine placements in ten and a single is
+ * worth 10 marks, so a level there is worth far more than a level anywhere else: at +10 a Singles
  * Spectrum was +50 to +65 percent of a run's score for 3 coins, and three of them tripled it. At +3
  * a level adds about a sixth, in line with a lens (npm run balance:run prints every buy).
  */
-export const SPECTRA_CHIPS: readonly number[] = [0, 3, 10, 10, 25, 25, 50, 50, 50];
+export const SPECTRA_MARKS: readonly number[] = [0, 3, 10, 10, 25, 25, 50, 50, 50];
 /** The highest level a tier can reach. */
 export const SPECTRA_MAX = 9;
 
@@ -26,11 +26,11 @@ export const FLOW = { step: 0.1, hotStep: 0.2, hotRise: 0.5, cap: 2 } as const;
 export const CLEAN = { mult: 1.5, sweep: 2 } as const;
 
 /**
- * A board's target: the chips a typical player's tier mix earns (tierProfile.typical times CHIPS),
+ * A board's target: the marks a typical player's tier mix earns (tierProfile.typical times MARKS),
  * times `scale`, times the board's kind, times `anteGrowth` for every ante after the first.
  *
  * Calibrated on the engine's technique detector (npm run calibrate:run, 8 seeds): a typical player
- * scores about 2.6 to 3.1 times the typical chips, so the spec's starting point (scale 1, growth
+ * scores about 2.6 to 3.1 times the typical marks, so the spec's starting point (scale 1, growth
  * 1.6) asked for a third of that on the first board. Scale 1.4 and growth 1.5 give a typical
  * player about 2.2, 1.6 and 1.3 times the targets of ante 1, 1.4, 1.0 and 0.8 of ante 2, and
  * 0.85, 0.65 and 0.55 of ante 3: the first ante is clear but not idle, the second boss wants the
@@ -41,8 +41,8 @@ export const TARGET = {
   kind: { small: 1, big: 1.25, boss: 1.5 },
   anteGrowth: 1.5,
   /**
-   * A placement above this tier counts at this tier's chips in a target. A hard board can force a
-   * chain on the typical player (14 of 24 final bosses do, once or twice), and at 400 chips a chain
+   * A placement above this tier counts at this tier's marks in a target. A hard board can force a
+   * chain on the typical player (14 of 24 final bosses do, once or twice), and at 400 marks a chain
    * would add about 1,900 to the target; capped, the board is still harder to play, and finding the
    * chain is a bonus rather than a requirement.
    */
@@ -146,7 +146,7 @@ export const REWARD = {
 
 /**
  * Numbers on the lenses. A flow that stays full, singles and the digit 1 are what a board is made
- * of, so the lenses that read them were worth two to four times the rest: Loupe at +6 chips added
+ * of, so the lenses that read them were worth two to four times the rest: Loupe at +6 marks added
  * 40 percent of a run's score for 4 coins and Riptide at +3 mult added 85. They are set so a lens
  * that reads the common placements adds 15 to 30 percent and one that reads the rarer ones a
  * similar amount over a run (npm run balance:run).
