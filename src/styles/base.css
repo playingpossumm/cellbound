@@ -362,14 +362,34 @@ button {
   }
 }
 
-/* A phone held sideways: the side column has to fit beside a board under 300 px high. */
+/* A phone held sideways: the side column has to fit beside a board under 300 px high, so the
+   pad keeps a phone's two rows (above) and the parts sit closer together. */
 @media (min-width: 700px) and (max-height: 520px) {
   .cb-play {
-    --cb-key-h: 46px;
+    --cb-key-h: 42px;
+    padding-bottom: 8px;
+  }
+
+  .cb-play .cb-chip {
+    min-height: 40px;
+  }
+
+  .cb-play .cb-tool {
+    min-height: 42px;
   }
 
   .cb-band-wrap > .cb-band {
     zoom: 0.6;
+  }
+
+  .cb-extra,
+  .cb-chips,
+  .cb-pad {
+    margin-top: 8px;
+  }
+
+  .cb-tools {
+    margin-top: 6px;
   }
 }
 
@@ -383,8 +403,8 @@ button {
   }
 
   .cb-play {
-    --cb-key-h: 50px;
-    padding-bottom: 10px;
+    --cb-key-h: 46px;
+    padding-bottom: 8px;
   }
 
   .cb-band-wrap > .cb-band {
@@ -394,15 +414,19 @@ button {
   .cb-extra,
   .cb-chips,
   .cb-stage {
-    margin-top: 6px;
+    margin-top: 5px;
   }
 
   .cb-pad {
-    margin-top: 8px;
+    margin-top: 6px;
   }
 
-  .cb-tool {
-    min-height: 44px;
+  .cb-play .cb-chip {
+    min-height: 38px;
+  }
+
+  .cb-play .cb-tool {
+    min-height: 42px;
   }
 
   .cb-msg {
@@ -981,7 +1005,9 @@ button {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-@media (min-width: 900px), (min-width: 700px) and (max-height: 520px) {
+/* In two columns the pad is a square of three rows, except on a screen under 521 px high, a phone
+   held sideways, which keeps the phone's two rows so the column beside the board fits. */
+@media (min-width: 900px) and (min-height: 521px) {
   .cb-pad,
   .cb-pad[data-cols='nine'] {
     grid-template-columns: repeat(3, minmax(0, 1fr));

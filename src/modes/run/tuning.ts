@@ -6,6 +6,20 @@
 export const MARKS: readonly number[] = [0, 10, 20, 30, 50, 80, 150, 250, 400];
 
 /**
+ * A full house, the last open cell of a row, column or box, proves itself, so it earns half a
+ * single's marks. Every digit that finishes a unit is one, and with the finishing bonus below at
+ * +1 they took 36 percent of a typical board's score (58 without notes), more than any technique.
+ */
+export const FULL_HOUSE_MARKS = 5;
+
+/**
+ * Mult a placement adds for each row, column, box or clue it finishes. At 0.5, with full houses at
+ * FULL_HOUSE_MARKS, they take about 17 percent of a typical board (32 without notes) and placements
+ * of a hidden single or harder about 64 percent (51), so how a digit is found carries the score.
+ */
+export const FINISH_MULT = 0.5;
+
+/**
  * Extra marks per Spectra level, by tier. Singles are about nine placements in ten and a single is
  * worth 10 marks, so a level there is worth far more than a level anywhere else: at +10 a Singles
  * Spectrum was +50 to +65 percent of a run's score for 3 coins, and three of them tripled it. At +3
@@ -29,17 +43,18 @@ export const CLEAN = { mult: 1.5, sweep: 2 } as const;
  * A board's target: the marks a typical player's tier mix earns (tierProfile.typical times MARKS),
  * times `scale`, times the board's kind, times `anteGrowth` for every ante after the first.
  *
- * Calibrated on the engine's technique detector (npm run calibrate:run, 8 seeds): a typical player
- * scores about 2.6 to 3.1 times the typical marks, so the spec's starting point (scale 1, growth
- * 1.6) asked for a third of that on the first board. Scale 1.4 and growth 1.5 give a typical
- * player about 2.2, 1.6 and 1.3 times the targets of ante 1, 1.4, 1.0 and 0.8 of ante 2, and
- * 0.85, 0.65 and 0.55 of ante 3: the first ante is clear but not idle, the second boss wants the
- * first shop's buys, and ante 3 wants a build of lenses and Spectra, even from noteless play.
+ * Calibrated on the engine's technique detector (npm run calibrate:run, 8 seeds). Since full
+ * houses earn half a single's marks and finishing a unit adds 0.5 mult, a typical player scores
+ * about twice the typical marks, and the first boards lost the most (a third, against a quarter
+ * by the last boss). Scale 0.9 and growth 1.6 give a typical player about 2.2, 1.75 and 1.5 times
+ * the targets of ante 1, 1.45, 1.1 and 0.9 of ante 2, and 0.85, 0.7 and 0.6 of ante 3, close to
+ * the curve before: the first ante is clear but not idle, the second boss wants a shop's buys,
+ * and ante 3 wants a build of lenses and Spectra, even from noteless play.
  */
 export const TARGET = {
-  scale: 1.4,
+  scale: 0.9,
   kind: { small: 1, big: 1.25, boss: 1.5 },
-  anteGrowth: 1.5,
+  anteGrowth: 1.6,
   /**
    * A placement above this tier counts at this tier's marks in a target. A hard board can force a
    * chain on the typical player (14 of 24 final bosses do, once or twice), and at 400 marks a chain
@@ -130,8 +145,13 @@ export const REWARD = {
   /** Glass Heart adds this to the multiplier on all scoring: three Prism Shards for a heart slot. */
   glassHeart: 0.6,
   fishbowl: 3,
-  /** Cascade: each placement in line with the last adds this much more multiplier. */
-  cascade: 0.1,
+  /**
+   * Cascade: each placement in line with the last adds this much more multiplier, up to
+   * `cascadeMax`. At 0.1 it added about 4 percent; at 0.5 about 20 percent when cells are taken in
+   * no order (npm run balance:run), and more for a player who works along a row, column or box.
+   */
+  cascade: 0.5,
+  cascadeMax: 3,
   lantern: 2,
   fogLamp: 3,
   bloodMoney: 8,

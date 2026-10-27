@@ -95,9 +95,9 @@ export function Shop({ run, onBuyLens, onBuyItem, onSell, onMove, onReroll, onUs
 
       <Loadout run={run} actions={(pick) => <LoadoutActions run={run} pick={pick} onMove={onMove} onUse={onUse} onSell={onSell} />} />
 
-      <div className="cb-run-actions">
+      <div className="cb-run-actions is-dock">
         <button type="button" className="cb-run-btn is-primary is-wide" onClick={onLeave}>
-          On to ante {shop.ante + 1}
+          Next board
         </button>
       </div>
     </Page>

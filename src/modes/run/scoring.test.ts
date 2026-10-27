@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { TechniqueTier } from '../../engine/techniques';
 import type { LensSlot } from './model';
 import { allScoringOf, marksFor, flowCap, flowOf, scorePlacement, type PlacementFacts, type ScoreSetup } from './scoring';
-import { MARKS, CLEAN, FLOW, LENS, REWARD, SPECTRA_MARKS } from './tuning';
+import { CLEAN, FINISH_MULT, FLOW, FULL_HOUSE_MARKS, LENS, MARKS, REWARD, SPECTRA_MARKS } from './tuning';
 
 const facts = (over: Partial<PlacementFacts> = {}): PlacementFacts => ({
   tier: 1,
@@ -46,10 +46,20 @@ describe('a placement scores marks times mult', () => {
     expect(scorePlacement(facts({ tier: 4 }), setup({ levels }), fresh).points).toBe(75);
   });
 
-  it('adds 1 to the mult for each unit and each clue the digit finishes', () => {
+  it('adds 0.5 to the mult for each unit and each clue the digit finishes', () => {
+    expect(FINISH_MULT).toBe(0.5);
     const s = scorePlacement(facts({ tier: 2, units: 2, clues: [{ kind: 'thermo', total: 15 }] }), setup(), fresh);
-    expect(s.mult).toBe(4);
-    expect(s.points).toBe(80);
+    expect(s.mult).toBe(2.5);
+    expect(s.points).toBe(50);
+  });
+
+  it('gives a full house half the marks of a single, Spectra levels on top', () => {
+    expect(FULL_HOUSE_MARKS).toBe(5);
+    const full = scorePlacement(facts({ technique: 'fullHouse', units: 3 }), setup(), fresh);
+    expect(full.marks).toBe(5);
+    expect(full.points).toBe(13);
+    expect(scorePlacement(facts(), setup(), fresh).marks).toBe(10);
+    expect(marksFor(1, [0, 2, 0, 0, 0, 0, 0, 0, 0], 'fullHouse')).toBe(5 + 2 * SPECTRA_MARKS[1]);
   });
 
   it('builds the flow by 0.1 a placement in the streak, up to 2', () => {
@@ -74,8 +84,8 @@ describe('a placement scores marks times mult', () => {
 
   it('multiplies by 1.5 for every unit finished clean, or 2 with Clean Sweep', () => {
     const f = facts({ units: 2, clean: 2 });
-    expect(scorePlacement(f, setup(), fresh).mult).toBe(3 * CLEAN.mult ** 2);
-    expect(scorePlacement(f, setup({ perks: { cleanSweep: 1 } }), fresh).mult).toBe(3 * CLEAN.sweep ** 2);
+    expect(scorePlacement(f, setup(), fresh).mult).toBe((1 + 2 * FINISH_MULT) * CLEAN.mult ** 2);
+    expect(scorePlacement(f, setup({ perks: { cleanSweep: 1 } }), fresh).mult).toBe((1 + 2 * FINISH_MULT) * CLEAN.sweep ** 2);
   });
 
   it('scores a guess, a hint or a typed hint as nothing and ends the streak', () => {
@@ -93,10 +103,10 @@ describe('a placement scores marks times mult', () => {
   });
 
   it('rounds marks times mult to whole points', () => {
-    // 20 marks, mult (1 + 1) x 1.3 x 1.5 = 3.9
+    // 20 marks, mult (1 + 0.5) x 1.3 x 1.5 = 2.925, kept to two places as 2.93
     const s = scorePlacement(facts({ tier: 2, units: 1, clean: 1 }), setup(), { streak: 3, chain: 0 });
-    expect(s.mult).toBe(3.9);
-    expect(s.points).toBe(78);
+    expect(s.mult).toBe(2.93);
+    expect(s.points).toBe(59);
   });
 });
 
@@ -128,16 +138,17 @@ describe('perks and the boss rule', () => {
     expect(scorePlacement(facts({ tier: 3 }), setup({ perks: { daredevil: 1 } }), fresh).points).toBe(60);
   });
 
-  it('Cascade builds 0.1 a placement in line with the last, and breaks out of line', () => {
+  it('Cascade builds 0.5 a placement in line with the last, up to 3, and breaks out of line', () => {
     const c = setup({ perks: { cascade: 1 } });
     let at = fresh;
     const mults: number[] = [];
-    for (const inLine of [true, true, true, false, true]) {
+    for (const inLine of [true, true, true, true, true, false, true]) {
       const s = scorePlacement(facts({ inLine }), c, { ...at, streak: 0 });
       mults.push(s.mult);
       at = s.next;
     }
-    expect(mults).toEqual([1.1, 1.2, 1.3, 1, 1.1]);
+    expect(REWARD.cascadeMax).toBe(3);
+    expect(mults).toEqual([1.5, 2, 2.5, 3, 3, 1, 1.5]);
     // Without the card, nothing builds.
     expect(scorePlacement(facts({ inLine: true }), setup(), { streak: 0, chain: 5 }).next.chain).toBe(0);
   });
@@ -176,7 +187,7 @@ describe('lenses fire in slot order', () => {
     const cage = facts({ clues: [{ kind: 'cage', total: 23 }] });
     expect(scorePlacement(cage, setup({ lenses: lenses('cage') }), fresh).marks).toBe(33);
     const arrows = facts({ clues: [{ kind: 'arrow', total: 9 }, { kind: 'arrow', total: 6 }] });
-    expect(scorePlacement(arrows, setup({ lenses: lenses('arrow') }), fresh).mult).toBe(3 * LENS.arrow ** 2);
+    expect(scorePlacement(arrows, setup({ lenses: lenses('arrow') }), fresh).mult).toBe((1 + 2 * FINISH_MULT) * LENS.arrow ** 2);
     const dots = facts({ clues: [{ kind: 'kropki', total: 3 }, { kind: 'xv', total: 10 }] });
     expect(scorePlacement(dots, setup({ lenses: lenses('dot') }), fresh).marks).toBe(10 + 2 * LENS.dot);
     expect(scorePlacement(facts({ digit: 9 }), setup({ lenses: lenses('redShift') }), fresh).mult).toBe(1 + LENS.redShift);
@@ -194,7 +205,7 @@ describe('lenses fire in slot order', () => {
   });
 
   it('pays Clear Glass for clean units, Clutch on the last heart and Glass Cannon always', () => {
-    expect(scorePlacement(facts({ units: 1, clean: 1 }), setup({ lenses: lenses('clearGlass') }), fresh).mult).toBe(2 * 1.5 + LENS.clearGlass);
+    expect(scorePlacement(facts({ units: 1, clean: 1 }), setup({ lenses: lenses('clearGlass') }), fresh).mult).toBe((1 + FINISH_MULT) * CLEAN.mult + LENS.clearGlass);
     expect(scorePlacement(facts(), setup({ lenses: lenses('clutch'), hearts: 1 }), fresh).mult).toBe(LENS.clutch);
     expect(scorePlacement(facts(), setup({ lenses: lenses('clutch'), hearts: 2 }), fresh).fired).toEqual([]);
     expect(scorePlacement(facts(), setup({ lenses: lenses('glassCannon') }), fresh).mult).toBe(LENS.glassCannon);

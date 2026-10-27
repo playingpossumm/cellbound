@@ -8,7 +8,7 @@ import { TECHNIQUES, type TechniqueId } from '../../../engine/techniques';
 import { getGame, startGame, useGame } from '../../../game/store';
 import { formatDateLong } from '../../../game/logic';
 import type { GameState } from '../../../game/types';
-import { isBoss, SLOT_SPECS } from '../boards';
+import { SLOT_SPECS } from '../boards';
 import { gameKey, prepareBoard, type Prepared } from '../board';
 import { BOSS_NAMES, bossText, clockMs } from '../bosses';
 import { itemById, TIER_NAMES } from '../items';
@@ -228,8 +228,7 @@ function headline(r: BoardResult): string {
 function nextLabel(run: RunState): string {
   const r = run.results[run.results.length - 1];
   if (run.outcome) return 'See summary';
-  if (r?.status === 'cleared') return 'Pick a card';
-  return isBoss(run.slot) ? 'Shop' : 'Next board';
+  return r?.status === 'cleared' ? 'Pick a card' : 'Shop';
 }
 
 /** Where a board's coins came from. One source needs no number: the total beside it says it. */

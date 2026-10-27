@@ -31,7 +31,11 @@ import { playedBoard, resetRunStore, runActions, settled, useRunStore } from './
 
 const state = () => useRunStore.getState();
 
-async function until(cond: () => boolean, what: string, ms = 15_000) {
+// Boards are built on this thread here (there is no worker), and a full parallel run can slow a build
+// well past its usual second, so the waits and this file's tests get room to spare.
+vi.setConfig({ testTimeout: 45_000 });
+
+async function until(cond: () => boolean, what: string, ms = 30_000) {
   const t0 = Date.now();
   while (!cond()) {
     if (Date.now() - t0 > ms) throw new Error(`timed out waiting for ${what}`);

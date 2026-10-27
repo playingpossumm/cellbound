@@ -175,7 +175,7 @@ export const REWARDS: readonly RewardDef[] = [
   {
     id: 'cascade',
     name: 'Cascade',
-    text: `A placement in the row, column or box of the last one adds ×${REWARD.cascade}, building up.`,
+    text: `A placement in the row, column or box of the last one adds ×${REWARD.cascade}, building up to ×${REWARD.cascadeMax}.`,
     category: 'mult',
     rarity: 'rare',
     stack: 1,
@@ -226,15 +226,6 @@ export const REWARDS: readonly RewardDef[] = [
       return last ? { ...run, pending: { slot: last.slot, score: last.score } } : run;
     },
   },
-  {
-    id: 'microscope',
-    name: 'Microscope',
-    text: 'A placement more than one technique proves scores as the hardest.',
-    category: 'score',
-    rarity: 'rare',
-    stack: 1,
-    apply: (run) => addPerk(run, 'microscope'),
-  },
 
   // Bargains
   {
@@ -257,6 +248,17 @@ export const REWARDS: readonly RewardDef[] = [
     rarity: 'uncommon',
     stack: 1,
     apply: (run) => addPerk(run, 'daredevil'),
+  },
+  {
+    id: 'microscope',
+    name: 'Microscope',
+    text: 'A placement more than one technique proves scores as the hardest.',
+    cost: 'One heart slot fewer.',
+    category: 'score',
+    rarity: 'rare',
+    stack: 1,
+    usable: (run) => run.maxHearts > 1,
+    apply: (run) => heal({ ...addPerk(run, 'microscope'), maxHearts: Math.max(1, run.maxHearts - 1) }, 0),
   },
   {
     id: 'fogLamp',

@@ -82,7 +82,7 @@ function useMedia(query: string): boolean {
 }
 const NO_NOTES = 'Notes are off for this board.';
 /** Smallest cell, in CSS pixels, that the stacked layout shrinks the board to when that avoids scrolling. */
-const MIN_CELL: Record<number, number> = { 4: 56, 6: 50, 9: 35 };
+const MIN_CELL: Record<number, number> = { 4: 56, 6: 50, 9: 33 };
 /** Largest board edge in the two-column layout, and stacked (an upright tablet). */
 const MAX_SIDE = 720;
 const MAX_STACKED_SIDE = 640;

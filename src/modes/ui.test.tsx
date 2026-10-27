@@ -228,7 +228,7 @@ describe('Run screen', () => {
     expect(host.querySelectorAll('[data-testid="overlay"] .cb-run-pop')).toHaveLength(1);
   });
 
-  it('tallies a solved board, then goes on to a card pick or the next board', async () => {
+  it('tallies a solved board, then goes on to a card pick, the shop and the next board', async () => {
     await run();
     await click(button('Start free run'));
     await playBoard();
@@ -237,7 +237,7 @@ describe('Run screen', () => {
     const r = state().run!.results[0];
     expect(host.querySelector('.cb-run-panel-title')?.textContent).toBe(r.status === 'cleared' ? 'Cleared' : 'Missed');
     expect(host.querySelectorAll('.cb-run-techs tr').length).toBeGreaterThan(0);
-    await click(button(r.status === 'cleared' ? 'Pick a card' : 'Next board'));
+    await click(button(r.status === 'cleared' ? 'Pick a card' : 'Shop'));
     if (r.status === 'cleared') {
       expect(host.querySelectorAll('.cb-run-offers button')).toHaveLength(3);
       expect(button(/^Pick a card/)?.disabled).toBe(true);
@@ -245,15 +245,17 @@ describe('Run screen', () => {
       expect(host.querySelector('.cb-run-offers button')?.getAttribute('aria-pressed')).toBe('true');
       await click(button(/^Take /));
     }
+    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Shop');
+    await click(button('Next board'));
     expect(state().run!.phase).toBe('select');
     expect(state().run!.slot).toBe(1);
     expect(host.querySelector('.cb-run-board.is-now .cb-run-board-kind')?.textContent).toBe('Big');
   });
 
-  it('skips a Small board for a tag of two cards', async () => {
+  it('skips a Small board for a pick of two cards, and its shop with it', async () => {
     await run();
     await click(button('Start free run'));
-    await click(host.querySelector('button[aria-label="Skip for a tag"]') ?? undefined);
+    await click(button('Skip for a card'));
     expect(host.querySelectorAll('.cb-run-offers button')).toHaveLength(2);
     await click(host.querySelector('.cb-run-offers button') ?? undefined);
     await click(button(/^Take /));
@@ -312,7 +314,7 @@ describe('Run screen', () => {
     expect(state().data.current).toBeNull();
   });
 
-  it('runs the shop: buy a lens, see it in a slot, sell it, reroll, and go on to the next ante', async () => {
+  it('runs the shop: buy a lens, see it in a slot, sell it, reroll, and go on to the next board', async () => {
     runActions.start('free', 1000, '2099-01-01');
     const r = state().run!;
     useRunStore.setState({ run: { ...r, phase: 'shop', slot: 2, coins: 30, shop: { ante: 1, rerolls: 0, lenses: ['loupe', 'spyglass'], items: ['spectra1', 'inkHint'] } } });
@@ -328,7 +330,7 @@ describe('Run screen', () => {
     await click(host.querySelector('button[aria-label="Reroll for 2 coins"]') ?? undefined);
     expect(state().run!.shop!.rerolls).toBe(1);
     expect(state().run!.coins).toBe(26);
-    await click(button('On to ante 2'));
+    await click(button('Next board'));
     expect(state().run!).toMatchObject({ phase: 'select', slot: 3 });
     expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 2');
   });

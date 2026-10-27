@@ -1,15 +1,15 @@
 // Scoring one correct placement. Marks come from the tier of the technique that proves it (the
-// hardest one with Microscope, which the store asks the engine for) plus its Spectra levels; mult
-// starts at 1, gains 1 for each unit and clue the digit finishes, then is multiplied by the flow,
-// by every unit finished clean and by the technique boosts; the lenses fire in slot order; the
-// all-scoring multipliers come last. Points are marks times mult, rounded, plus any flat points.
-// Pure, so the popup, the tally and the tests share one sum.
+// hardest one with Microscope, which the store asks the engine for; half for a full house) plus
+// its Spectra levels; mult starts at 1, gains 0.5 for each unit and clue the digit finishes, then
+// is multiplied by the flow, by every unit finished clean and by the technique boosts; the lenses
+// fire in slot order; the all-scoring multipliers come last. Points are marks times mult, rounded,
+// plus any flat points. Pure, so the popup, the tally and the tests share one sum.
 import type { TechniqueId, TechniqueTier } from '../../engine/techniques';
 import type { ClueKind, Digit } from '../../engine/types';
 import type { BossRule } from './bosses';
 import { effectiveLens, flowCapOf, type LensCtx } from './lenses';
 import type { LensSlot, RewardId } from './model';
-import { BOSS, MARKS, CLEAN, FLOW, REWARD, SPECTRA_MARKS } from './tuning';
+import { BOSS, CLEAN, FINISH_MULT, FLOW, FULL_HOUSE_MARKS, MARKS, REWARD, SPECTRA_MARKS } from './tuning';
 
 export interface PlacementFacts {
   tier: TechniqueTier;
@@ -79,9 +79,10 @@ export function flowOf(streak: number, setup: Pick<ScoreSetup, 'perks' | 'lenses
   return Math.min(flowCap(setup), round2(1 + step * Math.max(0, streak)));
 }
 
-/** Marks for a tier at its Spectra level. */
-export function marksFor(tier: number, levels: readonly number[]): number {
-  return (MARKS[tier] ?? 0) + (SPECTRA_MARKS[tier] ?? 0) * (levels[tier] ?? 0);
+/** Marks for a tier at its Spectra level; a full house earns FULL_HOUSE_MARKS in place of the tier's. */
+export function marksFor(tier: number, levels: readonly number[], technique?: TechniqueId): number {
+  const base = technique === 'fullHouse' ? FULL_HOUSE_MARKS : (MARKS[tier] ?? 0);
+  return base + (SPECTRA_MARKS[tier] ?? 0) * (levels[tier] ?? 0);
 }
 
 /** The multiplier on all scoring: Prism Shards and Glass Hearts add up, and Daredevil multiplies them. */
@@ -100,8 +101,8 @@ export function scorePlacement(f: PlacementFacts, s: ScoreSetup, at: Streak): Pl
   if (f.source === 'reveal') return nothing(at);
   if (f.source === 'hint' || f.tier === 0) return nothing({ streak: 0, chain: 0 });
 
-  let marks = marksFor(f.tier, s.levels);
-  let mult = 1 + f.units + f.clues.length;
+  let marks = marksFor(f.tier, s.levels, f.technique);
+  let mult = 1 + FINISH_MULT * (f.units + f.clues.length);
   const flow = flowOf(at.streak, s);
   mult *= flow;
   const clean = (perk(s, 'cleanSweep') ? CLEAN.sweep : CLEAN.mult) ** f.clean;
@@ -109,7 +110,7 @@ export function scorePlacement(f: PlacementFacts, s: ScoreSetup, at: Streak): Pl
   if (perk(s, 'fishbowl') && (f.tier === 6 || f.tier === 7)) mult *= REWARD.fishbowl;
   if (s.rule === 'fish' && f.tier >= BOSS.fishTier) mult *= BOSS.fishMult;
   const chain = perk(s, 'cascade') && f.inLine ? at.chain + 1 : 0;
-  if (chain) mult *= 1 + REWARD.cascade * chain;
+  if (chain) mult *= Math.min(REWARD.cascadeMax, 1 + REWARD.cascade * chain);
 
   const ctx: LensCtx = {
     tier: f.tier,

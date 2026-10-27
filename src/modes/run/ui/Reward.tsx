@@ -52,7 +52,7 @@ export function Reward({ run, onTake, onPass, onHome }: RewardProps) {
               </li>
             ))}
           </ul>
-          <div className="cb-run-actions">
+          <div className="cb-run-actions is-dock">
             <button type="button" className="cb-run-btn is-primary is-wide" disabled={!chosen} onClick={() => chosen && onTake(chosen)}>
               {def ? `Take ${def.name}` : 'Pick a card'}
             </button>

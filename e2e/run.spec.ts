@@ -118,20 +118,23 @@ test('a run shows each target before its board, scores the board and moves on', 
   await expect(title).toHaveText(/^(Cleared|Missed)$/, { timeout: 30_000 });
   await shot(page, 'run-tally');
   const cleared = (await title.textContent()) === 'Cleared';
-  await page.locator('.cb-run-panel').getByRole('button', { name: cleared ? 'Pick a card' : 'Next board' }).click();
+  await page.locator('.cb-run-panel').getByRole('button', { name: cleared ? 'Pick a card' : 'Shop' }).click();
   if (cleared) {
     await expect(page.locator('.cb-run-offers .cb-run-card')).toHaveCount(3);
     await page.locator('.cb-run-offers .cb-run-card').first().click();
     await page.getByRole('button', { name: /^Take / }).click();
   }
+  // Every board played is followed by the shop.
+  await expect(page.locator('.cb-run-title')).toHaveText('Shop');
+  await page.getByRole('button', { name: 'Next board' }).click();
   await expect(page.locator('.cb-run-board.is-now .cb-run-board-kind')).toHaveText('Big');
 });
 
-test('a Small board can be skipped for a tag of two cards, and the menu returns to the Run home', async ({ page }) => {
+test('a Small board can be skipped for a pick of two cards and no shop, and the menu returns to the Run home', async ({ page }) => {
   await openFresh(page);
   await openScreen(page, 'Run');
   await page.getByRole('button', { name: 'Start free run' }).click();
-  await page.getByRole('button', { name: 'Skip for a tag' }).click();
+  await page.getByRole('button', { name: 'Skip for a card' }).click();
   await expect(page.locator('.cb-run-offers .cb-run-card')).toHaveCount(2);
   await page.locator('.cb-run-offers .cb-run-card').last().click();
   await page.getByRole('button', { name: /^Take / }).click();
@@ -168,7 +171,7 @@ test('a board left mid-way resumes where it was', async ({ page }) => {
   expect(kept).toBe(true);
 });
 
-test('the shop buys and sells lenses, rerolls, and leads to the next ante', async ({ page }, info) => {
+test('the shop buys and sells lenses, rerolls, and leads to the next board', async ({ page }, info) => {
   // A short phone, where the shop is taller than the screen.
   if (info.project.metadata.form === 'phone') await page.setViewportSize({ width: 390, height: 640 });
   const shop = { ante: 1, rerolls: 0, lenses: ['loupe', 'spyglass'], items: ['spectra1', 'inkHint'] };
@@ -195,7 +198,7 @@ test('the shop buys and sells lenses, rerolls, and leads to the next ante', asyn
   await expect(page.locator('.cb-run-loadout .cb-run-lens')).toHaveCount(0);
   await page.getByRole('button', { name: 'Reroll for 2 coins' }).click();
   await expect(page.locator('.cb-run-bigcoins')).toContainText('13');
-  await page.getByRole('button', { name: 'On to ante 2' }).click();
+  await page.getByRole('button', { name: 'Next board' }).click();
   await expect(page.locator('.cb-run-title')).toHaveText('Ante 2');
   // The Spectra bought in the shop is used from the ante screen.
   await page.locator('.cb-run-loadout .cb-run-item').first().click();

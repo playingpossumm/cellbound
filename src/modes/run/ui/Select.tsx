@@ -114,9 +114,9 @@ export function Select({ run, ready, onPlay, onSkip, onRetry, onHome, onMove, on
                     </button>
                   )}
                   {canSkip(run) && (
-                    <button type="button" className="cb-run-btn is-skip" onClick={onSkip} aria-label="Skip for a tag">
+                    <button type="button" className="cb-run-btn is-skip" onClick={onSkip}>
                       <SkipIcon className="cb-run-btn-icon" />
-                      Skip
+                      Skip for a card
                     </button>
                   )}
                 </div>

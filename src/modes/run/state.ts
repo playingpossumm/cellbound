@@ -111,7 +111,7 @@ export function withTarget(run: RunState, slot: number, target: number): RunStat
   return { ...run, targets };
 }
 
-/** Skips a Small or Big board for a tag: a smaller pick, commons only, and no coins. */
+/** Skips a Small or Big board for a tag: a smaller pick, commons only, and no coins or shop. */
 export function skip(run: RunState, rewards: readonly RewardDef[]): RunState {
   if (!canSkip(run)) return run;
   const result: BoardResult = {
@@ -246,18 +246,18 @@ export function endBoard(run: RunState, end: BoardEnd): RunState {
   };
 }
 
-/** Leaves the tally: to the summary, a reward pick, the shop after a boss, or the next board. */
+/** Leaves the tally: to the summary, a reward pick after a cleared board, or the shop. */
 export function leaveTally(run: RunState, rewards: readonly RewardDef[], lenses: readonly LensDef[]): RunState {
   if (run.phase !== 'tally') return run;
   if (run.outcome) return { ...run, phase: 'done' };
   const last = run.results[run.results.length - 1];
   if (last?.status === 'cleared') return { ...run, phase: 'reward', offer: makeOffer(run, isBoss(run.slot) ? 'boss' : 'reward', rewards) };
-  return isBoss(run.slot) ? openShop(run, lenses) : advance(run);
+  return openShop(run, lenses);
 }
 
-/** After a pick: the shop when it followed a boss, the next board otherwise. */
+/** After a pick: the shop after a board played; a skipped board's tag skips the shop as well. */
 function afterPick(run: RunState, kind: string, lenses: readonly LensDef[]): RunState {
-  return kind === 'boss' ? openShop(run, lenses) : advance(run);
+  return kind === 'tag' ? advance(run) : openShop(run, lenses);
 }
 
 /** Takes one of the offered cards. */

@@ -1,6 +1,7 @@
-// The shop after each boss: two lenses and two consumables, a reroll that costs a coin more each
-// time, and lenses sold back for half their price. Stock is seeded by the run seed, the ante and
-// the reroll count, so a daily run's shop holds the same stock for everyone in the same state.
+// The shop after every board played (a skipped board skips it): two lenses and two consumables, a
+// reroll that costs a coin more each time, and lenses sold back for half their price. Stock is
+// seeded by the run seed, the board and the reroll count, so a daily run's shop holds the same
+// stock for everyone in the same state.
 import { makeRng } from '../../engine';
 import { anteOf } from './boards';
 import { ITEMS, type ItemDef } from './items';
@@ -36,11 +37,11 @@ function drawDistinct<T>(rng: () => number, list: readonly T[], weight: (x: T) =
 }
 
 /**
- * The stock for a shop visit and reroll count. Lenses already held are never on sale, and what
- * reads a technique the run has never placed turns up less often (placed.ts).
+ * The stock for the shop after a board, at a reroll count. Lenses already held are never on sale,
+ * and what reads a technique the run has never placed turns up less often (placed.ts).
  */
-export function stockFor(run: RunState, ante: number, rerolls: number, pool: readonly LensDef[]): Pick<ShopState, 'lenses' | 'items'> {
-  const rng = makeRng(`${run.seed}:shop:${ante}:${rerolls}`);
+export function stockFor(run: RunState, slot: number, rerolls: number, pool: readonly LensDef[]): Pick<ShopState, 'lenses' | 'items'> {
+  const rng = makeRng(`${run.seed}:shop:${slot}:${rerolls}`);
   const held = new Set(run.lenses.map((l) => l.id));
   const lenses = pool.filter((l) => !held.has(l.id)).sort((a, b) => (a.id < b.id ? -1 : 1));
   const placed = placedTiers(run);
@@ -50,8 +51,7 @@ export function stockFor(run: RunState, ante: number, rerolls: number, pool: rea
 }
 
 export function openShop(run: RunState, pool: readonly LensDef[]): RunState {
-  const ante = anteOf(run.slot);
-  return { ...run, phase: 'shop', offer: null, shop: { ante, rerolls: 0, ...stockFor(run, ante, 0, pool) } };
+  return { ...run, phase: 'shop', offer: null, shop: { ante: anteOf(run.slot), rerolls: 0, ...stockFor(run, run.slot, 0, pool) } };
 }
 
 export function rerollCost(rerolls: number): number {
@@ -64,7 +64,7 @@ export function reroll(run: RunState, pool: readonly LensDef[]): RunState {
   const cost = rerollCost(shop.rerolls);
   if (run.coins < cost) return run;
   const rerolls = shop.rerolls + 1;
-  return { ...run, coins: run.coins - cost, shop: { ...shop, rerolls, ...stockFor(run, shop.ante, rerolls, pool) } };
+  return { ...run, coins: run.coins - cost, shop: { ...shop, rerolls, ...stockFor(run, run.slot, rerolls, pool) } };
 }
 
 export function priceOfItem(id: ItemId): number {

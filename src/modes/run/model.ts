@@ -180,7 +180,7 @@ export interface Offer {
 }
 
 export interface ShopState {
-  /** The ante just finished. */
+  /** The ante of the board just played. The stock is seeded by the board, the run's slot. */
   ante: number;
   rerolls: number;
   /** Stock left: a sold-out place is null. */

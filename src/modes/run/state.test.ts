@@ -5,6 +5,7 @@ import { BOSS_RULES } from './bosses';
 import { LENSES, lensPool } from './lenses';
 import type { RunState } from './model';
 import { canOffer, REWARDS, rewardById, rewardPool } from './rewards';
+import { stockFor } from './shop';
 import {
   advance,
   bossShown,
@@ -103,7 +104,7 @@ describe('the ladder of boards', () => {
     expect(play(run, 5000, 1000).results[0].coins).toEqual({ board: 3, overflow: 5, interest: 5, lenses: 0, total: 13 });
   });
 
-  it('costs a heart for a board under its target, pays no coins at all and offers no pick', () => {
+  it('costs a heart for a board under its target, pays no coins at all and offers no pick, only the shop', () => {
     const run = { ...newRun('t:miss', null, 1), coins: 10, lenses: [{ id: 'coinPrism' as const }] };
     const done = play(run, 900, 1000);
     expect(done.results[0]).toMatchObject({ status: 'missed', heartsLost: 1, heartsAfter: 2 });
@@ -111,8 +112,21 @@ describe('the ladder of boards', () => {
     expect(done.results[0].coins).toEqual({ board: 0, overflow: 0, interest: 0, lenses: 0, total: 0 });
     expect(done.coins).toBe(10);
     expect(done.hearts).toBe(2);
-    const next = leaveTally(done, rewards, lenses);
-    expect(next).toMatchObject({ phase: 'select', slot: 1 });
+    const shop = leaveTally(done, rewards, lenses);
+    expect(shop).toMatchObject({ phase: 'shop', slot: 0, offer: null });
+    expect(leaveShop(shop)).toMatchObject({ phase: 'select', slot: 1, shop: null });
+  });
+
+  it('opens a shop after every board played, each with its own stock, and skips it with the board', () => {
+    const small = takeFirst(leaveTally(play(newRun('t:shops', null, 1), 2000, 1000), rewards, lenses));
+    expect(small).toMatchObject({ phase: 'shop', slot: 0 });
+    // The shops of an ante are stocked apart, not with the same draw.
+    const draws = [0, 1, 2, 3].map((k) => JSON.stringify(stockFor(small, k, 0, lenses)));
+    expect(new Set(draws).size).toBeGreaterThan(1);
+    // A skipped board's pick goes straight on to the next board, with no shop.
+    const tag = skip(leaveShop(small), rewards);
+    expect(tag.offer!.kind).toBe('tag');
+    expect(takeFirst(tag)).toMatchObject({ phase: 'select', slot: 2, shop: null });
   });
 
   it('offers four cards with a rare after a boss, then the shop, then the next ante', () => {
@@ -210,17 +224,20 @@ describe('cards on the run', () => {
     for (const id of ['microscope', 'daredevil', 'insurance'] as const) {
       const held = rewardById(id)!.apply(run);
       expect(held.perks, id).toEqual({ [id]: 1 });
-      expect(held, id).toMatchObject({ hearts: 2, maxHearts: run.maxHearts, coins: run.coins });
+      // Microscope costs a heart slot, as Glass Heart does; the others cost nothing up front.
+      expect(held, id).toMatchObject({ hearts: 2, maxHearts: run.maxHearts - (id === 'microscope' ? 1 : 0), coins: run.coins });
       // Each is held once.
       expect(canOffer(rewardById(id)!, held, 'reward'), id).toBe(false);
     }
+    // A run down to one heart slot is never offered it.
+    expect(canOffer(rewardById('microscope')!, { ...run, maxHearts: 1, hearts: 1 }, 'reward')).toBe(false);
   });
 
   it('settles Double or Nothing on the next board played: doubled without mistakes, lost with one', () => {
     let run = play(newRun('t:don', null, 1), 1500, 1000);
     run = leaveTally(run, rewards, lenses);
     run = { ...run, offer: { ...run.offer!, cards: ['doubleOrNothing', ...run.offer!.cards.slice(1)] } };
-    const bet = takeReward(run, 'doubleOrNothing', lenses);
+    const bet = leaveShop(takeReward(run, 'doubleOrNothing', lenses));
     expect(bet.pending).toEqual({ slot: 0, score: 1500 });
     const won = play(bet, 1200, 1000);
     expect(won.pending).toBeNull();
@@ -256,7 +273,9 @@ describe('cards on the run', () => {
 
   it('moves on from an empty offer', () => {
     const run = { ...newRun('t:empty', null, 1), phase: 'reward' as const, offer: { kind: 'reward' as const, slot: 0, cards: [] } };
-    expect(passReward(run, lenses)).toMatchObject({ phase: 'select', slot: 1 });
+    const shop = passReward(run, lenses);
+    expect(shop).toMatchObject({ phase: 'shop', slot: 0 });
+    expect(leaveShop(shop)).toMatchObject({ phase: 'select', slot: 1 });
   });
 });
 
