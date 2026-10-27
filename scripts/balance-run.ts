@@ -7,7 +7,7 @@
 // "per coin" is the typical gain over all three antes divided by the price. A lens that only works
 // on a rare technique or a rare clue shows it here as a small number.
 import { generate } from '../src/engine';
-import { classifyPlacement } from '../src/engine/techniques';
+import { classifyPlacement, hardestPlacement } from '../src/engine/techniques';
 import { optionsFor, SLOT_COUNT } from '../src/modes/run/boards';
 import { levelsOf, recordAs, REFERENCE_BUILDS, scoreMoves, type Build, type Move, type Style } from '../src/modes/run/calibrate';
 import { ITEMS } from '../src/modes/run/items';
@@ -27,7 +27,7 @@ for (const s of styles) boards[s] = Array.from({ length: SLOT_COUNT }, () => [])
 for (let slot = 0; slot < SLOT_COUNT; slot++) {
   for (const seed of seeds) {
     const p = generate(optionsFor(seed, slot));
-    for (const style of styles) boards[style][slot].push(recordAs(p, style, seed, classifyPlacement).moves);
+    for (const style of styles) boards[style][slot].push(recordAs(p, style, seed, classifyPlacement, hardestPlacement).moves);
   }
 }
 const base: Record<Style, number[][]> = { typical: [], clean: [], expert: [] };
@@ -72,6 +72,8 @@ const cards: [RewardId, number][] = [
   ['prismShard', 1],
   ['prismShard', 3],
   ['hotStreak', 1],
+  ['daredevil', 1],
+  ['microscope', 1],
   ['cleanSweep', 1],
   ['cascade', 1],
   ['fishbowl', 1],

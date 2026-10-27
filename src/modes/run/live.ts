@@ -151,10 +151,19 @@ export function applyPlaced(run: RunState, e: Placed, cls: PlacementClass | null
       return { run: { ...run, live: { ...next, shield: next.shield - 1 } }, out };
     }
     const glass = next.rule === 'glass';
-    const h = hurt(run, next, glass ? HEARTS.glass : 1);
+    let cost = (glass ? HEARTS.glass : 1) * (run.perks.daredevil ? REWARD.daredevilHurt : 1);
+    // Insurance pays for hearts with coins, as many as the coins cover.
+    const insured = run.perks.insurance ? Math.min(cost, Math.floor(run.coins / REWARD.insurance)) : 0;
+    if (insured) {
+      cost -= insured;
+      run = { ...run, coins: run.coins - insured * REWARD.insurance };
+      out.popup = said('Insurance', `−${insured * REWARD.insurance} coins`);
+    }
+    const h = cost ? hurt(run, next, cost) : { run, live: next, saved: false };
     next = { ...h.live, broken: glass || undefined };
     out.saved = h.saved;
     if (h.saved) out.popup = said('Second Wind', 'Heart kept');
+    else if (run.perks.daredevil && cost > 1 && !insured) out.popup = said('Daredevil', `−${cost} hearts`);
     out.fail = glass || next.hearts <= 0;
     return { run: { ...h.run, live: next }, out };
   }

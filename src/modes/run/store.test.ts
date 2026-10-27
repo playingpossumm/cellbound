@@ -7,7 +7,7 @@ import { TECHNIQUES, type TechniqueId } from '../../engine/techniques';
 import type { Digit, Puzzle } from '../../engine/types';
 import { actions, getGame, resetStoreForTesting, startGame } from '../../game/store';
 
-const engine = vi.hoisted(() => ({ technique: null as string | null, calls: [] as { values: number[]; cell: number; digit: number }[] }));
+const engine = vi.hoisted(() => ({ technique: null as string | null, hard: null as string | null, calls: [] as { values: number[]; cell: number; digit: number }[], hardCalls: [] as number[] }));
 vi.mock('../../engine/techniques', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../engine/techniques')>();
   return {
@@ -16,6 +16,11 @@ vi.mock('../../engine/techniques', async (importOriginal) => {
       engine.calls.push({ values: values.slice(), cell, digit });
       const t = engine.technique as TechniqueId | null;
       return t ? { technique: t, tier: real.TECHNIQUES[t].tier, name: real.TECHNIQUES[t].name, focus: [cell] } : real.classifyPlacementAsync(p, values, cell, digit);
+    },
+    hardestPlacementAsync: async (p: Puzzle, values: Digit[], cell: number, digit: Digit) => {
+      engine.hardCalls.push(cell);
+      const t = engine.hard as TechniqueId | null;
+      return t ? { technique: t, tier: real.TECHNIQUES[t].tier, name: real.TECHNIQUES[t].name, focus: [cell] } : real.hardestPlacementAsync(p, values, cell, digit);
     },
   };
 });
@@ -57,7 +62,9 @@ beforeEach(() => {
   resetStoreForTesting();
   resetRunStore();
   engine.technique = null;
+  engine.hard = null;
   engine.calls = [];
+  engine.hardCalls = [];
 });
 
 describe('the Run store', () => {
@@ -89,6 +96,22 @@ describe('the Run store', () => {
     expect(call.values[b]).toBe(0);
     expect(call.values.filter(Boolean).length).toBe(p.givens.filter(Boolean).length);
     expect(state().fx.popups.at(-1)).toMatchObject({ cell: a, name: 'Hidden single', points: 20 });
+  });
+
+  it('scores by the hardest technique that proves the digit when the run holds Microscope', async () => {
+    runActions.start('free', 1000, '2026-10-26');
+    await until(() => !!state().ready[0], 'the board');
+    useRunStore.setState({ run: { ...state().run!, perks: { microscope: 1 } } });
+    const p = await playBoard();
+    engine.technique = 'nakedSingle';
+    engine.hard = 'xWing';
+    const [a] = emptyCells(p);
+    type(a, p.solution[a]);
+    await settled();
+    expect(engine.hardCalls).toEqual([a]);
+    expect(engine.calls).toEqual([]);
+    expect(state().run!.live!.tech).toEqual({ xWing: { n: 1, points: 150, top: 150 } });
+    expect(state().fx.popups.at(-1)).toMatchObject({ cell: a, name: 'X-Wing', points: 150 });
   });
 
   it('applies placements in the order they went in, however fast they come', async () => {

@@ -35,12 +35,17 @@ export interface Build {
 export interface Move {
   placed: Placed;
   cls: PlacementClass;
+  /** The hardest technique that proves it, for a build with Microscope, when it was asked for. */
+  hard?: PlacementClass;
 }
 
 type Classify = (p: Puzzle, values: number[], cell: number, digit: number) => PlacementClass;
 
-/** Plays a board to its end as a style of player would, keeping every placement. Classifies once, so builds are cheap to compare. */
-export function recordAs(p: Puzzle, style: Style, seed: string, classify: Classify = classifyPlacement): { moves: Move[]; tiers: number[] } {
+/**
+ * Plays a board to its end as a style of player would, keeping every placement. Classifies once, so
+ * builds are cheap to compare; with `hardest`, each placement also keeps its hardest technique.
+ */
+export function recordAs(p: Puzzle, style: Style, seed: string, classify: Classify = classifyPlacement, hardest?: Classify): { moves: Move[]; tiers: number[] } {
   const n = p.size * p.size;
   const rng = makeRng(`calibrate:${seed}:${style}`);
   const values = new Array<number>(n).fill(0);
@@ -68,11 +73,13 @@ export function recordAs(p: Puzzle, style: Style, seed: string, classify: Classi
       // The typical and clean players take the first single they see.
       if (style !== 'expert' && k.tier >= 1 && k.tier <= 2) break;
     }
+    const hard = hardest?.(p, grid, pick, p.solution[pick]);
     values[pick] = p.solution[pick];
     const after = fullGrid(p, values);
     tiers[cls!.tier]++;
     moves.push({
       cls: cls!,
+      ...(hard ? { hard } : {}),
       placed: {
         key: 'c',
         cell: pick,
@@ -97,7 +104,8 @@ export function scoreMoves(moves: readonly Move[], build: Build = {}): number {
   let run = newRun('calibrate:build', null, 0);
   run = { ...run, lenses: build.lenses ?? [], levels: build.levels ?? run.levels, perks: build.perks ?? {}, hearts: build.hearts ?? run.hearts };
   run = { ...run, phase: 'board', live: newLive(run, { key: 'c', slot: 0, target: 1, rule: null, stolen: [], fog: false, mods: {} }) };
-  for (const m of moves) run = applyPlaced(run, m.placed, m.cls).run;
+  const hardest = !!build.perks?.microscope;
+  for (const m of moves) run = applyPlaced(run, m.placed, (hardest && m.hard) || m.cls).run;
   return run.live!.score;
 }
 
@@ -124,4 +132,5 @@ export const REFERENCE_BUILDS: { name: string; build: Build; only?: Style }[] = 
   { name: 'Mixed: Loupe, Monocle, Red Shift, Singles Spectrum, Prism Shard', build: { lenses: slots('loupe', 'monocle', 'redShift'), levels: levelsOf(1, 1), perks: { prismShard: 1 } } },
   { name: 'Clean: Clear Glass, Clean Sweep', build: { lenses: slots('clearGlass'), perks: { cleanSweep: 1 } }, only: 'clean' },
   { name: 'Risk: Glass Cannon, Clutch, one heart', build: { lenses: slots('glassCannon', 'clutch'), hearts: 1 } },
+  { name: 'Techniques: Microscope, Fishbowl, Monocle, Spyglass, Fisheye', build: { lenses: slots('monocle', 'spyglass', 'fisheye'), perks: { microscope: 1, fishbowl: 1 } } },
 ];

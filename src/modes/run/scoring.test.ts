@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TechniqueTier } from '../../engine/techniques';
 import type { LensSlot } from './model';
-import { allScoringOf, chipsFor, flowOf, scorePlacement, type PlacementFacts, type ScoreSetup } from './scoring';
+import { allScoringOf, chipsFor, flowCap, flowOf, scorePlacement, type PlacementFacts, type ScoreSetup } from './scoring';
 import { CHIPS, CLEAN, FLOW, LENS, REWARD, SPECTRA_CHIPS } from './tuning';
 
 const facts = (over: Partial<PlacementFacts> = {}): PlacementFacts => ({
@@ -60,9 +60,16 @@ describe('a placement scores chips times mult', () => {
     expect(s.next.streak).toBe(5);
   });
 
-  it('builds the flow twice as fast with Hot Streak', () => {
-    expect(flowOf(3, setup({ perks: { hotStreak: 1 } }))).toBe(1 + 3 * FLOW.hotStep);
-    expect(flowOf(9, setup({ perks: { hotStreak: 1 } }))).toBe(2);
+  it('builds the flow twice as fast with Hot Streak, and half a step higher, on top of a lens', () => {
+    const hot = setup({ perks: { hotStreak: 1 } });
+    expect(flowOf(3, hot)).toBe(1 + 3 * FLOW.hotStep);
+    expect(flowOf(9, hot)).toBe(FLOW.cap + FLOW.hotRise);
+    expect(flowCap(hot)).toBe(2.5);
+    expect(flowCap(setup({ perks: { hotStreak: 1 }, lenses: lenses('undertow') }))).toBe(LENS.undertowCap + FLOW.hotRise);
+    // Riptide waits for the higher cap: not full at 2, full at 2.5.
+    const rip = setup({ perks: { hotStreak: 1 }, lenses: lenses('riptide') });
+    expect(scorePlacement(facts(), rip, { streak: 5, chain: 0 }).fired).toEqual([]);
+    expect(scorePlacement(facts(), rip, { streak: 8, chain: 0 }).fired).toEqual([0]);
   });
 
   it('multiplies by 1.5 for every unit finished clean, or 2 with Clean Sweep', () => {
@@ -113,6 +120,12 @@ describe('perks and the boss rule', () => {
     expect(allScoringOf({ prismShard: 2 })).toBe(1.4);
     expect(allScoringOf({ prismShard: 1, glassHeart: 1 })).toBe(1.8);
     expect(scorePlacement(facts({ tier: 3 }), setup({ perks: { prismShard: 3 } }), fresh).points).toBe(48);
+  });
+
+  it('Daredevil doubles all scoring, shards included', () => {
+    expect(allScoringOf({ daredevil: 1 })).toBe(REWARD.daredevil);
+    expect(allScoringOf({ daredevil: 1, prismShard: 1 })).toBe(2.4);
+    expect(scorePlacement(facts({ tier: 3 }), setup({ perks: { daredevil: 1 } }), fresh).points).toBe(60);
   });
 
   it('Cascade builds 0.1 a placement in line with the last, and breaks out of line', () => {

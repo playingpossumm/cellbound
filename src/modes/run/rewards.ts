@@ -3,7 +3,7 @@
 // their boon with a cost. Every card is data plus a pure effect on the run.
 import type { Category, OfferKind, Rarity, RewardId, RunState, UnlockId } from './model';
 import { maxHeartsOf } from './lenses';
-import { HEARTS, REWARD } from './tuning';
+import { FLOW, HEARTS, REWARD } from './tuning';
 
 export interface RewardDef {
   id: RewardId;
@@ -77,6 +77,15 @@ export const REWARDS: readonly RewardDef[] = [
     stack: 1,
     apply: (run) => addPerk(run, 'lifeLink'),
   },
+  {
+    id: 'insurance',
+    name: 'Insurance',
+    text: `A mistake costs ${REWARD.insurance} coins instead of a heart, while you have them.`,
+    category: 'hearts',
+    rarity: 'uncommon',
+    stack: 1,
+    apply: (run) => addPerk(run, 'insurance'),
+  },
 
   // Hints
   {
@@ -148,7 +157,7 @@ export const REWARDS: readonly RewardDef[] = [
   {
     id: 'hotStreak',
     name: 'Hot Streak',
-    text: 'Flow builds twice as fast.',
+    text: `Flow builds twice as fast and goes ${FLOW.hotRise} higher.`,
     category: 'mult',
     rarity: 'uncommon',
     stack: 1,
@@ -217,6 +226,15 @@ export const REWARDS: readonly RewardDef[] = [
       return last ? { ...run, pending: { slot: last.slot, score: last.score } } : run;
     },
   },
+  {
+    id: 'microscope',
+    name: 'Microscope',
+    text: 'A placement more than one technique proves scores as the hardest.',
+    category: 'score',
+    rarity: 'rare',
+    stack: 1,
+    apply: (run) => addPerk(run, 'microscope'),
+  },
 
   // Bargains
   {
@@ -229,6 +247,16 @@ export const REWARDS: readonly RewardDef[] = [
     stack: 2,
     usable: (run) => run.maxHearts > 1,
     apply: (run) => heal({ ...addPerk(run, 'glassHeart'), maxHearts: Math.max(1, run.maxHearts - 1) }, 0),
+  },
+  {
+    id: 'daredevil',
+    name: 'Daredevil',
+    text: `×${REWARD.daredevil} on all scoring.`,
+    cost: 'Mistakes cost twice the hearts.',
+    category: 'mult',
+    rarity: 'uncommon',
+    stack: 1,
+    apply: (run) => addPerk(run, 'daredevil'),
   },
   {
     id: 'fogLamp',

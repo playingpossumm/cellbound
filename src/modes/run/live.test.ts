@@ -5,7 +5,7 @@ import { completedClues, completedUnits, fullGrid } from '../../game/logic';
 import { applyPlaced, markFilled, newLive, type Placed } from './live';
 import type { RunState } from './model';
 import { newRun } from './state';
-import { HEARTS } from './tuning';
+import { HEARTS, REWARD } from './tuning';
 
 const P = LYRA;
 const empty = P.givens.map((d, i) => (d ? -1 : i)).filter((i) => i >= 0);
@@ -101,6 +101,48 @@ describe('the board in play', () => {
     expect(hurt.run.live!.hearts).toBe(2);
     // The ids of such popups never meet a placement's.
     expect(shielded.out.popup!.id).toBeLessThan(0);
+  });
+
+  it('makes a mistake cost twice the hearts with Daredevil, and says so; a shield still takes it whole', () => {
+    const a = empty[0];
+    const wrong = event(new Array(36).fill(0), a, (P.solution[a] % P.size) + 1);
+    const dared = applyPlaced(onBoard({ perks: { daredevil: 1 } }), wrong, null);
+    expect(dared.out.popup).toMatchObject({ cell: a, name: 'Daredevil', note: '−2 hearts', points: 0 });
+    expect(dared.run.live).toMatchObject({ hearts: 1, heartsLost: 2, mistakes: 1 });
+    const shielded = applyPlaced(onBoard({ shield: 1, perks: { daredevil: 1 } }), wrong, null);
+    expect(shielded.out.popup).toMatchObject({ name: 'Shield' });
+    expect(shielded.run.live).toMatchObject({ hearts: 3, shield: 0 });
+    // Glass doubles too: four hearts, more than a run of three holds.
+    const glass = applyPlaced(onBoard({ perks: { daredevil: 1 } }, 'glass'), wrong, null);
+    expect(glass.run.live!.hearts).toBe(0);
+    expect(glass.out.fail).toBe(true);
+    // Second Wind still keeps the last heart.
+    const saved = applyPlaced(onBoard({ hearts: 2, perks: { daredevil: 1, secondWind: 1 } }), wrong, null);
+    expect(saved.run.live!.hearts).toBe(1);
+    expect(saved.out.popup).toMatchObject({ name: 'Second Wind' });
+  });
+
+  it('pays coins for the hearts a mistake costs with Insurance, while the coins last', () => {
+    const a = empty[0];
+    const wrong = event(new Array(36).fill(0), a, (P.solution[a] % P.size) + 1);
+    const insured = applyPlaced(onBoard({ coins: 9, perks: { insurance: 1 } }), wrong, null);
+    expect(insured.out.popup).toMatchObject({ cell: a, name: 'Insurance', note: `−${REWARD.insurance} coins` });
+    expect(insured.run.coins).toBe(9 - REWARD.insurance);
+    expect(insured.run.live).toMatchObject({ hearts: 3, heartsLost: 0, mistakes: 1, streak: 0 });
+    // Too few coins: the heart goes, and the coins stay.
+    const short = applyPlaced(onBoard({ coins: REWARD.insurance - 1, perks: { insurance: 1 } }), wrong, null);
+    expect(short.run.coins).toBe(REWARD.insurance - 1);
+    expect(short.run.live!.hearts).toBe(2);
+    expect(short.out.popup).toBeNull();
+    // With Daredevil a mistake costs two hearts: coins for the one they cover, a heart for the other.
+    const both = applyPlaced(onBoard({ coins: REWARD.insurance + 1, perks: { insurance: 1, daredevil: 1 } }), wrong, null);
+    expect(both.run.coins).toBe(1);
+    expect(both.run.live!.hearts).toBe(2);
+    // A Glass board still breaks when the coins pay for its hearts.
+    const glass = applyPlaced(onBoard({ coins: 20, perks: { insurance: 1 } }, 'glass'), wrong, null);
+    expect(glass.run.coins).toBe(20 - HEARTS.glass * REWARD.insurance);
+    expect(glass.run.live).toMatchObject({ hearts: 3, broken: true });
+    expect(glass.out.fail).toBe(true);
   });
 
   it('counts each unit once, and clean only with no notes, hints or mistakes in it', () => {

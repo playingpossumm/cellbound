@@ -5,7 +5,7 @@
 // digits went in, so scoring never delays or blocks a move.
 import { create } from 'zustand';
 import { dailyDate, dailyRunSeed } from '../../engine';
-import { classifyPlacementAsync, type PlacementClass } from '../../engine/techniques';
+import { classifyPlacementAsync, hardestPlacementAsync, type PlacementClass } from '../../engine/techniques';
 import { actions, getGame, onGameEnd, onPlacement, type PlacementEvent } from '../../game/store';
 import type { GameState } from '../../game/types';
 import { anteOf, KINDS, slotOf } from './boards';
@@ -208,9 +208,11 @@ function hearPlacement(e: PlacementEvent) {
     helped: e.game.helped,
   };
   const classify = e.correct && e.source === 'player' && !e.assisted;
+  // Microscope scores a placement as the hardest technique that proves it.
+  const engine = run.perks.microscope ? hardestPlacementAsync : classifyPlacementAsync;
   const cls: Promise<PlacementClass | null> = classify
     ? within(
-        later(() => classifyPlacementAsync(e.puzzle, knownBefore(e), e.cell, e.digit)),
+        later(() => engine(e.puzzle, knownBefore(e), e.cell, e.digit)),
         CLASSIFY_LIMIT_MS,
         FALLBACK,
       ).catch((err) => {

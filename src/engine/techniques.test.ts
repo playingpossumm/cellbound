@@ -6,13 +6,13 @@ import { describe, expect, it } from 'vitest';
 import { unpackClue, unpackDay, type MonthFile } from './daily';
 import { ALL_KINDS, boxDims } from './generator';
 import { generate, type ClueKind, type Difficulty, type Puzzle, type Size } from './index';
-import { classify, closeTo, Grid, kitFor, LADDER_TIER, playOrder, profile, tierMap, type Deduction } from './ladder';
+import { classify, classifyHardest, closeTo, Grid, hardestStep, kitFor, LADDER_TIER, playOrder, profile, tierMap, type Deduction } from './ladder';
 import { contradictionDepth } from './logic';
 import { clueCells, POP, support, type Model } from './model';
 import { chainProofs, DETECTORS, forcingProofs, refuteRounds, scan, TIER8, tier8Proofs, type Proof } from './patterns';
 import { makeRng } from './rng';
 import { propagate } from './solver';
-import { classifyPlacement, classifyPlacementAsync, TECHNIQUES, tierProfile, tierProfileAsync } from './techniques';
+import { classifyPlacement, classifyPlacementAsync, hardestPlacement, hardestPlacementAsync, TECHNIQUES, tierProfile, tierProfileAsync } from './techniques';
 import { TECHNIQUE_FIXTURES, type TechniqueFixture } from './techniques.fixtures';
 import { LATIN, randomPuzzle, satisfies } from './testkit';
 
@@ -257,6 +257,93 @@ describe('technique ladder', () => {
     const c = p.givens.findIndex((d) => !d);
     expect(await classifyPlacementAsync(p, p.givens, c, p.solution[c])).toEqual(classifyPlacement(p, p.givens, c, p.solution[c]));
     expect(await tierProfileAsync(p)).toEqual(tierProfile(p));
+  });
+});
+
+/**
+ * The board classifyHardest judges a placement on: for a cell singles prove, the candidates the
+ * placed digits leave; otherwise the board closed one tier below the simplest proof.
+ */
+function hardestBoard(p: Puzzle, values: number[], cell: number, tier: number): { g: Grid; open: number[] } {
+  const { m, cages } = kitFor(p);
+  const base = p.givens.map((d, i) => (i === cell ? 0 : d || (values[i] === p.solution[i] ? values[i] : 0)));
+  const g = Grid.of(m, cages, base);
+  if (tier === 1) {
+    for (let c = 0; c < m.N; c++) if (base[c]) for (const x of m.peers[c]) if (!base[x]) g.masks[x] &= ~(1 << base[c]);
+  } else {
+    for (let L = 1; L < tier; L++) closeTo(g, L);
+  }
+  return { g, open: base.map((d, i) => (d ? -1 : i)).filter((i) => i >= 0) };
+}
+
+describe('the hardest technique, for Microscope', () => {
+  const boards = [...six.filter((_, i) => i % 3 === 0), ...nine.slice(0, 10)];
+  const ups = new Map<string, number>();
+  const seen: { p: Puzzle; values: number[]; cell: number; s: ReturnType<typeof classify>; h: ReturnType<typeof classify> }[] = [];
+  for (const p of boards) {
+    for (const [k, share] of [0.2, 0.5].entries()) {
+      const values = partial(p, share, `${p.id}|hard${k}`);
+      for (const cell of shuffled(p, `${p.id}|hard${k}`).filter((c) => !values[c]).slice(0, 24)) {
+        const s = classify(p, values, cell, p.solution[cell]);
+        const h = classifyHardest(p, values, cell, p.solution[cell]);
+        seen.push({ p, values, cell, s, h });
+        if (h.tier > s.tier) ups.set(`${s.tier}>${h.tier}`, (ups.get(`${s.tier}>${h.tier}`) ?? 0) + 1);
+      }
+    }
+  }
+
+  it('is never below the simplest technique, keeps a guess and a chain as they are, and goes no higher than tier 7', () => {
+    for (const { s, h } of seen) {
+      expect(h.tier).toBeGreaterThanOrEqual(s.tier);
+      if (s.tier === 0 || s.tier >= 7) expect(h).toEqual(s);
+      else expect(h.tier).toBeLessThanOrEqual(7);
+      expect(h.tier).toBe(LADDER_TIER[h.technique as keyof typeof LADDER_TIER] ?? 0);
+    }
+  });
+
+  it('backs every upgrade with one sound deduction that proves the cell on the board the simple one was found on', () => {
+    for (const { p, values, cell, s, h } of seen) {
+      if (h.tier === s.tier) continue;
+      const d = hardestStep(p, values, cell, p.solution[cell], s.tier)!;
+      expect([d.technique, d.tier, d.focus]).toEqual([h.technique, h.tier, h.focus]);
+      for (const e of d.elim) expect(e.mask & (1 << p.solution[e.cell]), `${p.id} ${d.technique} at ${e.cell}`).toBe(0);
+      const { g, open } = hardestBoard(p, values, cell, s.tier);
+      const bit = 1 << p.solution[cell];
+      const left = g.masks.slice();
+      for (const e of d.elim) left[e.cell] &= ~e.mask;
+      const { m } = kitFor(p);
+      const naked = g.masks[cell] !== bit && left[cell] === bit;
+      const hidden = m.cellHouses[cell].some((hs) => {
+        const others = m.houses[hs].filter((c) => c !== cell && open.includes(c));
+        return others.length > 0 && others.some((c) => g.masks[c] & bit) === (d.elim.length > 0) && others.every((c) => !(left[c] & bit));
+      });
+      expect(naked || hidden, `${p.id} cell ${cell} ${d.technique}`).toBe(true);
+      // Patterns only once the singles are in.
+      if (s.tier === 1) expect(h.tier).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('upgrades singles that are also hidden singles, and hidden singles that a pattern also proves', () => {
+    expect(ups.get('1>2') ?? 0).toBeGreaterThan(0);
+    expect([...ups].filter(([k]) => k.startsWith('2>') && Number(k.slice(2)) >= 4).reduce((a, [, n]) => a + n, 0)).toBeGreaterThan(0);
+  });
+
+  it('never proves a wrong digit, and leaves a full house a full house', () => {
+    for (const { p, values, cell, s } of seen.slice(0, 120)) {
+      expect(classifyHardest(p, values, cell, (p.solution[cell] % p.size) + 1).tier).toBe(0);
+      if (s.technique !== 'fullHouse') continue;
+      const h = classifyHardest(p, values, cell, p.solution[cell]);
+      if (h.technique === 'hiddenSingle') expect(h.focus.some((c) => c !== cell && !values[c] && !p.givens[c])).toBe(true);
+    }
+    // The last open cell of a row, on a board where it is nothing more.
+    const p = fixturePuzzle(TECHNIQUE_FIXTURES.find((f) => f.key === 'fullHouse')!);
+    expect(hardestPlacement(p, p.givens, 8, 2)).toEqual(classifyPlacement(p, p.givens, 8, 2));
+  });
+
+  it('is deterministic, and its async form runs inline with the same answers', async () => {
+    for (const { p, values, cell, h } of seen.slice(0, 40)) expect(classifyHardest({ ...p, clues: p.clues.slice() }, values.slice(), cell, p.solution[cell])).toEqual(h);
+    const { p, values, cell } = seen.find((x) => x.h.tier > x.s.tier)!;
+    expect(await hardestPlacementAsync(p, values, cell, p.solution[cell])).toEqual(hardestPlacement(p, values, cell, p.solution[cell]));
   });
 });
 

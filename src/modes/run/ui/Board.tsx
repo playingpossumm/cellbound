@@ -12,10 +12,10 @@ import { isBoss, SLOT_SPECS } from '../boards';
 import { gameKey, prepareBoard, type Prepared } from '../board';
 import { BOSS_NAMES, bossText, clockMs } from '../bosses';
 import { itemById, TIER_NAMES } from '../items';
-import { flowCapOf, lensById, maxHeartsOf } from '../lenses';
+import { lensById, maxHeartsOf } from '../lenses';
 import type { TallyFx } from '../live';
 import type { BoardResult, RunState } from '../model';
-import { flowOf } from '../scoring';
+import { flowCap, flowOf } from '../scoring';
 import { placePopup, popupSize, WEIGHT, type Box, type Ground } from '../popups';
 import { formatMult, formatScore, slotName } from '../state';
 import { inkUsable, playedBoard, runActions, useRunStore } from '../store';
@@ -24,7 +24,7 @@ import { Coins, Hearts, ItemTile, LensTile, Meter, Page, TierDot, useCountUp } f
 
 // ---- the score band --------------------------------------------------------------------
 
-/** One placement's chips times mult, popping in as it lands. */
+/** One placement's chips times mult, fading in as it lands. */
 function TallyLine({ t }: { t: TallyFx | null }) {
   if (!t) return <span className="cb-run-tally is-empty" aria-hidden="true" />;
   return (
@@ -84,7 +84,7 @@ function ScoreBand({ run }: { run: RunState }) {
       </div>
       <div className="cb-run-band-bottom">
         <TallyLine t={tally} />
-        {live && <FlowMeter flow={flowOf(live.streak, run)} cap={flowCapOf(run.lenses)} />}
+        {live && <FlowMeter flow={flowOf(live.streak, run)} cap={flowCap(run)} />}
       </div>
       {/* The technique and points of each placement, spoken after the digit itself. */}
       <p className="cb-run-sr" aria-live="polite">

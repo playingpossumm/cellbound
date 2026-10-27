@@ -15,7 +15,7 @@
 // player and as an expert would. Limits count links and rounds, never time,
 // so results are the same on every device.
 import { buildModel, support, type Model } from './model';
-import { findPattern, TIER8, tier8Proofs, type Tier8Limits } from './patterns';
+import { findPattern, PATTERNS, scan, TIER8, tier8Proofs, type Tier8Limits } from './patterns';
 import type { TechniqueId } from './techniques';
 import type { Clue, Digit, PuzzleShape } from './types';
 
@@ -404,6 +404,98 @@ export function classify(p: ClassifyInput, values: ArrayLike<number>, cell: numb
   const pr = tier8Proofs(g, g.limits, cell).get(cell);
   if (!pr || pr.digit !== digit) return none;
   return { tier: 8, technique: pr.technique, focus: pr.focus };
+}
+
+/**
+ * The hardest technique up to tier 7 that also proves digit at cell, for the
+ * Run's Microscope. classify() finds tier T on the board closed at tier T - 1;
+ * on that same board, a technique of a higher tier counts when one deduction
+ * of it leaves the cell with only that digit, or the digit with only that
+ * cell in one of its houses, where it was not so before. A cell that singles
+ * prove (T = 1) is judged on the candidates the placed digits leave, and
+ * only a hidden single or a clue can stand in for its single there: the
+ * patterns wait until the singles are in, as they do on the ladder. Within a
+ * tier the detectors are tried in reverse ladder order, so the answer leans
+ * to the more involved technique. Never below classify(), whose answer stands
+ * for a guess and for a cell that only a chain or forcing chain proves.
+ */
+export function classifyHardest(p: ClassifyInput, values: ArrayLike<number>, cell: number, digit: number, limits: Tier8Limits = TIER8): Classified {
+  const simple = classify(p, values, cell, digit, limits);
+  const step = hardestStep(p, values, cell, digit, simple.tier, limits);
+  if (!step) return simple;
+  return step.clue === undefined ? { tier: step.tier, technique: step.technique, focus: step.focus } : { tier: step.tier, technique: step.technique, focus: step.focus, clue: step.clue };
+}
+
+/**
+ * The deduction behind classifyHardest when it beats `above` (classify()'s
+ * tier), or null. Exported for tests, which check every one of them.
+ */
+export function hardestStep(p: ClassifyInput, values: ArrayLike<number>, cell: number, digit: number, above: number, limits: Tier8Limits = TIER8): Deduction | null {
+  if (above < 1 || above >= 7) return null;
+  const { m, cages } = kitFor(p);
+  const base = boardOf(p, m, values);
+  base[cell] = 0;
+  const g = Grid.of(m, cages, base, limits);
+  if (above === 1) {
+    // The placed digits cleared from their peers, and nothing cascades.
+    for (let c = 0; c < m.N; c++) {
+      if (!base[c]) continue;
+      const b = 1 << base[c];
+      for (const x of m.peers[c]) if (!base[x]) g.masks[x] &= ~b;
+    }
+    g.queue = [];
+    if (g.masks.some((v) => v === 0)) return null;
+  } else {
+    for (let L = 1; L < above; L++) closeTo(g, L);
+    if (g.broken) return null;
+  }
+  const bit = 1 << digit;
+  if (!(g.masks[cell] & bit)) return null;
+  const accept = (d: Deduction) => finishes(g, d.elim, cell, bit);
+  if (above > 1 && g.masks[cell] !== bit) {
+    const s = scan(g);
+    for (let i = PATTERNS.length - 1; i >= 0 && PATTERNS[i].tier > above; i--) {
+      const { detect } = PATTERNS[i];
+      for (let j = detect.length - 1; j >= 0; j--) {
+        const d = detect[j](g, s, accept);
+        if (d) return d;
+      }
+    }
+  }
+  if (above < 3) {
+    for (let k = 0; k < m.cons.length; k++) {
+      const d = g.clueDeduction(k);
+      if (g.broken) return null;
+      if (d && accept(d)) return d;
+    }
+  }
+  if (above < 2) {
+    // The last open cell of a house is a full house there, not a hidden single.
+    for (const h of m.cellHouses[cell]) {
+      const others = m.houses[h].filter((c) => c !== cell && !base[c]);
+      if (others.length && others.every((c) => !(g.masks[c] & bit))) return { technique: 'hiddenSingle', tier: 2, elim: [], focus: m.houses[h].slice() };
+    }
+  }
+  return null;
+}
+
+/** Whether ruling out elim leaves cell with only bit, or bit with only cell in a house of cell, where it was not so before. */
+function finishes(g: Grid, elim: Elim[], cell: number, bit: number): boolean {
+  const { m, masks } = g;
+  let gone = 0;
+  for (const e of elim) if (e.cell === cell) gone |= e.mask;
+  const v = masks[cell];
+  if (v !== bit && (v & ~gone) === bit) return true;
+  for (const h of m.cellHouses[cell]) {
+    let before = 0, after = 0;
+    for (const c of m.houses[h]) {
+      if (c === cell || !(masks[c] & bit)) continue;
+      before++;
+      if (!elim.some((e) => e.cell === c && e.mask & bit)) after++;
+    }
+    if (before > 0 && after === 0) return true;
+  }
+  return false;
 }
 
 /** The givens and the entries that agree with the solution: what the ladder reasons from. */

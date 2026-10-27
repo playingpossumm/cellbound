@@ -1,8 +1,9 @@
-// Scoring one correct placement. Chips come from the tier of the technique that proves it (plus
-// its Spectra levels); mult starts at 1, gains 1 for each unit and clue the digit finishes, then
-// is multiplied by the flow, by every unit finished clean and by the technique boosts; the lenses
-// fire in slot order; the all-scoring multipliers come last. Points are chips times mult,
-// rounded, plus any flat points. Pure, so the popup, the tally and the tests share one sum.
+// Scoring one correct placement. Chips come from the tier of the technique that proves it (the
+// hardest one with Microscope, which the store asks the engine for) plus its Spectra levels; mult
+// starts at 1, gains 1 for each unit and clue the digit finishes, then is multiplied by the flow,
+// by every unit finished clean and by the technique boosts; the lenses fire in slot order; the
+// all-scoring multipliers come last. Points are chips times mult, rounded, plus any flat points.
+// Pure, so the popup, the tally and the tests share one sum.
 import type { TechniqueId, TechniqueTier } from '../../engine/techniques';
 import type { ClueKind, Digit } from '../../engine/types';
 import type { BossRule } from './bosses';
@@ -67,10 +68,15 @@ export interface PlacementScore {
 
 const perk = (s: ScoreSetup, id: RewardId) => s.perks[id] ?? 0;
 
+/** The flow's cap: the lenses' cap, lifted by Hot Streak. */
+export function flowCap(setup: Pick<ScoreSetup, 'perks' | 'lenses'>): number {
+  return round2(flowCapOf(setup.lenses) + ((setup.perks.hotStreak ?? 0) > 0 ? FLOW.hotRise : 0));
+}
+
 /** The flow a placement scores at, from the streak before it. */
 export function flowOf(streak: number, setup: Pick<ScoreSetup, 'perks' | 'lenses'>): number {
   const step = (setup.perks.hotStreak ?? 0) > 0 ? FLOW.hotStep : FLOW.step;
-  return Math.min(flowCapOf(setup.lenses), round2(1 + step * Math.max(0, streak)));
+  return Math.min(flowCap(setup), round2(1 + step * Math.max(0, streak)));
 }
 
 /** Chips for a tier at its Spectra level. */
@@ -78,9 +84,10 @@ export function chipsFor(tier: number, levels: readonly number[]): number {
   return (CHIPS[tier] ?? 0) + (SPECTRA_CHIPS[tier] ?? 0) * (levels[tier] ?? 0);
 }
 
-/** The multiplier on all scoring: Prism Shards and Glass Hearts. */
+/** The multiplier on all scoring: Prism Shards and Glass Hearts add up, and Daredevil multiplies them. */
 export function allScoringOf(perks: Partial<Record<RewardId, number>>): number {
-  return round2(1 + REWARD.prismShard * (perks.prismShard ?? 0) + REWARD.glassHeart * (perks.glassHeart ?? 0));
+  const sum = 1 + REWARD.prismShard * (perks.prismShard ?? 0) + REWARD.glassHeart * (perks.glassHeart ?? 0);
+  return round2(sum * ((perks.daredevil ?? 0) > 0 ? REWARD.daredevil : 1));
 }
 
 function round2(x: number): number {
@@ -113,7 +120,7 @@ export function scorePlacement(f: PlacementFacts, s: ScoreSetup, at: Streak): Pl
     clues: f.clues,
     clue: f.clue,
     flow,
-    flowFull: flow >= flowCapOf(s.lenses),
+    flowFull: flow >= flowCap(s),
     hearts: s.hearts,
   };
   const fired: number[] = [];

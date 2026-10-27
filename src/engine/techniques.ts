@@ -2,8 +2,8 @@
 // against these types and exports; changes are additive only. The detector
 // itself lives in ladder.ts (the cascade, classify and profile) and
 // patterns.ts (tiers 4 to 8).
-import { classifyJob, profileJob } from './client';
-import { classify, profile, type Classified } from './ladder';
+import { classifyJob, hardestJob, profileJob } from './client';
+import { classify, classifyHardest, profile, type Classified } from './ladder';
 import type { CellIndex, ClueKind, Digit, Puzzle } from './types';
 
 /** 0 means nothing in the library proves the cell yet: a guess, or logic beyond the library. */
@@ -119,6 +119,27 @@ export async function classifyPlacementAsync(
   digit: Digit,
 ): Promise<PlacementClass> {
   return result(p, await classifyJob(p, values, cell, digit));
+}
+
+/**
+ * The hardest technique that proves `digit` at `cell`, for the Run's Microscope: a placement that
+ * more than one technique proves scores as the hardest. It looks on the board where
+ * classifyPlacement found its answer, closed one tier below it, and a technique up to tier 7 counts
+ * when one deduction of it leaves the cell with only that digit, or the digit with only that cell
+ * in one of its houses. A cell that singles prove is looked at on the candidates the placed digits
+ * leave, where only a hidden single or a clue can stand in for the single: patterns wait for the
+ * singles, as on the ladder. The last open cell of a house stays a full house, and tier 8 is left
+ * out, since a chain can stand in for any pattern. Never below classifyPlacement's answer, which
+ * it keeps for a guess and for a placement only a chain or a forcing chain proves. Same arguments,
+ * also pure and deterministic.
+ */
+export function hardestPlacement(p: Puzzle, values: Digit[], cell: CellIndex, digit: Digit): PlacementClass {
+  return result(p, classifyHardest(p, values, cell, digit));
+}
+
+/** Async form of hardestPlacement; runs on a worker when there is one. Same answer. */
+export async function hardestPlacementAsync(p: Puzzle, values: Digit[], cell: CellIndex, digit: Digit): Promise<PlacementClass> {
+  return result(p, await hardestJob(p, values, cell, digit));
 }
 
 /**

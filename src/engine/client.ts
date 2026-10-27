@@ -85,6 +85,11 @@ export function classifyJob(p: Puzzle, values: Digit[], cell: number, digit: Dig
   return placements.run<Classified>({ kind: 'classify', p, values, cell, digit });
 }
 
+/** classifyHardest() from ladder.ts, on the placement worker. */
+export function hardestJob(p: Puzzle, values: Digit[], cell: number, digit: Digit): Promise<Classified> {
+  return placements.run<Classified>({ kind: 'hardest', p, values, cell, digit });
+}
+
 /** profile() from ladder.ts, on the board worker, as part of making a board. */
 export function profileJob(p: Puzzle): Promise<Profile> {
   return boards.run<Profile>({ kind: 'profile', p });

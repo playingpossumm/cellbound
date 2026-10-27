@@ -525,21 +525,15 @@ button.cb-run-item {
 .cb-run-lens.is-lg .cb-run-lens-name {
   display: none;
 }
-/* A fired lens lights up in slot order. The light holds for a moment, motion or not; the
-   swell is motion only. */
+/* A fired lens lights up in slot order and holds the light for a moment. It glows in place:
+   nothing on the board moves but the digits. */
 .cb-run-lens.is-firing {
   box-shadow: inset 0 0 0 1.5px var(--cb-text), 0 0 14px color-mix(in oklch, var(--cb-text) 45%, transparent);
-  animation: cb-run-fire 0.22s var(--rn-ease-out) both;
+  animation: cb-run-fire 0.2s ease-out both;
 }
 @keyframes cb-run-fire {
   from {
-    transform: scale(1);
-  }
-  45% {
-    transform: scale(1.1);
-  }
-  to {
-    transform: scale(1);
+    box-shadow: inset 0 0 0 1.5px transparent, 0 0 14px transparent;
   }
 }
 .cb-run-item-icon {
@@ -889,11 +883,9 @@ button.cb-run-board-rule {
 @keyframes cb-run-tick {
   from {
     opacity: 0.4;
-    transform: scale(0.94);
   }
   to {
     opacity: 1;
-    transform: scale(1);
   }
 }
 .cb-run-chips,
@@ -1060,23 +1052,19 @@ button.cb-run-board-rule {
   font-variant-numeric: lining-nums tabular-nums;
   color: var(--rn-mult);
 }
-/* In and settled in 160 ms, held to be read, then gone. */
+/* Fades in where it stands within 160 ms, held to be read, then fades out. */
 @keyframes cb-run-pop {
   0% {
     opacity: 0;
-    transform: translateY(6px) scale(0.97);
   }
   15% {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
   78% {
     opacity: 1;
-    transform: translateY(0);
   }
   100% {
     opacity: 0;
-    transform: translateY(-6px);
   }
 }
 /* No board size to place against yet (a screen with no layout): above its cell, standing still. */
@@ -1131,7 +1119,6 @@ button.cb-run-board-rule {
 @keyframes cb-run-rise {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
   }
 }
 .cb-run-panel-title {

@@ -39,6 +39,7 @@ export type RewardId =
   | 'shield'
   | 'secondWind'
   | 'lifeLink'
+  | 'insurance'
   | 'lantern'
   | 'peek'
   | 'sharpEye'
@@ -53,7 +54,9 @@ export type RewardId =
   | 'compound'
   | 'expertPay'
   | 'doubleOrNothing'
+  | 'microscope'
   | 'glassHeart'
+  | 'daredevil'
   | 'fogLamp'
   | 'bloodMoney'
   | 'overtime';

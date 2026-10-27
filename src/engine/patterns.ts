@@ -1,7 +1,8 @@
 // Pattern deductions for the technique ladder (ladder.ts), tiers 4 to 8.
 // The detectors of tiers 4 to 7 return the first instance they find, scanning
-// houses, digits and cells in a fixed order, or null; tier 8 lists the cells
-// that one chain or forcing chain within its limits proves. All of them only use facts that hold in
+// houses, digits and cells in a fixed order (or the first one an Accept
+// callback takes), or null; tier 8 lists the cells that one chain or forcing
+// chain within its limits proves. All of them only use facts that hold in
 // any solution: a house holds each digit once, two peers never share a digit,
 // a cell with two candidates holds one of them, and the sums of the cages.
 // That keeps them sound on any board whose candidates still include the
@@ -71,7 +72,17 @@ function seenByAll(g: Grid, cells: number[], bits: number): Elim[] | null {
   return out;
 }
 
-type Detector = (g: Grid, s: Scan) => Deduction | null;
+/**
+ * Whether a detector may stop at a deduction it found. Without one the first deduction found is
+ * the answer; one turned down is passed over and the scan goes on, so a caller can look for an
+ * instance with a given effect (classifyHardest in ladder.ts does).
+ */
+export type Accept = (d: Deduction) => boolean;
+
+export type Detector = (g: Grid, s: Scan, accept?: Accept) => Deduction | null;
+
+/** d, unless accept turns it down. */
+const take = (d: Deduction, accept: Accept | undefined): Deduction | null => (!accept || accept(d) ? d : null);
 
 // Tier 4 -------------------------------------------------------------------
 
@@ -80,7 +91,7 @@ type Detector = (g: Grid, s: Scan) => Deduction | null;
  * cell cannot hold it. On a classic board this is pointing (box to line) and
  * claiming (line to box); diagonals, knight moves and cages add their own.
  */
-export const lockedCandidates: Detector = (g, s) => {
+export const lockedCandidates: Detector = (g, s, accept) => {
   const { houses, n } = g.m;
   for (let h = 0; h < houses.length; h++) {
     for (let d = 1; d <= n; d++) {
@@ -90,7 +101,8 @@ export const lockedCandidates: Detector = (g, s) => {
       if (POP[pm] < 2) continue;
       const cells = cellsAt(houses[h], pm);
       const elim = seenByAll(g, cells, b);
-      if (elim) return { technique: 'lockedCandidates', tier: 4, elim, focus: cells };
+      const found = elim && take({ technique: 'lockedCandidates', tier: 4, elim, focus: cells }, accept);
+      if (found) return found;
     }
   }
   return null;
@@ -154,7 +166,7 @@ function cageRegions(g: Grid): CageRegion[] {
  * that leaves at most a few open cells is tried, and the sum rules out every
  * digit that fits no combination.
  */
-export const cageRule: Detector = (g) => {
+export const cageRule: Detector = (g, _s, accept) => {
   if (!g.cages.length) return null;
   const { masks } = g;
   for (const R of cageRegions(g)) {
@@ -192,7 +204,8 @@ export const cageRule: Detector = (g) => {
         const gone = masks[cells[i]] & ~sup[i];
         if (gone) elim.push({ cell: cells[i], mask: gone });
       }
-      if (elim.length) return { technique: 'cageRule', tier: 4, elim, focus: cells };
+      const found = elim.length ? take({ technique: 'cageRule', tier: 4, elim, focus: cells }, accept) : null;
+      if (found) return found;
     }
   }
   return null;
@@ -253,7 +266,7 @@ function sumSupport(g: Grid, cells: number[], coef: number[], rhs: number): numb
 
 /** k open cells of a house with only k digits between them: no other cell that sees them all can hold those digits. */
 function nakedSubset(k: 2 | 3): Detector {
-  return (g) => {
+  return (g, _s, accept) => {
     const { m, masks } = g;
     for (let h = 0; h < m.houses.length; h++) {
       const open: number[] = [];
@@ -269,7 +282,8 @@ function nakedSubset(k: 2 | 3): Detector {
             if (POP[u2] !== 2) continue;
             const cells = [open[i], open[j]];
             const elim = seenByAll(g, cells, u2);
-            if (elim) return { technique: 'nakedPair', tier: 5, elim, focus: cells };
+            const found = elim && take({ technique: 'nakedPair', tier: 5, elim, focus: cells }, accept);
+            if (found) return found;
             continue;
           }
           if (POP[u2] > 3) continue;
@@ -278,7 +292,8 @@ function nakedSubset(k: 2 | 3): Detector {
             if (POP[u3] !== 3) continue;
             const cells = [open[i], open[j], open[l]];
             const elim = seenByAll(g, cells, u3);
-            if (elim) return { technique: 'nakedTriple', tier: 5, elim, focus: cells };
+            const found = elim && take({ technique: 'nakedTriple', tier: 5, elim, focus: cells }, accept);
+            if (found) return found;
           }
         }
       }
@@ -289,7 +304,7 @@ function nakedSubset(k: 2 | 3): Detector {
 
 /** k digits of a house with only k places between them: those cells hold nothing else. */
 function hiddenSubset(k: 2 | 3): Detector {
-  return (g, s) => {
+  return (g, s, accept) => {
     const { m, masks } = g;
     for (let h = 0; h < m.houses.length; h++) {
       const ds: number[] = [];
@@ -304,7 +319,7 @@ function hiddenSubset(k: 2 | 3): Detector {
         const cells = cellsAt(house, pm);
         let elim: Elim[] | null = null;
         for (const c of cells) if (masks[c] & ~keep) (elim ??= []).push({ cell: c, mask: masks[c] & ~keep });
-        return elim ? { technique: k === 2 ? 'hiddenPair' : 'hiddenTriple', tier: 5, elim, focus: cells } : null;
+        return elim ? take({ technique: k === 2 ? 'hiddenPair' : 'hiddenTriple', tier: 5, elim, focus: cells }, accept) : null;
       };
       for (let i = 0; i < ds.length; i++) {
         for (let j = i + 1; j < ds.length; j++) {
@@ -343,7 +358,7 @@ export const hiddenTriple = hiddenSubset(3);
  * rows and columns swapped). k = 2 is an X-Wing, k = 3 a Swordfish.
  */
 function fish(k: 2 | 3): Detector {
-  return (g, s) => {
+  return (g, s, accept) => {
     const { m, masks } = g;
     const { n } = m;
     for (let orient = 0; orient < 2; orient++) {
@@ -378,7 +393,7 @@ function fish(k: 2 | 3): Detector {
           }
           if (!elim) return null;
           const focus = set.flatMap((i) => cellsAt(m.houses[base + i], s.pos[(base + i) * 16 + d]));
-          return { technique: k === 2 ? 'xWing' : 'swordfish', tier: k === 2 ? 6 : 7, elim, focus };
+          return take({ technique: k === 2 ? 'xWing' : 'swordfish', tier: k === 2 ? 6 : 7, elim, focus }, accept);
         };
         for (let a = 0; a < lines.length; a++) {
           for (let c = a + 1; c < lines.length; c++) {
@@ -409,7 +424,7 @@ export const swordfish = fish(3);
  * of each in the same column. One of the two other ends holds the digit, so
  * a cell that sees both cannot. Also with rows and columns swapped.
  */
-export const skyscraper: Detector = (g, s) => {
+export const skyscraper: Detector = (g, s, accept) => {
   const { m } = g;
   const { n } = m;
   for (let orient = 0; orient < 2; orient++) {
@@ -430,7 +445,8 @@ export const skyscraper: Detector = (g, s) => {
           const at = bitIndex(shared);
           const ea = ha[bitIndex(pa & ~shared)], eb = hb[bitIndex(pb & ~shared)];
           const elim = seenByAll(g, [ea, eb], b);
-          if (elim) return { technique: 'skyscraper', tier: 6, elim, focus: [ha[at], ea, hb[at], eb] };
+          const found = elim && take({ technique: 'skyscraper', tier: 6, elim, focus: [ha[at], ea, hb[at], eb] }, accept);
+          if (found) return found;
         }
       }
     }
@@ -443,7 +459,7 @@ export const skyscraper: Detector = (g, s) => {
  * column, one end of each in the same box. One of the two far ends holds the
  * digit, so a cell that sees both cannot.
  */
-export const kite: Detector = (g, s) => {
+export const kite: Detector = (g, s, accept) => {
   const { m } = g;
   const { n, boxOf } = m;
   for (let d = 1; d <= n; d++) {
@@ -462,7 +478,8 @@ export const kite: Detector = (g, s) => {
             if (boxOf[r[i]] !== boxOf[c[j]]) continue;
             const er = r[1 - i], ec = c[1 - j];
             const elim = seenByAll(g, [er, ec], b);
-            if (elim) return { technique: 'kite', tier: 6, elim, focus: [r[i], er, c[j], ec] };
+            const found = elim && take({ technique: 'kite', tier: 6, elim, focus: [r[i], er, c[j], ec] }, accept);
+            if (found) return found;
           }
         }
       }
@@ -484,7 +501,7 @@ function bivalueCells(g: Grid): number[] {
  * Whichever the pivot holds, one of the two holds z, so a cell that sees both
  * cannot.
  */
-export const xyWing: Detector = (g) => {
+export const xyWing: Detector = (g, _s, accept) => {
   const { m, masks } = g;
   for (const P of bivalueCells(g)) {
     const mp = masks[P];
@@ -501,7 +518,8 @@ export const xyWing: Detector = (g) => {
         const z = ma & ~mp;
         if (z !== (mb & ~mp)) continue;
         const elim = seenByAll(g, [A, B], z);
-        if (elim) return { technique: 'xyWing', tier: 7, elim, focus: [P, A, B] };
+        const found = elim && take({ technique: 'xyWing', tier: 7, elim, focus: [P, A, B] }, accept);
+        if (found) return found;
       }
     }
   }
@@ -512,7 +530,7 @@ export const xyWing: Detector = (g) => {
  * XYZ-Wing: a pivot with candidates xyz sees a cell with xz and a cell with
  * yz. One of the three holds z, so a cell that sees all three cannot.
  */
-export const xyzWing: Detector = (g) => {
+export const xyzWing: Detector = (g, _s, accept) => {
   const { m, masks } = g;
   for (let P = 0; P < m.N; P++) {
     const mp = masks[P];
@@ -528,7 +546,8 @@ export const xyzWing: Detector = (g) => {
         if (masks[A] === masks[B]) continue;
         const z = masks[A] & masks[B];
         const elim = seenByAll(g, [P, A, B], z);
-        if (elim) return { technique: 'xyzWing', tier: 7, elim, focus: [P, A, B] };
+        const found = elim && take({ technique: 'xyzWing', tier: 7, elim, focus: [P, A, B] }, accept);
+        if (found) return found;
       }
     }
   }
@@ -541,7 +560,7 @@ export const xyzWing: Detector = (g) => {
  * seeing each cell. They cannot both be x, so one of them is y, and a cell
  * that sees both cannot be y.
  */
-export const wWing: Detector = (g, s) => {
+export const wWing: Detector = (g, s, accept) => {
   const { m, masks } = g;
   const N = m.N;
   const bi = bivalueCells(g);
@@ -563,7 +582,8 @@ export const wWing: Detector = (g, s) => {
           const ok = (m.peerOf[E * N + A] && m.peerOf[F * N + B]) || (m.peerOf[E * N + B] && m.peerOf[F * N + A]);
           if (!ok) continue;
           const elim = seenByAll(g, [A, B], e);
-          if (elim) return { technique: 'wWing', tier: 7, elim, focus: [A, B, E, F] };
+          const found = elim && take({ technique: 'wWing', tier: 7, elim, focus: [A, B, E, F] }, accept);
+          if (found) return found;
         }
       }
     }

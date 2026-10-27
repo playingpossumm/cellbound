@@ -4,7 +4,7 @@ import { SLOT_COUNT, isBoss, kindOf } from './boards';
 import { BOSS_RULES } from './bosses';
 import { LENSES, lensPool } from './lenses';
 import type { RunState } from './model';
-import { REWARDS, rewardById, rewardPool } from './rewards';
+import { canOffer, REWARDS, rewardById, rewardPool } from './rewards';
 import {
   advance,
   bossShown,
@@ -207,6 +207,13 @@ describe('cards on the run', () => {
     expect(rewardById('fogLamp')!.apply(run)).toMatchObject({ hintPool: 3, next: { fog: true } });
     expect(rewardById('bloodMoney')!.apply(run)).toMatchObject({ hearts: 1, coins: 12 });
     expect(rewardById('overtime')!.apply(run).next).toEqual({ clock: true, coinTimes: 2 });
+    for (const id of ['microscope', 'daredevil', 'insurance'] as const) {
+      const held = rewardById(id)!.apply(run);
+      expect(held.perks, id).toEqual({ [id]: 1 });
+      expect(held, id).toMatchObject({ hearts: 2, maxHearts: run.maxHearts, coins: run.coins });
+      // Each is held once.
+      expect(canOffer(rewardById(id)!, held, 'reward'), id).toBe(false);
+    }
   });
 
   it('settles Double or Nothing on the next board played: doubled without mistakes, lost with one', () => {

@@ -6,11 +6,12 @@
 // this fails.
 import { beforeAll, describe, expect, it } from 'vitest';
 import { generate } from '../../engine';
-import { classifyPlacement } from '../../engine/techniques';
+import { classifyPlacement, hardestPlacement } from '../../engine/techniques';
 import { optionsFor, slotOf } from './boards';
 import { levelsOf, recordAs, REFERENCE_BUILDS, scoreMoves, type Build, type Move } from './calibrate';
 import { ITEMS } from './items';
 import { LENSES } from './lenses';
+import { REWARD } from './tuning';
 
 const SEEDS = ['free:bal-a', 'free:bal-b'];
 const SLOTS = [slotOf(1, 'small'), slotOf(2, 'big'), slotOf(3, 'boss')];
@@ -26,7 +27,7 @@ describe('the buys against each other (npm run balance:run)', () => {
   beforeAll(() => {
     for (const seed of SEEDS) {
       for (const slot of SLOTS) {
-        const { moves } = recordAs(generate(optionsFor(seed, slot)), 'typical', seed, classifyPlacement);
+        const { moves } = recordAs(generate(optionsFor(seed, slot)), 'typical', seed, classifyPlacement, hardestPlacement);
         sample.push({ moves, base: scoreMoves(moves) });
       }
     }
@@ -42,6 +43,16 @@ describe('the buys against each other (npm run balance:run)', () => {
     for (const it of ITEMS) if (it.kind === 'spectra') worth.push([it.name, times({ levels: levelsOf(it.tier!, 1) })]);
     const over = worth.filter(([, x]) => x > 1.5).map(([name, x]) => `${name} x${x.toFixed(2)}`);
     expect(over).toEqual([]);
+  });
+
+  it('keeps the cards that bend a rule in their bands: Hot Streak worth a lens, Daredevil double, Microscope a rare that doubles a board', () => {
+    const hot = times({ perks: { hotStreak: 1 } });
+    expect(hot).toBeGreaterThan(1.15);
+    expect(hot).toBeLessThan(1.4);
+    expect(times({ perks: { daredevil: 1 } })).toBeCloseTo(REWARD.daredevil, 1);
+    const micro = times({ perks: { microscope: 1 } });
+    expect(micro).toBeGreaterThan(1.5);
+    expect(micro).toBeLessThan(3);
   });
 
   it('keeps the families of build within a band: the common placements no longer outrun the clues and the digits', () => {

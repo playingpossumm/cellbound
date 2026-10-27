@@ -15,8 +15,12 @@ export const SPECTRA_CHIPS: readonly number[] = [0, 3, 10, 10, 25, 25, 50, 50, 5
 /** The highest level a tier can reach. */
 export const SPECTRA_MAX = 9;
 
-/** Flow: 1 plus `step` for each placement in the streak, up to `cap`. Hot Streak builds it at `hotStep`. */
-export const FLOW = { step: 0.1, hotStep: 0.2, cap: 2 } as const;
+/**
+ * Flow: 1 plus `step` for each placement in the streak, up to `cap`. Hot Streak builds it at
+ * `hotStep` and lifts the cap by `hotRise`, on top of any lens's cap. At twice the pace alone it
+ * added about 2 percent, since an unbroken streak fills the flow within ten placements anyway.
+ */
+export const FLOW = { step: 0.1, hotStep: 0.2, hotRise: 0.5, cap: 2 } as const;
 
 /** A unit finished clean (no notes, hints or mistakes in it) multiplies mult by this; Clean Sweep by `sweep`. */
 export const CLEAN = { mult: 1.5, sweep: 2 } as const;
@@ -133,6 +137,11 @@ export const REWARD = {
   bloodMoney: 8,
   /** Overtime: the next board pays this many times its coins. */
   overtime: 2,
+  /** Daredevil multiplies all scoring by this, and the hearts a mistake costs by `daredevilHurt`. */
+  daredevil: 2,
+  daredevilHurt: 2,
+  /** Insurance: coins a mistake costs in place of each heart, while the run has them. */
+  insurance: 4,
 } as const;
 
 /**
