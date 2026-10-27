@@ -61,7 +61,8 @@ Run the unit tests, typecheck, build and e2e before calling a change done.
 - Saved settings that name any other look load as Prism, and so does a player who never picked a look. Loading an older save writes the setting back as Prism (`sanitizeSettings`, settings version 3, under the same `cellbound:v1:settings` key).
 - A band must look complete with an empty `subtitle`, since only a Daily from an earlier day passes its date. A band that sets the title large declares `bandShowsTitle`, so the top bar keeps its copy for screen readers only.
 - Cells, digit slots and fog cells carry `edge-l`, `edge-r`, `edge-t` and `edge-b` on the sides that face another box.
-- `src/themes/contrast.test.ts` checks Prism's digit hues per board size for contrast and for a clear difference between any two (0.1 in OKLab), and its notes for contrast on every cell state.
+- Digits share one ink, so colour on the board means the picked digit. Selecting a cell with a digit sets `data-same` on `.cb-board` and `is-same` on every cell, digit slot and pencil mark holding that digit, the selected cell included and a wrong digit left out. Prism turns those cells and pencil marks into solid tiles of the digit's hue with the digit in `--pr-lit-ink`, and frames the selected one in the ink. A faint tint was tried first and read as no change at all on a phone.
+- `src/themes/contrast.test.ts` checks Prism's ink on every cell state, its digit hues per board size on glass and for a clear difference between any two (0.1 in OKLab), the lit ink on every hue and how far a lit tile stands from plain glass, and its notes for contrast.
 
 ## Layout
 

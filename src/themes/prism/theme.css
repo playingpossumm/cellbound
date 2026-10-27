@@ -1,6 +1,6 @@
-/* Prism: dark glass cells, white light split into one colour per digit.
-   Digit hues are OKLCH values checked for 4.5:1 or better on their own tinted
-   cell, per mode and per board size. */
+/* Prism: glass cells in white light. Every digit shares one ink, so the board reads at a glance;
+   each digit owns a colour of the split spectrum, shown on the pad, the band, and on the board
+   when that digit is picked. Contrast is checked per mode and board size in contrast.test.ts. */
 
 [data-theme="prism"][data-night="true"] {
   --pr-glass: rgba(255, 255, 255, 0.035);
@@ -11,7 +11,6 @@
   --pr-err: #ff7a7a;
   --pr-fogc: rgba(48, 53, 66, 0.9);
   --pr-beam: rgba(255, 255, 255, 0.88);
-  --pr-tint: 16%;
   --pr-s1: oklch(0.8 0.15 28);
   --pr-s2: oklch(0.85 0.14 75);
   --pr-s3: oklch(0.86 0.17 135);
@@ -22,6 +21,8 @@
   --cb-peer: rgba(255, 255, 255, 0.045);
   --cb-sel: rgba(255, 255, 255, 0.13);
   --cb-same: rgba(255, 255, 255, 0.08);
+  --pr-given: rgba(255, 255, 255, 0.07);
+  --pr-lit-ink: #0a0c11;
   --pr-conflict: rgba(255, 122, 122, 0.16);
 }
 
@@ -34,7 +35,6 @@
   --pr-err: #c62828;
   --pr-fogc: rgba(208, 213, 224, 0.92);
   --pr-beam: rgba(18, 21, 28, 0.75);
-  --pr-tint: 14%;
   --pr-s1: oklch(0.55 0.18 28);
   --pr-s2: oklch(0.57 0.13 70);
   --pr-s3: oklch(0.53 0.15 140);
@@ -45,6 +45,8 @@
   --cb-peer: rgba(10, 12, 17, 0.035);
   --cb-sel: rgba(10, 12, 17, 0.09);
   --cb-same: rgba(10, 12, 17, 0.06);
+  --pr-given: rgba(10, 12, 17, 0.06);
+  --pr-lit-ink: #ffffff;
   --pr-conflict: rgba(198, 40, 40, 0.12);
 }
 
@@ -52,8 +54,8 @@
    pad share them; the board and the band carry data-size too, so either keeps its hues if it is
    drawn outside the play screen. The nine 9x9 hues were searched for the largest smallest
    difference between any two (in OKLab, with and without red-green colour blindness), each kept
-   near its place in the spectrum and at 4.6:1 or better on its own tint, the selected cell and
-   the peer cell. */
+   near its place in the spectrum and at 4.6:1 or better on glass, the selected cell and the peer
+   cell, where a picked digit's pencil marks take its hue. */
 [data-theme="prism"][data-night="true"] :is(.cb-game, .cb-board, .pr-band)[data-size="6"] {
   --h1: oklch(0.78 0.128 28); --h2: oklch(0.84 0.138 75); --h3: oklch(0.84 0.17 135);
   --h4: oklch(0.8 0.136 195); --h5: oklch(0.8 0.102 255); --h6: oklch(0.8 0.148 315);
@@ -186,8 +188,23 @@
   box-shadow: inset 0 0 0 1px var(--pr-edge);
 }
 [data-theme="prism"] .cb-cell.is-peer { background-color: var(--cb-peer); }
-[data-theme="prism"] .cb-cell.is-same { background-color: var(--cb-same); }
+/* The picked digit: every cell holding it lights up as a solid tile of that digit's colour, with
+   the digit in --pr-lit-ink, and the selected one keeps a frame of the ink. */
+[data-theme="prism"] .cb-board[data-same="1"] { --pr-same: var(--h1); }
+[data-theme="prism"] .cb-board[data-same="2"] { --pr-same: var(--h2); }
+[data-theme="prism"] .cb-board[data-same="3"] { --pr-same: var(--h3); }
+[data-theme="prism"] .cb-board[data-same="4"] { --pr-same: var(--h4); }
+[data-theme="prism"] .cb-board[data-same="5"] { --pr-same: var(--h5); }
+[data-theme="prism"] .cb-board[data-same="6"] { --pr-same: var(--h6); }
+[data-theme="prism"] .cb-board[data-same="7"] { --pr-same: var(--h7); }
+[data-theme="prism"] .cb-board[data-same="8"] { --pr-same: var(--h8); }
+[data-theme="prism"] .cb-board[data-same="9"] { --pr-same: var(--h9); }
+[data-theme="prism"] .cb-cell.is-same { background-color: var(--pr-same); box-shadow: none; }
 [data-theme="prism"] .cb-cell.is-sel { background-color: var(--cb-sel); box-shadow: inset 0 0 0 1.5px var(--pr-text); }
+[data-theme="prism"] .cb-cell.is-sel.is-same:not(.is-conflict) {
+  background-color: var(--pr-same);
+  box-shadow: inset 0 0 0 2.5px var(--pr-text), inset 0 0 0 4.5px var(--pr-lit-ink);
+}
 [data-theme="prism"] .cb-cell.is-conflict { background-color: var(--pr-conflict); box-shadow: inset 0 0 0 1.5px var(--pr-err); }
 [data-theme="prism"] .cb-cell.is-focus {
   background-color: color-mix(in oklch, var(--pr-s5) 18%, transparent);
@@ -200,11 +217,12 @@
 }
 [data-theme="prism"] .cb-cell:focus-visible { outline: 2px solid var(--pr-s5); outline-offset: -3px; }
 /* A finished box keeps a brighter glass edge once the spectrum has swept past. */
-[data-theme="prism"] .cb-cell.box-done:not(.is-sel):not(.is-conflict) {
+[data-theme="prism"] .cb-cell.box-done:not(.is-sel):not(.is-same):not(.is-conflict) {
   box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--pr-text) 34%, transparent);
 }
 
-/* Given digits sit on glass tinted with their own hue (drawn in the digit layer). */
+/* Given digits sit on a brighter pane of glass (drawn in the digit layer), which gives way to the
+   colour when their digit is picked. */
 [data-theme="prism"] .cb-slot { position: relative; }
 [data-theme="prism"] .cb-slot::before {
   content: "";
@@ -214,15 +232,7 @@
   pointer-events: none;
 }
 [data-theme="prism"] .cb-slot > .cb-digit { position: relative; }
-[data-theme="prism"] .cb-slot:has(> .cb-digit.is-given.h1)::before { background: color-mix(in oklch, var(--h1) var(--pr-tint), transparent); }
-[data-theme="prism"] .cb-slot:has(> .cb-digit.is-given.h2)::before { background: color-mix(in oklch, var(--h2) var(--pr-tint), transparent); }
-[data-theme="prism"] .cb-slot:has(> .cb-digit.is-given.h3)::before { background: color-mix(in oklch, var(--h3) var(--pr-tint), transparent); }
-[data-theme="prism"] .cb-slot:has(> .cb-digit.is-given.h4)::before { background: color-mix(in oklch, var(--h4) var(--pr-tint), transparent); }
-[data-theme="prism"] .cb-slot:has(> .cb-digit.is-given.h5)::before { background: color-mix(in oklch, var(--h5) var(--pr-tint), transparent); }
-[data-theme="prism"] .cb-slot:has(> .cb-digit.is-given.h6)::before { background: color-mix(in oklch, var(--h6) var(--pr-tint), transparent); }
-[data-theme="prism"] .cb-slot:has(> .cb-digit.is-given.h7)::before { background: color-mix(in oklch, var(--h7) var(--pr-tint), transparent); }
-[data-theme="prism"] .cb-slot:has(> .cb-digit.is-given.h8)::before { background: color-mix(in oklch, var(--h8) var(--pr-tint), transparent); }
-[data-theme="prism"] .cb-slot:has(> .cb-digit.is-given.h9)::before { background: color-mix(in oklch, var(--h9) var(--pr-tint), transparent); }
+[data-theme="prism"] .cb-slot:has(> .cb-digit.is-given):not(.is-same)::before { background: var(--pr-given); }
 
 /* Unit flash: a band of spectrum sweeping across the cell. */
 [data-theme="prism"] .cb-cell.flash-a::after,
@@ -252,27 +262,22 @@
 [data-theme="prism"] .cb-grid .cb-frame { stroke: none; }
 [data-theme="prism"] .cb-grid .cb-thick { stroke: var(--pr-box); stroke-width: 1px; }
 
-/* Digits. */
+/* Digits: one ink, the givens heavier than the player's own. */
 [data-theme="prism"] .cb-digit { font-family: var(--cb-font-digit); font-size: 53cqw; }
 [data-theme="prism"] .cb-board[data-size="9"] .cb-digit { font-size: 52cqw; }
-[data-theme="prism"] .cb-digit.h1 { color: var(--h1); } [data-theme="prism"] .cb-digit.h2 { color: var(--h2); }
-[data-theme="prism"] .cb-digit.h3 { color: var(--h3); } [data-theme="prism"] .cb-digit.h4 { color: var(--h4); }
-[data-theme="prism"] .cb-digit.h5 { color: var(--h5); } [data-theme="prism"] .cb-digit.h6 { color: var(--h6); }
-[data-theme="prism"] .cb-digit.h7 { color: var(--h7); } [data-theme="prism"] .cb-digit.h8 { color: var(--h8); }
-[data-theme="prism"] .cb-digit.h9 { color: var(--h9); }
 [data-theme="prism"] .cb-digit.is-given { font-weight: 600; }
-[data-theme="prism"] .cb-digit.is-mine { font-weight: 300; font-size: 57cqw; }
-[data-theme="prism"][data-night="true"] .cb-digit.is-mine { text-shadow: 0 0 14px color-mix(in oklch, currentColor 55%, transparent); }
-[data-theme="prism"] .cb-digit.is-hint { font-weight: 200; font-size: 57cqw; font-style: normal; }
+[data-theme="prism"] .cb-digit.is-mine { font-weight: 400; font-size: 57cqw; }
+[data-theme="prism"] .cb-digit.is-hint { font-weight: 400; font-size: 57cqw; font-style: normal; }
 [data-theme="prism"] .cb-digit.is-wrong {
   color: var(--cb-wrong);
-  font-weight: 300;
+  font-weight: 400;
   font-size: 57cqw;
   text-decoration: underline wavy;
   text-decoration-thickness: 1.5px;
   text-underline-offset: 0.1em;
 }
 [data-theme="prism"] .cb-board[data-size="9"] .cb-digit:is(.is-mine, .is-hint, .is-wrong) { font-size: 54cqw; }
+[data-theme="prism"] .cb-slot.is-same > .cb-digit { color: var(--pr-lit-ink); font-weight: 650; }
 [data-theme="prism"] .cb-digit.place-a { animation: pr-split-a 0.45s ease-out; }
 [data-theme="prism"] .cb-digit.place-b { animation: pr-split-b 0.45s ease-out; }
 @keyframes pr-split-a {
@@ -295,6 +300,13 @@
 [data-theme="prism"] .cb-board[data-size="4"] .cb-notes { font-size: 18cqw; }
 /* Nine notes share a small cell on 9x9: a little larger so they stay readable on a phone. */
 [data-theme="prism"] .cb-board[data-size="9"] .cb-notes { font-size: 26cqw; font-weight: 500; }
+/* A pencil mark of the picked digit lights up as a small tile of its colour. */
+[data-theme="prism"] .cb-note.on.is-same {
+  border-radius: 30%;
+  background: var(--pr-same);
+  color: var(--pr-lit-ink);
+  font-weight: 700;
+}
 
 /* Clues. */
 [data-theme="prism"] .cb-clue { transition: filter 0.35s ease; }

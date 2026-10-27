@@ -84,6 +84,44 @@ describe('board under fog', () => {
   });
 });
 
+describe('the picked digit', () => {
+  // LYRA gives a 2 at cells 17 and 33. The player has a right 2 at 0 and a wrong one at 1, and
+  // pencil marks 2 and 4 in cell 2, 4 and 5 in cell 3.
+  function board(selected: number | null, highlights = true): BoardProps {
+    const p = props(LYRA);
+    const values = p.values.slice();
+    values[0] = 2;
+    values[1] = 2;
+    const wrong = p.wrong.slice();
+    wrong[1] = true;
+    const notes = p.notes.slice();
+    notes[2] = (1 << 2) | (1 << 4);
+    notes[3] = (1 << 4) | (1 << 5);
+    return { ...p, values, wrong, notes, selected, highlights };
+  }
+  const lit = (el: HTMLElement, sel: string) => [...el.querySelectorAll(sel)].map((e) => [...e.parentElement!.children].indexOf(e));
+
+  it('lights every cell holding it, the selected one too, and its pencil marks', async () => {
+    const el = await render(board(17));
+    expect(el.querySelector('.cb-board')!.getAttribute('data-same')).toBe('2');
+    expect(lit(el, '.cb-cell.is-same')).toEqual([0, 17, 33]);
+    expect(lit(el, '.cb-slot.is-same')).toEqual([0, 17, 33]);
+    const marks = el.querySelectorAll('.cb-note.is-same');
+    expect(marks).toHaveLength(1);
+    expect(marks[0].textContent).toBe('2');
+    expect(marks[0].closest('.cb-slot')).toBe(el.querySelectorAll('.cb-slot')[2]);
+  });
+
+  it('lights nothing for an empty cell, and nothing with highlights off', async () => {
+    for (const p of [board(2), board(17, false)]) {
+      const el = await render(p);
+      expect(el.querySelector('.cb-board')!.hasAttribute('data-same')).toBe(false);
+      expect(el.querySelectorAll('.is-same')).toHaveLength(0);
+      host?.remove();
+    }
+  });
+});
+
 describe('grid, finished boxes and clue layers', () => {
   it('draws the box lines and the frame', async () => {
     const el = await render(props(LYRA));

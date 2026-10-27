@@ -1,7 +1,9 @@
 // Text contrast of every theme and mode, read straight from the stylesheets.
 // Interface text needs 4.5:1 on the page ground. Prism's digits and notes need
-// 4.5:1 on its glass cells: a digit on its own tint, the selected cell and the
-// peer cell, and a note on plain glass and on those same cells.
+// 4.5:1 on its glass cells: the ink on plain glass, a given's pane and the
+// selected and peer cells, a digit's hue (its pad key) and the grey notes on
+// glass and the selected and peer cells, and the lit ink on every digit's hue,
+// where a picked digit's cells and pencil marks light up.
 import { describe, expect, it } from 'vitest';
 import { contrast, oklabDistance, over, parseColor, resolve, rootVars, sizeVars, themeCss } from '../test/cssvars';
 import type { Rgba } from '../test/cssvars';
@@ -39,26 +41,40 @@ describe('Prism on glass', () => {
     const glass = over(colour(env, '--pr-glass'), ground);
     const sel = over(colour(env, '--cb-sel'), glass);
     const peer = over(colour(env, '--cb-peer'), glass);
-    const same = over(colour(env, '--cb-same'), glass);
+    const given = over(colour(env, '--pr-given'), glass);
+    // Every digit's hue per board size: its pad key, and the tile its lit cells and pencil marks become.
+    const hues = (size: number) => {
+      const hue = { ...env, ...sizeVars(src, 'prism', night, size) };
+      return Array.from({ length: size }, (_, i) => ({ name: `h${i + 1} on ${size}x${size}`, c: colour(hue, `--h${i + 1}`) }));
+    };
 
-    it(`${label}: every digit hue on its own tinted glass, selected and peer cells`, () => {
-      const tint = parseFloat(resolve('--pr-tint', env) ?? '14') / 100;
-      for (const size of [4, 6, 9]) {
-        const hue = { ...env, ...sizeVars(src, 'prism', night, size) };
-        for (let i = 1; i <= size; i++) {
-          const c = colour(hue, `--h${i}`);
-          const tinted = over([c[0], c[1], c[2], tint], glass);
-          for (const bg of [tinted, sel, peer]) {
-            expect(contrast(c, bg), `${label} h${i} on ${size}x${size}`).toBeGreaterThanOrEqual(4.5);
-          }
-        }
-      }
+    it(`${label}: the ink on glass, a given's pane and the selected and peer cells`, () => {
+      const ink = colour(env, '--pr-text');
+      for (const bg of [glass, given, sel, peer]) expect(contrast(ink, bg), label).toBeGreaterThanOrEqual(4.5);
       expect(contrast(colour(env, '--pr-err', ground), glass)).toBeGreaterThanOrEqual(4.5);
     });
 
-    it(`${label}: notes on glass, selected, peer and same-digit cells`, () => {
+    it(`${label}: every digit hue on glass, the selected and peer cells`, () => {
+      for (const size of [4, 6, 9]) {
+        for (const h of hues(size)) for (const bg of [glass, sel, peer]) expect(contrast(h.c, bg), `${label} ${h.name}`).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
+    it(`${label}: a lit tile stands far clear of the glass and keeps its digit readable`, () => {
+      const ink = colour(env, '--pr-lit-ink');
+      for (const size of [4, 6, 9]) {
+        for (const h of hues(size)) {
+          expect(contrast(ink, h.c), `${label} ${h.name}`).toBeGreaterThanOrEqual(4.5);
+          expect(oklabDistance(h.c, glass), `${label} ${h.name}`).toBeGreaterThanOrEqual(0.3);
+        }
+      }
+      // A given's pane is plainly brighter glass, so givens read apart from the player's digits.
+      expect(oklabDistance(given, glass), label).toBeGreaterThanOrEqual(0.04);
+    });
+
+    it(`${label}: notes on glass, the selected and peer cells`, () => {
       const note = colour(env, '--cb-note', glass);
-      for (const bg of [glass, sel, peer, same]) expect(contrast(note, bg), label).toBeGreaterThanOrEqual(4.5);
+      for (const bg of [glass, sel, peer]) expect(contrast(note, bg), label).toBeGreaterThanOrEqual(4.5);
     });
 
     it(`${label}: every two digit hues on one board are clearly different`, () => {

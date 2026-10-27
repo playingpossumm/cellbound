@@ -44,7 +44,7 @@ A hint comes in three steps for the same deduction. The first shows where to loo
 
 ## Look
 
-Cellbound has one look, Prism, in a light and a dark version. Digits sit on glass cells, each digit in its own spectrum colour, under a band where a beam of white light splits into one ray per digit. On Auto the light or dark version follows your device, and Settings can keep either one.
+Cellbound has one look, Prism, in a light and a dark version. Digits sit on glass cells in a single ink, so the board reads at a glance, under a band where a beam of white light splits into one ray per digit. Each digit owns the colour of its ray, which also marks its key on the pad. Select a cell with a digit and every cell holding that digit lights up in its colour, along with the matching pencil marks. On Auto the light or dark version follows your device, and Settings can keep either one.
 
 Prism honours reduced motion, from the device or from Settings.
 

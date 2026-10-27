@@ -98,6 +98,8 @@ function BoardImpl(props: BoardProps) {
   const selC = selected === null ? -1 : selected % n;
   const selB = selected === null ? -1 : geo.regionOf(selected);
   const selD = selected === null || hidden?.[selected] ? 0 : full[selected];
+  // The digit the selection holds: every cell and pencil mark with it lights up, the selected cell too.
+  const sameD = highlights ? selD : 0;
 
   // Keep keyboard focus on the selected cell when it moves.
   useEffect(() => {
@@ -127,11 +129,13 @@ function BoardImpl(props: BoardProps) {
     const style: VarStyle | undefined = inFlash ? { '--d': flash[i] } : undefined;
     const noteList: number[] = [];
     if (!d && !isHidden) for (let k = 1; k <= n; k++) if (notes[i] & (1 << k)) noteList.push(k);
+    // A wrong digit keeps its own mark rather than lighting up with the right ones.
+    const same = !!sameD && d === sameD && !(wrong[i] && !given);
 
     let cls = 'cb-cell' + edges[i];
     if (i === selected) cls += ' is-sel';
     else if (highlights && selected !== null && (r === selR || c === selC || b === selB)) cls += ' is-peer';
-    if (highlights && selD && d === selD && i !== selected) cls += ' is-same';
+    if (same) cls += ' is-same';
     if (conflict[i] && !isHidden) cls += ' is-conflict';
     if (given) cls += ' is-given';
     if (focusSet.has(i)) cls += ' is-focus';
@@ -159,6 +163,7 @@ function BoardImpl(props: BoardProps) {
     if (inFlash) slotCls += ` ${flashCls}`;
     if (done.has(b)) slotCls += ' box-done';
     if (i === selected) slotCls += ' is-sel';
+    if (same) slotCls += ' is-same';
     let inner = null;
     if (d) {
       const kind = given ? 'given' : wrong[i] ? 'wrong' : hinted?.[i] ? 'hint' : 'mine';
@@ -173,7 +178,7 @@ function BoardImpl(props: BoardProps) {
       inner = (
         <span className="cb-notes" aria-hidden="true">
           {Array.from({ length: n }, (_, k) => (
-            <span key={k} className={notes[i] & (1 << (k + 1)) ? 'cb-note on' : 'cb-note'}>
+            <span key={k} className={notes[i] & (1 << (k + 1)) ? (k + 1 === sameD ? 'cb-note on is-same' : 'cb-note on') : 'cb-note'}>
               {k + 1}
             </span>
           ))}
@@ -194,7 +199,7 @@ function BoardImpl(props: BoardProps) {
 
   const boardStyle: VarStyle = { '--cb-n': n, '--cb-note-cols': noteCols };
   return (
-    <div className={`cb-board${solved ? ' is-solved' : ''}`} data-size={n} style={boardStyle}>
+    <div className={`cb-board${solved ? ' is-solved' : ''}`} data-size={n} data-same={sameD || undefined} style={boardStyle}>
       <div className="cb-cells" ref={cellsRef} role="group" aria-label="Board">
         {cells}
       </div>
