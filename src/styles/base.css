@@ -1175,6 +1175,33 @@ button {
   opacity: 0.4;
 }
 
+/* A tool's key sits in its corner once a key has done something on the play screen (GameView
+   sets data-keys on the root), so a laptop shows the keys and a touch screen never does. */
+.cb-tool[data-key]::after {
+  content: attr(data-key);
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: none;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--cb-line-box);
+  color: var(--cb-text-dim);
+  font: 600 11px/16px var(--cb-font-ui);
+  text-align: center;
+}
+
+:root[data-keys] .cb-tool[data-key]::after {
+  display: block;
+}
+
+.cb-tool.on[data-key]::after {
+  color: inherit;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
 /* Pause and result */
 .cb-pause,
 .cb-result {
@@ -1490,8 +1517,9 @@ button {
   border: 0;
 }
 
-.cb-form legend {
-  margin-bottom: 8px;
+.cb-form legend,
+.cb-keys h2 {
+  margin: 0 0 8px;
   padding: 0;
   font-size: 13px;
   font-weight: 700;
@@ -1523,6 +1551,47 @@ button {
   margin: 0;
   accent-color: var(--cb-accent);
   flex: none;
+}
+
+/* Settings: the keys of the play screen, for a device with a keyboard. A touch screen hides
+   them unless a keyboard has been used on it. */
+.cb-key-list {
+  margin: 0;
+}
+
+.cb-key-list > div {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 36px;
+}
+
+.cb-key-list dt {
+  flex: 0 0 11.5em;
+  margin: 0;
+  color: var(--cb-text-dim);
+}
+
+.cb-key-list dd {
+  margin: 0;
+}
+
+.cb-key-list kbd {
+  display: inline-block;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px var(--cb-line-box);
+  color: var(--cb-text);
+  font: 600 13px/24px var(--cb-font-ui);
+  text-align: center;
+}
+
+@media (hover: none) {
+  :root:not([data-keys]) .cb-keys {
+    display: none;
+  }
 }
 
 /* Menu */

@@ -6,9 +6,11 @@ import { dailyPuzzleFor } from './daily';
 import { fogLayout } from './fog';
 import { generatePuzzle } from './generator';
 import { hintFor } from './hint';
+import { buildModel } from './model';
 import { makeRng as seededRng } from './rng';
 import { candidatesFor, countSolutionsShape, solveShape } from './solver';
 import type {
+  CellIndex,
   Conflict,
   Digit,
   FogSpec,
@@ -57,6 +59,15 @@ export function conflicts(p: Puzzle, values: Digit[]): Conflict[] {
 /** Candidate bitmask per cell (bit d set means d is still possible). */
 export function candidates(p: Puzzle, values: Digit[]): number[] {
   return candidatesFor(p, values);
+}
+
+/**
+ * For each cell, the cells that must hold a different digit: its row, column and box or region,
+ * and the diagonals, knight moves, cages, renbans and thermometers the board's rules add. The
+ * arrays are shared with the solver's cached model, so callers read them and never change them.
+ */
+export function peers(p: PuzzleShape): readonly (readonly CellIndex[])[] {
+  return buildModel(p).peers;
 }
 
 /** One deduction as three escalating steps, or null when none is found. */

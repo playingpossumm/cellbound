@@ -53,6 +53,11 @@ Run the unit tests, typecheck, build and e2e before calling a change done.
 - Icon-only buttons carry `aria-label` and a `title` tooltip. A description a sighted player no longer reads (a mode's blurb in the menu) stays for screen readers through `aria-describedby`.
 - When a screen would not make sense without a label, change the layout rather than add the label back.
 
+## Play
+
+- A placed digit clears itself from the notes of every cell that must hold a different digit (the engine's `peers`: row, column and box or region, plus the diagonals, knight moves, cages, renbans and thermometers a board's rules add), in the same undo step as the placement. A digit the board already shows to be wrong keeps the notes: one that repeats a digit it must differ from, or a wrong one where the game checks the solution (`checksSolution`). Without that check the board cannot tell, so a wrong digit clears notes like a right one; comparing with the solution there would give the answer away.
+- The keys live in GameView's key handler. Each tool carries `data-key` and `aria-keyshortcuts`, and its key shows in its corner once a key has done something (`data-keys` on the root), so a touch screen never shows them. Settings lists every key on a device with a keyboard (`KeyList` in `src/app/keys.tsx`), and `GameView.test.tsx` presses each listed key, so keep the handler, the list, the tools and the README in step.
+
 ## Look
 
 - Prism is the only look, in a light and a dark version. Settings offers Auto, Light and Dark and has no look picker, because there is nothing to pick. Auto follows the device, and Prism's `defaultNight` decides when the device has no preference.

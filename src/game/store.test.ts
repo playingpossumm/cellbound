@@ -198,6 +198,62 @@ describe('game store', () => {
   });
 });
 
+describe('a placed digit leaves the notes around it', () => {
+  /** Writes d as a note in each cell, then leaves notes mode. */
+  function noteIn(cells: number[], d: number) {
+    actions.toggleNotes();
+    for (const i of cells) play(i, d);
+    actions.toggleNotes();
+  }
+  const notesOf = (cells: number[]) => cells.map((i) => getGame()!.notes[i]);
+
+  it('in its row, column and box, in one undo step', () => {
+    startGame({ key: 'nc1', mode: 'free', puzzle: LYRA });
+    // The 1 of row 1 belongs in cell 3 (column 4). Cell 0 shares its row, 9 its column and box,
+    // 10 its box and 27 its column; 12 and 29 share nothing with it.
+    noteIn([0, 9, 10, 27, 12, 29], 1);
+    noteIn([0], 2);
+    play(3, 1);
+    expect(notesOf([0, 9, 10, 27])).toEqual([1 << 2, 0, 0, 0]);
+    expect(notesOf([12, 29])).toEqual([1 << 1, 1 << 1]);
+    actions.undo();
+    expect(getGame()!.values[3]).toBe(0);
+    expect(notesOf([0, 9, 10, 27])).toEqual([(1 << 1) | (1 << 2), 1 << 1, 1 << 1, 1 << 1]);
+    actions.redo();
+    expect(notesOf([0, 9, 10, 27])).toEqual([1 << 2, 0, 0, 0]);
+  });
+
+  it('along a rule that keeps digits apart, such as a thermometer', () => {
+    startGame({ key: 'nc2', mode: 'free', puzzle: LYRA });
+    // Cells 31 and 21 share only the thermometer 31, 26, 21, 16, whose digits rise and so never
+    // repeat; 23 shares nothing with 31.
+    noteIn([21, 23], 1);
+    play(31, 1);
+    expect(notesOf([21, 23])).toEqual([0, 1 << 1]);
+  });
+
+  it('only when the board cannot already tell that the digit is wrong', () => {
+    // A repeat: row 1 has a given 3 in cell 5, so a 3 in cell 0 breaks a rule and the 3 noted
+    // in its column stays.
+    startGame({ key: 'nc3', mode: 'free', puzzle: LYRA });
+    noteIn([30], 3);
+    play(0, 3);
+    expect(notesOf([30])).toEqual([1 << 3]);
+    // Without a check against the solution, a wrong 6 in cell 3 takes the 6 noted in cell 4,
+    // where it belongs, like any other digit.
+    startGame({ key: 'nc4', mode: 'free', puzzle: LYRA });
+    noteIn([4], 6);
+    play(3, 6);
+    expect(notesOf([4])).toEqual([0]);
+    // With one (hearts here), the wrong 6 is marked at once and the note stays for the real one.
+    startGame({ key: 'nc5', mode: 'free', puzzle: LYRA, mods: { hearts: 3 } });
+    noteIn([4], 6);
+    play(3, 6);
+    expect(getGame()!.mistakes).toBe(1);
+    expect(notesOf([4])).toEqual([1 << 6]);
+  });
+});
+
 describe('streaks and helpers', () => {
   const day = (solvedOn: string) => ({ status: 'solved' as const, ms: 1, mistakes: 0, hints: 0, solvedOn });
   it('counts consecutive local dates', () => {

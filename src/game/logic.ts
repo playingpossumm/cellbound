@@ -32,20 +32,6 @@ export function regionCells(p: Pick<Puzzle, 'size' | 'boxW' | 'boxH' | 'regions'
   return out;
 }
 
-/** Cells that share a row, column or region with i (i excluded). */
-export function peersOf(p: Pick<Puzzle, 'size' | 'boxW' | 'boxH' | 'regions'>, i: CellIndex): CellIndex[] {
-  const n = p.size;
-  const r = rowOf(n, i);
-  const c = colOf(n, i);
-  const b = regionOf(p, i);
-  const out: CellIndex[] = [];
-  for (let j = 0; j < n * n; j++) {
-    if (j === i) continue;
-    if (rowOf(n, j) === r || colOf(n, j) === c || regionOf(p, j) === b) out.push(j);
-  }
-  return out;
-}
-
 /** Givens plus player entries. */
 export function fullGrid(p: Puzzle, values: Digit[]): Digit[] {
   return p.givens.map((d, i) => d || values[i] || 0);

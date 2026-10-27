@@ -11,6 +11,7 @@ import type { ModeId } from '../game/types';
 import { APP_NAME } from './brand';
 import { GameView } from './GameView';
 import { NewBoardIcon, RulesIcon } from './icons';
+import { KeyList } from './keys';
 import { TopBar } from './TopBar';
 import { ALL_KINDS, RULE_NAMES } from './rules';
 import { appUrl, decodeFree, encodeFree, type FreeOptions } from './share';
@@ -472,6 +473,10 @@ export function SettingsScreen() {
           <Toggle label="Reduce motion" checked={s.reducedMotion === 'on'} onChange={(v) => s.update({ reducedMotion: v ? 'on' : 'auto' })} />
         </fieldset>
       </form>
+      <section className="cb-keys">
+        <h2>Keys</h2>
+        <KeyList />
+      </section>
     </Page>
   );
 }

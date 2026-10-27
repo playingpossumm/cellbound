@@ -7,6 +7,7 @@ import { LYRA } from '../engine/fixtures';
 import { actions, getGame, resetStoreForTesting, startGame, useGame } from '../game/store';
 import type { GameMods } from '../game/types';
 import { GameView } from './GameView';
+import { KeyList } from './keys';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -33,6 +34,7 @@ async function press(key: string, code: string, shiftKey = false) {
 
 beforeEach(() => {
   resetStoreForTesting();
+  delete document.documentElement.dataset.keys;
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
@@ -72,6 +74,53 @@ describe('keyboard play', () => {
     expect(host.querySelector('.cb-pause')).not.toBeNull();
     await press('p', 'KeyP');
     expect(getGame()!.status).toBe('playing');
+  });
+
+  it('shows the tool keys once a key has done something, not before', async () => {
+    await open();
+    const keys = () => document.documentElement.dataset.keys;
+    expect([...host.querySelectorAll('.cb-tool')].map((t) => t.getAttribute('data-key'))).toEqual(['Z', 'E', 'N', 'H']);
+    await press('q', 'KeyQ');
+    expect(keys()).toBeUndefined();
+    await press('4', 'Digit4');
+    expect(keys()).toBe('on');
+  });
+
+  it('does with each tool key what the tool does', async () => {
+    await open();
+    const tool = (name: string) => host.querySelector<HTMLElement>(`.cb-tool[aria-label="${name}"]`)!;
+    const pressKey = (name: string) => {
+      const k = tool(name).dataset.key!;
+      return press(k.toLowerCase(), `Key${k}`);
+    };
+    await press('4', 'Digit4');
+    await pressKey('Undo');
+    expect(getGame()!.values[empty]).toBe(0);
+    await press('4', 'Digit4');
+    await pressKey('Erase');
+    expect(getGame()!.values[empty]).toBe(0);
+    await pressKey('Notes');
+    expect(getGame()!.notesMode).toBe(true);
+    await pressKey('Notes');
+    await pressKey('Hint');
+    expect(host.querySelector('.cb-msg.is-hint')).not.toBeNull();
+  });
+
+  it('answers every key that Settings lists', async () => {
+    const list = document.createElement('div');
+    const listRoot = createRoot(list);
+    await act(async () => listRoot.render(<KeyList />));
+    const listed = [...list.querySelectorAll('kbd')].map((k) => k.textContent!);
+    await act(async () => listRoot.unmount());
+    expect(listed.length).toBeGreaterThan(8);
+    // Shift with a digit has its own test above; WASD is four keys and Esc is Escape.
+    const named: Record<string, string[]> = { Shift: [], WASD: ['w', 'a', 's', 'd'], Esc: ['Escape'] };
+    for (const k of listed.flatMap((t) => named[t] ?? [t.length === 1 ? t.toLowerCase() : t])) {
+      await open();
+      delete document.documentElement.dataset.keys;
+      await press(k, '');
+      expect(document.documentElement.dataset.keys, k).toBe('on');
+    }
   });
 });
 

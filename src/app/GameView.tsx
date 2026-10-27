@@ -315,15 +315,17 @@ export function GameView({
     setNotice(step ? null : spent ? 'No hints left on this board.' : 'No hint is available here.');
   }, []);
 
-  // Keyboard play.
+  // Keyboard play, listed in Settings by KeyList (keys.tsx). After the first key that does
+  // something, the tools show their keys (data-keys on the root) for the rest of the visit.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return;
+    /** Acts on a key, and says whether it did anything. */
+    const act = (e: KeyboardEvent): boolean => {
+      if (e.defaultPrevented) return false;
       const t = e.target as HTMLElement | null;
-      if (t?.closest?.('input, select, textarea, [contenteditable="true"]')) return;
-      if (document.querySelector('dialog[open]')) return;
+      if (t?.closest?.('input, select, textarea, [contenteditable="true"]')) return false;
+      if (document.querySelector('dialog[open]')) return false;
       const g = getGame();
-      if (!g) return;
+      if (!g) return false;
       const key = e.key;
       const lower = key.length === 1 ? key.toLowerCase() : key;
       const mod = e.ctrlKey || e.metaKey;
@@ -331,19 +333,19 @@ export function GameView({
         e.preventDefault();
         if (e.shiftKey) actions.redo();
         else actions.undo();
-        return;
+        return true;
       }
       if (mod && lower === 'y') {
         e.preventDefault();
         actions.redo();
-        return;
+        return true;
       }
-      if (mod || e.altKey) return;
+      if (mod || e.altKey) return false;
       const size = g.puzzle.size;
       if (/^[1-9]$/.test(key)) {
         e.preventDefault();
         enter(Number(key));
-        return;
+        return true;
       }
       // Shift with a digit writes a note without leaving digit mode.
       const code = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
@@ -357,7 +359,7 @@ export function GameView({
           enter(Number(code[1]));
           actions.toggleNotes();
         }
-        return;
+        return true;
       }
       const move = (dr: number, dc: number) => {
         e.preventDefault();
@@ -366,19 +368,21 @@ export function GameView({
         const cur = g.selected ?? (focused !== undefined ? Number(focused) : null);
         if (cur === null) {
           actions.select(Math.floor((size * size) / 2));
-          return;
+          return true;
         }
         const r = (Math.floor(cur / size) + dr + size) % size;
         const c = ((cur % size) + dc + size) % size;
         actions.select(r * size + c);
+        return true;
       };
       switch (lower) {
+        case 'e':
         case '0':
         case 'Backspace':
         case 'Delete':
           e.preventDefault();
           actions.erase();
-          return;
+          return true;
         case 'ArrowUp':
         case 'w':
           return move(-1, 0);
@@ -394,28 +398,32 @@ export function GameView({
         case 'n':
           if (g.mods?.noNotes) setNotice(NO_NOTES);
           else actions.toggleNotes();
-          return;
+          return true;
         case 'z':
           actions.undo();
-          return;
+          return true;
         case 'y':
           actions.redo();
-          return;
+          return true;
         case 'h':
           doHint();
-          return;
+          return true;
         case 'p':
           if (g.status === 'paused') actions.resume();
           else actions.pause();
-          return;
+          return true;
         case 'Escape':
           actions.select(null);
           actions.dismissHint();
           setLit(null);
           setNotice(null);
           onNoteDismiss?.();
-          return;
+          return true;
       }
+      return false;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (act(e)) document.documentElement.dataset.keys = 'on';
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -451,6 +459,7 @@ export function GameView({
               type="button"
               className="cb-ib"
               aria-label={paused ? 'Resume' : 'Pause'}
+              aria-keyshortcuts="P"
               title={paused ? 'Resume (P)' : 'Pause (P)'}
               onClick={() => (paused ? actions.resume() : actions.pause())}
               disabled={ended}
@@ -613,11 +622,30 @@ export function GameView({
           })}
         </div>
 
+        {/* Each tool's data-key shows in its corner once the keyboard has been used (base.css). */}
         <div className="cb-tools" role="group" aria-label="Tools">
-          <button type="button" className="cb-tool" aria-label="Undo" title="Undo (Z)" onClick={actions.undo} disabled={toolsOff || !game.undo.length}>
+          <button
+            type="button"
+            className="cb-tool"
+            aria-label="Undo"
+            aria-keyshortcuts="Z Control+Z Meta+Z"
+            data-key="Z"
+            title="Undo (Z)"
+            onClick={actions.undo}
+            disabled={toolsOff || !game.undo.length}
+          >
             <UndoIcon />
           </button>
-          <button type="button" className="cb-tool" aria-label="Erase" title="Erase (Backspace)" onClick={actions.erase} disabled={toolsOff}>
+          <button
+            type="button"
+            className="cb-tool"
+            aria-label="Erase"
+            aria-keyshortcuts="E Backspace Delete 0"
+            data-key="E"
+            title="Erase (E)"
+            onClick={actions.erase}
+            disabled={toolsOff}
+          >
             <EraseIcon />
           </button>
           <button
@@ -625,6 +653,8 @@ export function GameView({
             className={`cb-tool is-toggle${game.notesMode ? ' on' : ''}`}
             aria-label="Notes"
             aria-pressed={game.notesMode}
+            aria-keyshortcuts="N"
+            data-key="N"
             title={game.mods?.noNotes ? NO_NOTES : 'Notes (N)'}
             onClick={actions.toggleNotes}
             disabled={toolsOff || !!game.mods?.noNotes}
@@ -635,6 +665,8 @@ export function GameView({
             type="button"
             className="cb-tool"
             aria-label={hintsLeft === null ? 'Hint' : `Hint, ${hintsLeft} left`}
+            aria-keyshortcuts="H"
+            data-key="H"
             title="Hint (H)"
             onClick={doHint}
             disabled={toolsOff}

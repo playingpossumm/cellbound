@@ -3,7 +3,7 @@
 // Persisted to localStorage under the versioned key cellbound:v1.
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { candidates as engineCandidates, hint as engineHint } from '../engine';
+import { candidates as engineCandidates, hint as engineHint, peers as enginePeers } from '../engine';
 import type { CellIndex, Digit, FogSpec, HintStep, Puzzle } from '../engine/types';
 import type { GameMods, GameState, ModeId, Move } from './types';
 import {
@@ -16,7 +16,6 @@ import {
   hashString,
   isSolvedGrid,
   localDate,
-  peersOf,
   type ClueHit,
   type UnitHit,
 } from './logic';
@@ -370,13 +369,10 @@ function clearHint() {
   if (useFx.getState().hint) useFx.setState({ hint: null });
 }
 
-function autoNotesOn(g: GameState): boolean {
-  return !!g.mods?.autoNotes || getSettings().autoNotes;
-}
-
 /**
  * Places digit d in cell i: mistakes, fog, unit flashes, done boxes, status, and the placement
- * event. source tells a typed digit from one a hint or a card put there.
+ * event. source tells a typed digit from one a hint or a card put there. The digit leaves the
+ * notes of every cell that must hold a different one, in the same undo step.
  */
 function place(g: GameState, i: CellIndex, d: Digit, kind: 'value' | 'hint', source: PlacementEvent['source'] = kind === 'hint' ? 'hint' : 'player', assisted = false): GameState {
   const n = g.puzzle.size;
@@ -394,8 +390,12 @@ function place(g: GameState, i: CellIndex, d: Digit, kind: 'value' | 'hint', sou
   if (!correct && kind === 'value') mistakes++;
   const missed = correct ? g.missed : mark(g.missed, i);
   const helped = source !== 'player' || assisted ? mark(g.helped, i) : g.helped;
-  if (autoNotesOn(g)) {
-    for (const j of peersOf(g.puzzle, i)) {
+  // A digit the board already shows to be wrong leaves the notes alone, for when it comes out
+  // again: one that repeats a digit it must differ from, or a wrong one where the game checks
+  // the solution. Anywhere else the board cannot tell, so the notes go.
+  const seen = enginePeers(g.puzzle)[i];
+  if (!seen.some((j) => before[j] === d) && (correct || !checksSolution(g))) {
+    for (const j of seen) {
       if (values[j] || g.puzzle.givens[j] || !(notes[j] & (1 << d))) continue;
       moves.push({ cell: j, prevValue: values[j], prevNotes: notes[j], value: values[j], notes: notes[j] & ~(1 << d), kind: 'note', group });
       notes[j] &= ~(1 << d);

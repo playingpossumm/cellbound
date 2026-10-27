@@ -36,7 +36,9 @@ Every board keeps the classic rule that each row, column and box holds each digi
 
 ## Playing
 
-Tap or click a cell, then a number. On a keyboard, type the digit, move with the arrow keys or WASD, and erase with Backspace, Delete or 0. N switches to notes and Shift with a digit writes a single note, Z undoes and Y redoes (Ctrl+Z and Ctrl+Y work too), H asks for a hint, P pauses and Escape clears the selection.
+Tap or click a cell, then a number. On a keyboard, type the digit, move with the arrow keys or WASD, and erase with E, Backspace, Delete or 0. N switches to notes and Shift with a digit writes a single note, Z undoes and Y redoes (Ctrl+Z and Ctrl+Y work too), H asks for a hint, P pauses and Escape clears the selection. Once you use the keyboard, each tool shows its key, and Settings lists them all.
+
+A digit you place clears itself from the notes of every cell that must hold a different digit: its row, column and box, and any cage, thermometer, renban, diagonal or knight's move the rules add. Undo brings the notes back. A digit the board already marks as wrong, because it repeats a digit or fails the check against the solution, leaves the notes alone.
 
 A hint comes in three steps for the same deduction. The first shows where to look, the second names the rule that does the work, and the third places the digit and explains why. Mistake checking can be off, can show only digits that break a rule, or can mark every digit that differs from the solution. Fog and Run always check against the solution, because clearing fog and losing hearts depend on it. A Run board allows a set number of hints, shown on the hint key, and a digit a hint gives scores nothing; pointing at a wrong digit costs no hint.
 
