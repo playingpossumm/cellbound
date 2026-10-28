@@ -6,7 +6,8 @@ import type { ClueKind, Difficulty, Size } from '../engine/types';
 import { actions, getGame, getSavedGame, lastGameKey, startGame, useGame } from '../game/store';
 import { formatDateLong, formatTime } from '../game/logic';
 import { useSettings, type MistakeSetting, type NightSetting } from '../game/settings';
-import { bestStreak, currentStreak, useStats } from '../game/stats';
+import { bestStreak, currentStreak } from '../game/stats';
+import { leaveLeaderboard, useAccount, useAllStats } from '../sync/account';
 import type { ModeId } from '../game/types';
 import { APP_NAME } from './brand';
 import { GameView } from './GameView';
@@ -327,7 +328,8 @@ export function FreeScreen({ code }: { code?: string | null }) {
 const MODE_NAMES: Record<ModeId, string> = { daily: 'Daily', run: 'Run', fog: 'Fog', free: 'Free play', learn: 'Learn' };
 
 export function StatsScreen() {
-  const stats = useStats();
+  // A player signed in on the leaderboard sees every device's games together.
+  const stats = useAllStats();
   const streak = currentStreak(stats.daily);
   const best = bestStreak(stats.daily);
   const timeRows = Object.entries(stats.times).sort(([a], [b]) => a.localeCompare(b));
@@ -433,6 +435,8 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 
 export function SettingsScreen() {
   const s = useSettings();
+  const shell = useShell();
+  const player = useAccount((a) => (a.token ? a.name : null));
   return (
     <Page title="Settings" back>
       <form className="cb-form" onSubmit={(e) => e.preventDefault()}>
@@ -481,6 +485,21 @@ export function SettingsScreen() {
             }}
           />
         </fieldset>
+        <fieldset>
+          <legend>Leaderboard</legend>
+          {player ? (
+            <div className="cb-account">
+              <span className="cb-account-name">{player}</span>
+              <button type="button" className="cb-btn" onClick={leaveLeaderboard}>
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="cb-btn" onClick={() => shell.go('leaderboard')}>
+              Join
+            </button>
+          )}
+        </fieldset>
       </form>
       <section className="cb-keys">
         <h2>Keys</h2>
@@ -495,7 +514,7 @@ export function AboutScreen() {
     <Page title="About" back>
       <section className="cb-card cb-prose">
         <p>{APP_NAME} is variant sudoku: a shared Daily, roguelite runs, fog boards, free play and a lesson for each rule.</p>
-        <p>Everything runs on your device and stays in this browser. There are no ads and no accounts.</p>
+        <p>The game runs on your device. If you join the leaderboard, it keeps the name and PIN you choose with your scores and history, so they follow you to another device. There are no ads.</p>
         <p>Released under the MIT licence.</p>
       </section>
     </Page>

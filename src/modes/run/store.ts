@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { moves } from '../../app/motion';
 import { dailyDate, dailyRunSeed } from '../../engine';
+import { allRunStats } from '../../sync/account';
 import { classifyPlacementAsync, hardestPlacementAsync, type PlacementClass } from '../../engine/techniques';
 import { actions, getGame, onGameEnd, onPlacement, type PlacementEvent } from '../../game/store';
 import type { GameState } from '../../game/types';
@@ -105,7 +106,7 @@ export function landPoints(id: number): void {
 /** Milestones reached since the run began, which the summary announces. */
 export function unlockedByRun(run: RunState, stats: RunStats): UnlockId[] {
   const before = new Set(run.unlockedAtStart ?? []);
-  return [...unlockedSet(stats)].filter((id) => !before.has(id));
+  return [...unlockedSet(allRunStats(stats))].filter((id) => !before.has(id));
 }
 
 function commit(data: RunStorage, run: RunState | null, fresh?: UnlockId[]) {
@@ -132,9 +133,12 @@ export function randomSeed(): string {
   return 'free:' + Array.from(words, (w) => w.toString(36).padStart(7, '0')).join('');
 }
 
-/** What a run may offer: a daily run uses the starter cards and lenses only, so everyone shares them. */
+/**
+ * What a run may offer: a daily run uses the starter cards and lenses only, so everyone shares them.
+ * Unlocks count the player's runs on every device they have signed in on (allRunStats).
+ */
 export function poolsFor(run: RunState, stats: RunStats) {
-  const unlocked = unlockedSet(stats);
+  const unlocked = unlockedSet(allRunStats(stats));
   const starter = run.daily !== null;
   return { rewards: rewardPool(unlocked, starter), lenses: lensPool(unlocked, starter) };
 }
@@ -321,8 +325,10 @@ export const runActions = {
       data = { ...data, current: null, last: ended, stats: onRunEnd(data.stats, ended, today) };
     }
     const daily = kind === 'daily' ? today : null;
-    const fresh = newRun(daily ? dailyRunSeed(daily) : randomSeed(), daily, now, daily !== null && hasDailyBest(data.stats, daily));
-    const run: RunState = { ...fresh, unlockedAtStart: [...unlockedSet(data.stats)] };
+    // A daily run played first on another device makes this one a replay.
+    const all = allRunStats(data.stats);
+    const fresh = newRun(daily ? dailyRunSeed(daily) : randomSeed(), daily, now, daily !== null && hasDailyBest(all, daily));
+    const run: RunState = { ...fresh, unlockedAtStart: [...unlockedSet(all)] };
     const stats = onRunStart(data.stats);
     useRunStore.setState({ fx: noFx() });
     commit({ ...data, current: run, stats }, run, []);

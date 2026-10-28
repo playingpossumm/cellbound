@@ -1718,6 +1718,150 @@ button {
   font-weight: 500;
 }
 
+/* The leaderboard (leaderboard.tsx): the four boards as tabs, then a ranked list with the player's
+   own row lit. A row further down than the top ones stands apart. */
+.cb-lb-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
+.cb-lb-tabs > button {
+  justify-content: center;
+  padding: 0 6px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.cb-lb {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.cb-lb-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--cb-line-thin);
+}
+
+.cb-lb-row.is-you {
+  border-bottom-color: transparent;
+  border-radius: 8px;
+  background: var(--cb-sel);
+  font-weight: 600;
+}
+
+.cb-lb-row.is-apart {
+  margin-top: 18px;
+}
+
+.cb-lb-rank {
+  flex: 0 0 2.2em;
+  text-align: right;
+  color: var(--cb-text-dim);
+}
+
+.cb-lb-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cb-lb-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--cb-text-dim);
+}
+
+.cb-lb-marks > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.cb-lb-marks .cb-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.cb-lb-value {
+  flex: none;
+  font-family: var(--cb-font-digit);
+  font-size: 18px;
+}
+
+.cb-lb-note {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.cb-lb-wait {
+  margin: 48px auto;
+}
+
+/* Joining the leaderboard: a name, a PIN and the button. */
+.cb-join {
+  display: grid;
+  gap: 16px;
+  max-width: 360px;
+}
+
+.cb-field {
+  display: grid;
+  gap: 6px;
+}
+
+.cb-field > span {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cb-text-dim);
+}
+
+.cb-field input {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--cb-accent) 45%, transparent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--cb-text);
+  font: inherit;
+  font-size: 18px;
+}
+
+.cb-field input:focus-visible {
+  outline: 2px solid var(--cb-accent);
+  outline-offset: 2px;
+}
+
+.cb-join-go {
+  justify-self: start;
+  min-width: 140px;
+}
+
+/* Settings: the name this device plays under on the leaderboard. */
+.cb-account {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cb-account-name {
+  font-weight: 600;
+}
+
 /* A copy of some points on its way to the score (fly in motion.ts), above everything. Its size and
    colour come from what it copies. */
 .cb-fly {

@@ -1,11 +1,11 @@
 # AGENTS.md
 
-Notes for coding agents working on Cellbound, a local-first variant sudoku web app.
+Notes for coding agents working on Cellbound, a local-first variant sudoku web app with an optional leaderboard.
 
 ## Commands
 
 - `npm install`, then `npm run dev` for the dev server.
-- `npm test` runs the unit tests (Vitest), `npm run typecheck` checks the types, and `npm run build` type-checks and builds `dist/` with the service worker.
+- `npm test` runs the unit tests (Vitest), `npm run typecheck` checks the types, and `npm run build` type-checks, builds `dist/` with the service worker and bundles the leaderboard's functions into `api/` (`npm run build:api`).
 - `npm run e2e` runs the Playwright suite: Edge by default (`PW_CHANNEL=chromium` switches to Chromium), plus WebKit, Firefox and an offline production project. The Edge phone projects emulate a phone (`isMobile`), so scrollbars float as they do on a real phone.
 - `npm run gen:daily -- <from> <to>` regenerates the stored Dailies for a range of months (`YYYY-MM`). `npm run gen:practice` regenerates the Learn practice puzzles.
 - `npm run calibrate:run [-- <seeds>]` prints Run scores against targets, board by board, for three styles of play. `npm run balance:run [-- <seeds>]` prints what every lens, Spectrum and card adds to a run, and the builds a player might lean on; `balance.test.ts` keeps them within a band.
@@ -23,6 +23,8 @@ Run the unit tests, typecheck, build and e2e before calling a change done.
 | `src/board` | The board and its layers. Themes style its class names. |
 | `src/themes` | Prism, the one look. It is a `ThemeDef` (`src/themes/types.ts`) plus a stylesheet scoped by `data-theme` and `data-night`, listed in the registry in `src/themes/index.ts`. |
 | `src/modes` | Run and Learn. |
+| `src/sync` | The leaderboard in the app: the account on this device (`account.ts`), and the rules and merges the server shares (`rules.ts`, `merge.ts`). |
+| `server` | The leaderboard's server, bundled into `api/` (git-ignored) for Vercel by `vite.api.config.ts`. |
 | `src/data` | Stored Daily puzzles, one module per month. |
 | `scripts` | Puzzle generation for Dailies and lessons. |
 | `e2e` | Browser tests. |
@@ -71,6 +73,14 @@ Run the unit tests, typecheck, build and e2e before calling a change done.
 - `src/app/sound.ts` makes short notes with Web Audio, the Motion Lab's: each digit plays its own note on a pentatonic scale (1 the lowest), a digit the board marks as wrong buzzes low instead, a finished unit runs up the scale with its wave, and a Run's whole show, its tally, its cards and a won run climb a note at a time. The Sound switch in Settings (`sound`, on by default) silences all of it, and an iPhone's ring switch does too.
 - A wrong digit buzzes only where the board already shows it as wrong (`shownWrong`, the same test as GameView's): where the game does not check the solution, a wrong digit that breaks no rule sounds like any other, so the sound never gives the answer away. `sound.test.ts` holds this.
 - Browsers start sound suspended, so a touch, a click or a key wakes it; a key or a tool ticks on the pointer press, never on a typed key.
+
+## Leaderboard
+
+- A player joins with a name and a 4-digit PIN (Leaderboard in the menu, `src/app/leaderboard.tsx`), and the same name and PIN on another device sign that device in. The server keeps neither in clear: the PIN as a PBKDF2 hash with its own salt, and each device's token by its SHA-256. A name takes `TRIES` sign-ins in 15 minutes, so a PIN cannot be guessed through the server. Never write a name, a PIN or a token to a log or an error.
+- Each device sends its own stats as they stand (the game stats without `recorded`, and the Run's stats read from its save without loading the Run), and the server keeps one copy per device (`d:{name}`), so nothing is counted twice. A device gets back what the player's other devices hold and shows its own stats with those added in: `useAllStats` for the Stats screen and the streak, `allRunStats` for the Run's home, Collection, unlocks and daily best. The merge rules live in `src/sync/merge.ts` (counts add up, bests keep the better, a Daily on two devices counts once as its better result). A device syncs when the app opens, 2.5 s after a game ends, when it comes back into view and when the leaderboard opens.
+- The four boards are today's Daily by time (only a Daily solved on its own day), today's daily run by score, the best run (free or daily) and the longest Daily streak (`standingOf` in `src/sync/rules.ts`). The server places a player for the UTC day and the days either side of it, so every time zone's today is covered. A board shows its top 50 and the asker's row below them when further down; players level share a rank and are listed by name.
+- `server/store.ts` speaks to Redis through Upstash's REST API in production, from `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or the `UPSTASH_REDIS_REST_*` pair) that Vercel's Upstash integration sets; without them the functions answer 503 and the app says the leaderboard is not set up. The dev server serves `/api` from `server/` with a store in memory (`server/dev.ts`), so `npm run dev` and the e2e tests need no Redis; `vite preview` has no `/api`. The e2e tests share that store for a whole run, so each picks a name of its own.
+- The functions ship as plain JavaScript because Vercel's TypeScript builder cannot run on the project's TypeScript 7. `npm run build` bundles `server/entries` into `api/` before anything else reads it, so run it before `vercel build`; files under `api/_lib` are shared code, never routes.
 
 ## Look
 

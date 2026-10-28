@@ -1,8 +1,9 @@
 // The Run screen: the home and the Collection, then the run's own screens by its phase: the ante,
 // the board and its tally, the reward pick, the shop and the summary.
-import { useState, type ComponentType } from 'react';
+import { useMemo, useState, type ComponentType } from 'react';
 import { GameView, type GameViewProps } from '../../app/GameView';
 import { dailyDate } from '../../engine';
+import { allRunStats, useAccount } from '../../sync/account';
 import './run.css';
 import { runActions, useRunStore } from './store';
 import { BoardScreen } from './ui/Board';
@@ -22,6 +23,9 @@ export interface RunAppProps {
 export function RunApp({ onExit, GameViewComponent = GameView }: RunAppProps) {
   const run = useRunStore((s) => s.run);
   const data = useRunStore((s) => s.data);
+  // The player's runs on every device they have signed in on, for the home, the Collection and the daily best.
+  const others = useAccount((s) => s.others);
+  const stats = useMemo(() => allRunStats(data.stats, others), [data.stats, others]);
   const fresh = useRunStore((s) => s.fresh);
   const ready = useRunStore((s) => s.ready);
   const legacy = useRunStore((s) => s.legacy);
@@ -29,11 +33,11 @@ export function RunApp({ onExit, GameViewComponent = GameView }: RunAppProps) {
   const today = dailyDate();
 
   if (!run) {
-    if (view === 'collection') return <Collection stats={data.stats} onBack={() => setView('home')} />;
+    if (view === 'collection') return <Collection stats={stats} onBack={() => setView('home')} />;
     return (
       <Home
         today={today}
-        stats={data.stats}
+        stats={stats}
         legacy={legacy}
         current={data.current}
         last={data.last}
@@ -81,7 +85,7 @@ export function RunApp({ onExit, GameViewComponent = GameView }: RunAppProps) {
       return (
         <Summary
           run={run}
-          dailyBest={run.daily ? (data.stats.dailyBest[run.daily]?.score ?? null) : null}
+          dailyBest={run.daily ? (stats.dailyBest[run.daily]?.score ?? null) : null}
           fresh={fresh}
           onFree={() => runActions.start('free')}
           onHome={runActions.home}

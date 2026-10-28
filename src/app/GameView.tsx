@@ -9,7 +9,8 @@ import type { GameState } from '../game/types';
 import { actions, checksSolution, getGame, heartsLeft, startClock, useFx } from '../game/store';
 import { formatTime, fullGrid } from '../game/logic';
 import { useSettings } from '../game/settings';
-import { currentStreak, useStats } from '../game/stats';
+import { currentStreak } from '../game/stats';
+import { useAllStats } from '../sync/account';
 import { useLessonDone } from '../modes';
 import { getTheme } from '../themes';
 import { APP_NAME } from './brand';
@@ -741,7 +742,8 @@ function plural(n: number, one: string, many: string) {
 
 function ResultCard({ game, title, subtitle, next, shareUrl }: { game: GameState; title: string; subtitle: string; next?: GameViewProps['next']; shareUrl?: string }) {
   const shell = useShell();
-  const daily = useStats((s) => s.daily);
+  // The streak counts the player's Dailies on every device they have signed in on.
+  const daily = useAllStats().daily;
   const streak = game.mode === 'daily' ? currentStreak(daily) : null;
   const [shared, setShared] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);

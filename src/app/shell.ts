@@ -4,7 +4,7 @@
 import { createContext, useContext } from 'react';
 import type { ClueKind } from '../engine/types';
 
-export type ScreenId = 'daily' | 'fog' | 'free' | 'stats' | 'settings' | 'about' | `mode:${string}`;
+export type ScreenId = 'daily' | 'fog' | 'free' | 'stats' | 'leaderboard' | 'settings' | 'about' | `mode:${string}`;
 
 export interface Shell {
   openMenu(): void;

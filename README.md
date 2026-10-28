@@ -1,6 +1,6 @@
 # Cellbound
 
-Cellbound is a variant sudoku game that runs in the browser and installs as an app on phones and laptops. It opens straight into the day's puzzle, and every board is made or stored on your device. Progress stays in the browser's local storage, so there is no server, no account and no advertising, and after the first visit the whole app works offline.
+Cellbound is a variant sudoku game that runs in the browser and installs as an app on phones and laptops. It opens straight into the day's puzzle, and every board is made or stored on your device. Progress stays in the browser's local storage, there is no advertising, and after the first visit the whole app works offline. A leaderboard is there for anyone who wants it: a name and a 4-digit PIN put your results on boards everyone shares, and nothing leaves your device until you join.
 
 Play it at [cellbound-sudoku.vercel.app](https://cellbound-sudoku.vercel.app).
 
@@ -44,6 +44,12 @@ A hint comes in three steps for the same deduction. The first shows where to loo
 
 ![A Daily on a laptop](docs/laptop.png)
 
+## Leaderboard
+
+Open Leaderboard from the menu and choose a name and a 4-digit PIN. Four boards rank everyone who has joined: today's Daily by time (a Daily counts on its own day), today's daily run by score, the best run anyone has played, and the longest Daily streak. Your own row is lit, and players level on a board share a place.
+
+Your stats go with your name. Type the same name and PIN on another phone or laptop and it signs in, and from then on each device adds its games to the others': the streak, the Stats screen, the daily run you already played and the Run's unlocks all count every device. A board you are halfway through stays on the device you started it on. Sign out in Settings to take a device off your name; your scores stay.
+
 ## Look
 
 Cellbound has one look, Prism, in a light and a dark version. Digits sit on glass cells in a single ink, so the board reads at a glance, under a band where a beam of white light splits into one ray per digit. Each digit owns the colour of its ray, which also marks its key on the pad. Select a cell with a digit and every cell holding that digit lights up in its colour, along with the matching pencil marks. On Auto the light or dark version follows your device, and Settings can keep either one.
@@ -63,12 +69,12 @@ npm install
 npm run dev
 ```
 
-Then open the address Vite prints. `npm run build` makes a production build in `dist/` with a service worker, and `npm run preview` serves it.
+Then open the address Vite prints. The dev server also runs the leaderboard, on a store in memory that lasts until it stops. `npm run build` makes a production build in `dist/` with a service worker, and `npm run preview` serves it without the leaderboard.
 
 ## Scripts
 
 - `npm run dev` starts the dev server.
-- `npm run build` type-checks and builds to `dist/`.
+- `npm run build` type-checks and builds to `dist/`, and bundles the leaderboard's server into `api/` (`npm run build:api` does that part alone).
 - `npm run preview` serves the production build.
 - `npm test` runs the unit tests once, and `npm run test:watch` keeps them running.
 - `npm run typecheck` checks the types.

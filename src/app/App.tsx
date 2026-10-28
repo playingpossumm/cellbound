@@ -8,7 +8,8 @@ import { parseLocalDate } from '../game/logic';
 import { useStats } from '../game/stats';
 import { extraModes, learn } from '../modes';
 import { APP_NAME } from './brand';
-import { AboutIcon, CloseIcon, DailyIcon, FogIcon, FreeIcon, LearnIcon, RunIcon, SettingsIcon, StatsIcon } from './icons';
+import { AboutIcon, CloseIcon, DailyIcon, FogIcon, FreeIcon, LearnIcon, RunIcon, SettingsIcon, StatsIcon, TrophyIcon } from './icons';
+import { LeaderboardScreen } from './leaderboard';
 import { AboutScreen, DailyScreen, FogScreen, FreeScreen, Loading, SettingsScreen, StatsScreen } from './screens';
 import { OPEN_EVENT, ShellContext, type ScreenId, type Shell } from './shell';
 import { useApplyTheme } from './theme';
@@ -21,12 +22,13 @@ const MENU_ICONS: Partial<Record<ScreenId, ReactNode>> = {
   fog: <FogIcon />,
   free: <FreeIcon />,
   stats: <StatsIcon />,
+  leaderboard: <TrophyIcon />,
   settings: <SettingsIcon />,
   about: <AboutIcon />,
 };
 
 /** Names for the page title; the Daily uses the app's name alone. */
-const SCREEN_NAMES: Partial<Record<ScreenId, string>> = { fog: 'Fog', free: 'Free play', stats: 'Stats', settings: 'Settings', about: 'About' };
+const SCREEN_NAMES: Partial<Record<ScreenId, string>> = { fog: 'Fog', free: 'Free play', stats: 'Stats', leaderboard: 'Leaderboard', settings: 'Settings', about: 'About' };
 
 interface Route {
   screen: ScreenId;
@@ -159,6 +161,9 @@ export default function App() {
     case 'stats':
       body = <StatsScreen />;
       break;
+    case 'leaderboard':
+      body = <LeaderboardScreen />;
+      break;
     case 'settings':
       body = <SettingsScreen />;
       break;
@@ -190,6 +195,7 @@ export default function App() {
   ];
   const more: { screen: ScreenId; name: string }[] = [
     { screen: 'stats', name: 'Stats' },
+    { screen: 'leaderboard', name: 'Leaderboard' },
     { screen: 'settings', name: 'Settings' },
     { screen: 'about', name: 'About' },
   ];

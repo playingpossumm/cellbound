@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# The leaderboard's functions, bundled from server/ by npm run build:api.
+api/
 dev-dist/
 coverage/
 .vercel/
