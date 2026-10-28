@@ -47,9 +47,11 @@ test('a new rule chip leads to its lesson, and finishing the lesson takes its do
   await expect(page.locator('.cb-chip').first()).not.toHaveClass(/is-new/);
 });
 
-test('fog clears around a right digit and never around a wrong one', async ({ page }) => {
+test('Free play under fog clears around a right digit and never around a wrong one', async ({ page }) => {
   await openFresh(page);
-  await openScreen(page, 'Fog');
+  await openScreen(page, 'Free play');
+  await page.getByLabel('Fog', { exact: true }).check();
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.locator('.cb-fog.is-on').first()).toBeAttached();
   const s = await page.evaluate(() => {
     const g = (window as unknown as { __cellbound: Hook }).__cellbound.getGame()!;

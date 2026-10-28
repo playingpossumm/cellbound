@@ -3,7 +3,7 @@
 import type { TechniqueId } from '../../engine/techniques';
 import { anteOf } from './boards';
 import { LENSES, type LensDef } from './lenses';
-import type { BestPlacement, BoardResult, RunOutcome, RunState, TechTally, UnlockId } from './model';
+import type { BestPlacement, BoardResult, RunDifficulty, RunOutcome, RunState, TechTally, UnlockId } from './model';
 import { REWARDS, type RewardDef } from './rewards';
 
 export interface DailyRecord {
@@ -113,8 +113,14 @@ export function onRunEnd(s: RunStats, run: RunState, today: string): RunStats {
   return next;
 }
 
-/** Hard opens once a run is won on Normal or Hard; a daily run counts, as it is always Normal. */
-export const hardOpen = (s: RunStats): boolean => s.won > s.wonEasy;
+/**
+ * Whether a free-run difficulty is open. Easy always is; Normal opens with a run won on Easy and Hard
+ * with one won on Normal. A daily run is played on Normal, so winning one opens both.
+ */
+export function levelOpen(s: RunStats, level: RunDifficulty): boolean {
+  if (level === 'easy') return true;
+  return level === 'normal' ? s.won > 0 : s.won > s.wonEasy;
+}
 
 export function bestDaily(s: RunStats): { date: string; score: number } | null {
   let best: { date: string; score: number } | null = null;

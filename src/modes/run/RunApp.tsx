@@ -5,7 +5,7 @@ import { GameView, type GameViewProps } from '../../app/GameView';
 import { dailyDate } from '../../engine';
 import { allRunStats, useAccount } from '../../sync/account';
 import './run.css';
-import { hardOpen } from './stats';
+import { levelOpen } from './stats';
 import { pickOf, runActions, useRunStore } from './store';
 import { BoardScreen } from './ui/Board';
 import { Collection } from './ui/Collection';
@@ -43,7 +43,7 @@ export function RunApp({ onExit, GameViewComponent = GameView }: RunAppProps) {
         current={data.current}
         last={data.last}
         pick={pickOf(data, stats)}
-        hardOpen={hardOpen(stats)}
+        open={{ easy: true, normal: levelOpen(stats, 'normal'), hard: levelOpen(stats, 'hard') }}
         onPick={runActions.pickLevel}
         onBack={onExit}
         onDaily={() => runActions.start('daily')}

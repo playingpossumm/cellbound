@@ -103,7 +103,7 @@ describe('the Run store', () => {
     const live = state().run!.live!;
     expect(live.score).toBe(20);
     expect(live.tech).toEqual({ hiddenSingle: { n: 1, points: 20, top: 20 } });
-    expect(live.hearts).toBe(2);
+    expect(live.hearts).toBe(state().run!.maxHearts - 1);
     const call = engine.calls.find((c) => c.cell === a)!;
     expect(call.values[a]).toBe(0);
     expect(call.values[b]).toBe(0);
@@ -191,8 +191,8 @@ describe('the Run store', () => {
     runActions.start('free', 1000, '2026-10-26');
     const p = await playBoard();
     const c = emptyCells(p)[0];
-    // Three different wrong digits: typing the same one twice would erase it.
-    for (const d of [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((x) => x !== p.solution[c]).slice(0, 3)) type(c, d);
+    // A different wrong digit for each heart: typing the same one twice would erase it.
+    for (const d of [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((x) => x !== p.solution[c]).slice(0, state().run!.hearts)) type(c, d);
     await until(() => state().run!.phase !== 'board', 'the end of the board');
     await settled();
     const run = state().run!;
@@ -266,16 +266,22 @@ describe('the Run store', () => {
     expect(state().run!.items).toEqual([]);
   });
 
-  it('starts a free run on the level picked and a daily run on Normal, and keeps Hard shut until a win on Normal', () => {
+  it('starts a new player on Easy and a daily run on Normal, and opens each level with a win on the one below', () => {
+    runActions.pickLevel('normal');
     runActions.pickLevel('hard');
     expect(state().data.pick).toBeUndefined();
-    runActions.pickLevel('easy');
     runActions.start('free', 1000, '2026-10-26');
     expect(state().run!.difficulty).toBe('easy');
     expect(state().run!.hearts).toBe(DIFFICULTY.hearts.easy);
     runActions.start('daily', 2000, '2026-10-26');
     expect(state().run!.difficulty).toBe('normal');
-    useRunStore.setState({ data: { ...state().data, stats: { ...state().data.stats, won: 1 } } });
+    // A win on Easy opens Normal, and with nothing picked the next free run starts there.
+    useRunStore.setState({ data: { ...state().data, stats: { ...state().data.stats, won: 1, wonEasy: 1 } } });
+    runActions.pickLevel('hard');
+    expect(state().data.pick).toBeUndefined();
+    runActions.start('free', 2500, '2026-10-26');
+    expect(state().run!.difficulty).toBe('normal');
+    useRunStore.setState({ data: { ...state().data, stats: { ...state().data.stats, won: 2, wonEasy: 1 } } });
     runActions.pickLevel('hard');
     expect(JSON.parse(localStorage.getItem(RUN_KEY)!).pick).toBe('hard');
     runActions.start('free', 3000, '2026-10-26');

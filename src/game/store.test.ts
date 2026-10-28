@@ -109,7 +109,7 @@ describe('game store', () => {
   it('clears fog only around correct digits', () => {
     // Visible at the start: the top left box (cells 0, 1, 2, 6, 7, 8).
     const fog: FogSpec = { start: [0, 1, 2, 6, 7, 8], radius: 1 };
-    startGame({ key: 'fog:1', mode: 'fog', puzzle: LYRA, fog });
+    startGame({ key: 'fog:1', mode: 'free', puzzle: LYRA, fog });
     const cleared = () => getGame()!.fog!.cleared;
     expect(cleared().filter(Boolean)).toHaveLength(6);
     // Cell 7 (row 2, column 2) is empty and visible; 12, 13 and 14 sit under fog next to it.

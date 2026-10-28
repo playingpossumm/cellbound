@@ -19,8 +19,8 @@ test('the Back button steps back through the screens, and Forward returns', asyn
 test('Back from a screen opened over a shared link returns to that day', async ({ page }) => {
   await openFresh(page, undefined, '/?daily=2026-10-18');
   await expect(page.locator('.cb-band-wrap')).toContainText('Sunday 18 October');
-  await openScreen(page, 'Fog');
-  await expect(page.locator('.cb-top-title')).toHaveText('Fog');
+  await openScreen(page, 'Free play');
+  await expect(page.locator('.cb-top-title')).toHaveText('Free play');
   await page.goBack();
   await expect(page.locator('.cb-band-wrap')).toContainText('Sunday 18 October');
   await expect(page.locator('.cb-top-title')).toHaveText('Daily');
@@ -45,11 +45,12 @@ test('Stats, Settings and About have a back arrow, like Run and Learn', async ({
     await expect(page.locator('.cb-play .cb-board')).toBeVisible();
     await expect(page.locator('.cb-top-title')).toHaveText('Daily');
   }
-  // It goes back to where the player came from, here a Fog board.
-  await openScreen(page, 'Fog');
-  await expect(page.locator('.cb-top-title')).toHaveText('Fog');
+  // It goes back to where the player came from, here a Free play board.
+  await openScreen(page, 'Free play');
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(page.locator('.cb-play .cb-board')).toBeVisible();
   await page.getByRole('button', { name: 'Stats', exact: true }).first().click();
   await expect(page.locator('.cb-page-title')).toHaveText('Stats');
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await expect(page.locator('.cb-top-title')).toHaveText('Fog');
+  await expect(page.locator('.cb-top-title')).toHaveText('Free play');
 });

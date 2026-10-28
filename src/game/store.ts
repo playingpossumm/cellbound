@@ -370,7 +370,7 @@ export function shieldLeft(g: GameState): number | null {
 
 /** True when the game checks digits against the solution (fog, runs and the strict setting). */
 export function checksSolution(g: GameState): boolean {
-  return g.mode === 'fog' || g.mode === 'run' || !!g.fog || g.mods?.hearts !== undefined || getSettings().mistakes === 'strict';
+  return g.mode === 'run' || !!g.fog || g.mods?.hearts !== undefined || getSettings().mistakes === 'strict';
 }
 
 function canEdit(g: GameState, i: CellIndex): boolean {

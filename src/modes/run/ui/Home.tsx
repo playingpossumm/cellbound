@@ -18,9 +18,9 @@ export interface HomeProps {
   legacy: number;
   current: RunState | null;
   last: RunState | null;
-  /** The difficulty the next free run starts on, and whether Hard is open yet. */
+  /** The difficulty the next free run starts on, and the ones open yet. */
   pick: RunDifficulty;
-  hardOpen: boolean;
+  open: Record<RunDifficulty, boolean>;
   onPick: (level: RunDifficulty) => void;
   onBack: () => void;
   onDaily: () => void;
@@ -33,8 +33,8 @@ export interface HomeProps {
 
 export function Home(p: HomeProps) {
   const [ask, setAsk] = useState<'daily' | 'free' | 'end' | null>(null);
-  // Tapping Hard before it is open says how to open it.
-  const [locked, setLocked] = useState(false);
+  // Tapping a level before it is open says how to open it.
+  const [locked, setLocked] = useState<RunDifficulty | null>(null);
   const hearts = DIFFICULTY.hearts[p.pick];
   const todays = p.stats.dailyBest[p.today];
   const best = bestDaily(p.stats);
@@ -123,7 +123,7 @@ export function Home(p: HomeProps) {
           </button>
           <div className="cb-run-tabs cb-run-levels" role="group" aria-label="Difficulty">
             {LEVELS.map((level) => {
-              const shut = level === 'hard' && !p.hardOpen;
+              const shut = !p.open[level];
               return (
                 <button
                   key={level}
@@ -132,7 +132,7 @@ export function Home(p: HomeProps) {
                   aria-pressed={p.pick === level}
                   aria-disabled={shut || undefined}
                   onClick={() => {
-                    setLocked(shut);
+                    setLocked(shut ? level : null);
                     if (!shut) p.onPick(level);
                   }}
                 >
@@ -144,7 +144,7 @@ export function Home(p: HomeProps) {
           </div>
           {locked && (
             <p className="cb-run-levels-note" role="status">
-              Win a run on Normal to open Hard.
+              {locked === 'normal' ? 'Win a run on Easy to open Normal.' : 'Win a run on Normal to open Hard.'}
             </p>
           )}
         </div>

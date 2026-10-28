@@ -38,7 +38,7 @@ import {
   withTarget,
   type BoardEnd,
 } from './state';
-import { hardOpen, onBoardEnd, onBoardStart, onRunEnd, onRunStart, unlockedSet, type RunStats } from './stats';
+import { levelOpen, onBoardEnd, onBoardStart, onRunEnd, onRunStart, unlockedSet, type RunStats } from './stats';
 import { legacyRuns, loadRunStorage, saveRunStorage, type RunStorage } from './storage';
 import { INK } from './tuning';
 
@@ -122,10 +122,13 @@ function commitRun(run: RunState, stats?: RunStats) {
   commit({ ...data, current: run, ...(stats ? { stats } : {}) }, run);
 }
 
-/** The difficulty a free run starts on: the last one picked, while it is open. */
+/**
+ * The difficulty a free run starts on: the one last picked, or the hardest open one below it. With
+ * nothing picked that is Normal, so a new player starts on Easy and moves up with the first win.
+ */
 export function pickOf(data: RunStorage, all: RunStats): RunDifficulty {
-  const pick = data.pick ?? 'normal';
-  return pick === 'hard' && !hardOpen(all) ? 'normal' : pick;
+  const down: RunDifficulty[] = ['hard', 'normal', 'easy'];
+  return down.slice(down.indexOf(data.pick ?? 'normal')).find((level) => levelOpen(all, level)) ?? 'easy';
 }
 
 /** A random run seed from the browser's secure generator. */
@@ -343,10 +346,10 @@ export const runActions = {
     void prepareAhead(run);
   },
 
-  /** Picks the difficulty of the next free run. Hard waits for a win on Normal. */
+  /** Picks the difficulty of the next free run. Normal waits for a win on Easy, and Hard for one on Normal. */
   pickLevel(level: RunDifficulty): void {
     const { data, run } = get();
-    if (level === 'hard' && !hardOpen(allRunStats(data.stats))) return;
+    if (!levelOpen(allRunStats(data.stats), level)) return;
     commit({ ...data, pick: level }, run);
   },
 

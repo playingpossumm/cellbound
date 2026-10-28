@@ -24,6 +24,8 @@ export interface FreeOptions {
   size: Size;
   rules: ClueKind[];
   difficulty: Difficulty;
+  /** The board starts under fog. */
+  fog?: boolean;
   seed: string;
 }
 
@@ -43,18 +45,18 @@ function fromBase64Url(s: string): string {
 const KINDS: ClueKind[] = ['thermo', 'arrow', 'cage', 'renban', 'whisper', 'kropki', 'xv', 'diagonal', 'antiKnight'];
 
 export function encodeFree(o: FreeOptions): string {
-  return toBase64Url(JSON.stringify({ s: o.size, r: o.rules, d: o.difficulty, k: o.seed }));
+  return toBase64Url(JSON.stringify({ s: o.size, r: o.rules, d: o.difficulty, k: o.seed, ...(o.fog ? { f: 1 } : {}) }));
 }
 
 export function decodeFree(code: string): FreeOptions | null {
   try {
-    const v = JSON.parse(fromBase64Url(code)) as { s: unknown; r: unknown; d: unknown; k: unknown };
+    const v = JSON.parse(fromBase64Url(code)) as { s: unknown; r: unknown; d: unknown; k: unknown; f?: unknown };
     const size = v.s === 6 || v.s === 9 ? v.s : null;
     const difficulty = typeof v.d === 'number' && v.d >= 1 && v.d <= 5 ? (Math.round(v.d) as Difficulty) : null;
     const rules = Array.isArray(v.r) ? (v.r.filter((k) => KINDS.includes(k as ClueKind)) as ClueKind[]) : null;
     const seed = typeof v.k === 'string' && v.k.length > 0 && v.k.length < 80 ? v.k : null;
     if (!size || !difficulty || !rules || !seed) return null;
-    return { size, rules, difficulty, seed };
+    return { size, rules, difficulty, seed, ...(v.f === 1 ? { fog: true } : {}) };
   } catch {
     return null;
   }

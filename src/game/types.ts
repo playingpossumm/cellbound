@@ -1,7 +1,7 @@
 // Shared game model. Contract file: additive changes only.
 import type { CellIndex, Digit, FogSpec, Puzzle } from '../engine/types';
 
-export type ModeId = 'daily' | 'run' | 'fog' | 'free' | 'learn';
+export type ModeId = 'daily' | 'run' | 'free' | 'learn';
 
 export interface Move {
   cell: CellIndex;

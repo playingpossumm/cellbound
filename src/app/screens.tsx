@@ -1,5 +1,5 @@
-// Screens: Daily, Fog, Free play, Stats, Settings and About.
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+// Screens: Daily, Free play (with or without fog), Stats, Settings and About.
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { dailyDate, dailyPuzzle, fogFor } from '../engine';
 import { generateAsync } from '../engine/client';
 import type { ClueKind, Difficulty, Size } from '../engine/types';
@@ -100,86 +100,7 @@ const SIZES: Size[] = [9, 6];
 const sizeName = (s: Size) => `${s}×${s}`;
 const sizeLabel = (s: Size) => `${s} by ${s}`;
 
-/** Two buttons for the board size, the current one pressed. */
-function SizeSwitch({ size, onPick, disabled }: { size: Size; onPick: (s: Size) => void; disabled?: boolean }) {
-  return (
-    <div className="cb-seg cb-size" role="group" aria-label="Board size">
-      {SIZES.map((s) => (
-        <button
-          key={s}
-          type="button"
-          className={size === s ? 'on' : ''}
-          aria-pressed={size === s}
-          aria-label={sizeLabel(s)}
-          onClick={() => size !== s && onPick(s)}
-          disabled={disabled}
-        >
-          {sizeName(s)}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-const FOG_RULES: ClueKind[] = ['thermo', 'arrow', 'cage', 'renban', 'kropki', 'xv'];
-
-export function FogScreen() {
-  const game = useGame();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Only the newest request may start a board, so a request that was asked for twice
-  // (React's development double run of the effect below) never swaps the board under the player.
-  const latest = useRef(0);
-
-  const newBoard = useCallback(async (s: Size) => {
-    const mine = ++latest.current;
-    setBusy(true);
-    setError(null);
-    try {
-      const puzzle = await generateAsync({ size: s, seed: randomSeed(), rules: FOG_RULES, difficulty: s === 9 ? 3 : 2, fog: true });
-      if (mine !== latest.current) return;
-      startGame({ key: `fog:${puzzle.seed}:${s}`, mode: 'fog', puzzle, fog: puzzle.fog ?? fogFor(puzzle), resume: false });
-    } catch {
-      if (mine === latest.current) setError('The board could not be made. Try again.');
-    } finally {
-      if (mine === latest.current) setBusy(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const last = lastGameKey('fog');
-    const saved = last ? getSavedGame(last) : null;
-    if (saved && saved.status !== 'solved' && saved.status !== 'failed') {
-      startGame({ key: saved.key, mode: 'fog', puzzle: saved.puzzle, fog: saved.fog });
-    } else void newBoard(9);
-  }, [newBoard]);
-
-  if (!game || game.mode !== 'fog') return <Loading title="Fog" text={error ?? 'Making a fog board.'} failed={!!error} />;
-  const size = game.puzzle.size;
-  const controls = (
-    <div className="cb-mode-bar" aria-busy={busy}>
-      <SizeSwitch size={size} onPick={(s) => void newBoard(s)} disabled={busy} />
-      <button type="button" className="cb-btn cb-mode-btn" onClick={() => void newBoard(size)} disabled={busy}>
-        <NewBoardIcon />
-        New board
-      </button>
-      <span className="cb-sr" role="status">
-        {busy ? 'Making a board.' : error ?? ''}
-      </span>
-    </div>
-  );
-  return (
-    <GameView
-      game={game}
-      title="Fog"
-      subtitle={sizeLabel(size)}
-      extra={controls}
-      next={{ label: 'New board', run: () => newBoard(size) }}
-    />
-  );
-}
-
-const DEFAULT_FREE: Omit<FreeOptions, 'seed'> = { size: 9, rules: ['thermo', 'arrow', 'cage', 'kropki'], difficulty: 2 };
+const DEFAULT_FREE: Omit<FreeOptions, 'seed'> = { size: 9, rules: ['thermo', 'arrow', 'cage', 'kropki'], difficulty: 2, fog: false };
 const LEVELS: [Difficulty, string][] = [
   [1, 'Gentle'],
   [2, 'Easy'],
@@ -193,7 +114,7 @@ function readFreeSetup(): Omit<FreeOptions, 'seed'> {
     const raw = localStorage.getItem('cellbound:v1:free');
     if (raw) {
       const v = decodeFree(raw);
-      if (v) return { size: v.size, rules: v.rules, difficulty: v.difficulty };
+      if (v) return { size: v.size, rules: v.rules, difficulty: v.difficulty, fog: !!v.fog };
     }
   } catch {
     /* ignore */
@@ -219,9 +140,10 @@ export function FreeScreen({ code }: { code?: string | null }) {
     setPhase('busy');
     setError(null);
     try {
-      const puzzle = await generateAsync({ size: o.size, seed: o.seed, rules: o.rules, difficulty: o.difficulty });
+      const puzzle = await generateAsync({ size: o.size, seed: o.seed, rules: o.rules, difficulty: o.difficulty, fog: !!o.fog });
       saveFreeSetup(o);
-      startGame({ key: `free:${encodeFree(o)}`, mode: 'free', puzzle, resume });
+      // Under fog, the engine's layout keeps the board solvable from what shows.
+      startGame({ key: `free:${encodeFree(o)}`, mode: 'free', puzzle, fog: o.fog ? (puzzle.fog ?? fogFor(puzzle)) : undefined, resume });
       setPhase('play');
     } catch {
       setError('The board could not be made. Try other rules.');
@@ -232,14 +154,14 @@ export function FreeScreen({ code }: { code?: string | null }) {
   useEffect(() => {
     const fromLink = code ? decodeFree(code) : null;
     if (fromLink) {
-      setSetup({ size: fromLink.size, rules: fromLink.rules, difficulty: fromLink.difficulty });
+      setSetup({ size: fromLink.size, rules: fromLink.rules, difficulty: fromLink.difficulty, fog: !!fromLink.fog });
       void start(fromLink);
       return;
     }
     const last = lastGameKey('free');
     const saved = last ? getSavedGame(last) : null;
     if (saved && saved.status !== 'solved' && saved.status !== 'failed') {
-      startGame({ key: saved.key, mode: 'free', puzzle: saved.puzzle });
+      startGame({ key: saved.key, mode: 'free', puzzle: saved.puzzle, fog: saved.fog });
       setPhase('play');
     } else setPhase('setup');
   }, [code, start]);
@@ -248,7 +170,7 @@ export function FreeScreen({ code }: { code?: string | null }) {
   if (phase === 'setup' || !game || game.mode !== 'free') {
     const toggle = (k: ClueKind) =>
       setSetup((s) => ({ ...s, rules: s.rules.includes(k) ? s.rules.filter((x) => x !== k) : [...s.rules, k] }));
-    // The groups explain themselves: a size, rule chips, and named levels. Their legends stay for screen readers.
+    // The groups explain themselves: a size, rule chips, named levels and fog. Their legends stay for screen readers.
     return (
       <Page title="Free play" back>
         <form
@@ -291,6 +213,15 @@ export function FreeScreen({ code }: { code?: string | null }) {
               ))}
             </div>
           </fieldset>
+          <fieldset>
+            <legend className="cb-sr">Fog</legend>
+            <div className="cb-checks">
+              <label className={setup.fog ? 'on' : ''}>
+                <input type="checkbox" checked={!!setup.fog} onChange={() => setSetup({ ...setup, fog: !setup.fog })} />
+                Fog
+              </label>
+            </div>
+          </fieldset>
           {error && <p className="cb-error">{error}</p>}
           <button type="submit" className="cb-btn primary cb-start">
             Start
@@ -317,7 +248,7 @@ export function FreeScreen({ code }: { code?: string | null }) {
     <GameView
       game={game}
       title="Free play"
-      subtitle={`${sizeLabel(game.puzzle.size)}, level ${game.puzzle.difficulty}`}
+      subtitle={`${sizeLabel(game.puzzle.size)}, level ${game.puzzle.difficulty}${game.fog ? ', in fog' : ''}`}
       extra={controls}
       shareUrl={`${appUrl()}?free=${encodeFree(opts)}`}
       next={{ label: 'Next board', run: () => start({ ...opts, seed: randomSeed() }, false) }}
@@ -325,7 +256,7 @@ export function FreeScreen({ code }: { code?: string | null }) {
   );
 }
 
-const MODE_NAMES: Record<ModeId, string> = { daily: 'Daily', run: 'Run', fog: 'Fog', free: 'Free play', learn: 'Learn' };
+const MODE_NAMES: Record<ModeId, string> = { daily: 'Daily', run: 'Run', free: 'Free play', learn: 'Learn' };
 
 export function StatsScreen() {
   // A player signed in on the leaderboard sees every device's games together.
@@ -451,7 +382,7 @@ export function SettingsScreen() {
           ]}
           onChange={(v) => s.update({ night: v })}
         />
-        {/* Fog and Run always check against the solution, whatever this says. */}
+        {/* Fog boards and Run always check against the solution, whatever this says. */}
         <Choice<MistakeSetting>
           legend="Mistakes"
           name="mistakes"

@@ -14,7 +14,7 @@ import { makeOffer } from './offers';
 import { REWARDS, rewardPool } from './rewards';
 import { stockFor } from './shop';
 import { modsFor, newRun, shareText } from './state';
-import { emptyStats, hardOpen, onRunEnd } from './stats';
+import { emptyStats, levelOpen, onRunEnd } from './stats';
 import { emptyStorage, isRunState, loadRunStorage, saveRunStorage, type StorageLike } from './storage';
 import { targetFor } from './targets';
 import { DIFFICULTY, SHOP } from './tuning';
@@ -88,24 +88,27 @@ describe('difficulty', () => {
     expect(shareText(newRun('t:share', null, 1)).split('\n')[0]).toMatch(/free run$/);
   });
 
-  it('keeps the best of each difficulty, counts wins on Easy apart, and opens Hard after a win on Normal', () => {
+  it('keeps the best of each difficulty, counts wins on Easy apart, and opens each level with a win on the one below', () => {
     const ended = (level: RunDifficulty, score: number, outcome: RunState['outcome']): RunState => ({ ...newRun(`t:${level}${score}`, null, 1, false, level), outcome, score });
-    let s = onRunEnd(emptyStats(), ended('easy', 900, 'won'), '2026-10-28');
+    expect(LEVELS.map((level) => levelOpen(emptyStats(), level))).toEqual([true, false, false]);
+    let s = onRunEnd(emptyStats(), ended('easy', 600, 'lost'), '2026-10-28');
+    expect(levelOpen(s, 'normal')).toBe(false);
+    s = onRunEnd(s, ended('easy', 900, 'won'), '2026-10-28');
     expect(s.bestEasy).toEqual({ score: 900, date: '2026-10-28' });
     expect(s.bestFree).toBeNull();
     expect([s.won, s.wonEasy]).toEqual([1, 1]);
-    expect(hardOpen(s)).toBe(false);
+    expect(LEVELS.map((level) => levelOpen(s, level))).toEqual([true, true, false]);
     s = onRunEnd(s, ended('normal', 700, 'lost'), '2026-10-28');
     expect(s.bestFree!.score).toBe(700);
-    expect(hardOpen(s)).toBe(false);
+    expect(levelOpen(s, 'hard')).toBe(false);
     s = onRunEnd(s, ended('normal', 800, 'won'), '2026-10-28');
-    expect(hardOpen(s)).toBe(true);
+    expect(levelOpen(s, 'hard')).toBe(true);
     s = onRunEnd(s, ended('hard', 1200, 'lost'), '2026-10-28');
     expect(s.bestHard!.score).toBe(1200);
     expect(s.bestFree!.score).toBe(800);
-    // A daily run is always Normal, so winning one opens Hard too.
+    // A daily run is always Normal, so winning one opens Normal and Hard.
     const daily: RunState = { ...newRun('t:day', '2026-10-28', 1), outcome: 'won', score: 500 };
-    expect(hardOpen(onRunEnd(emptyStats(), daily, '2026-10-28'))).toBe(true);
+    expect(LEVELS.map((level) => levelOpen(onRunEnd(emptyStats(), daily, '2026-10-28'), level))).toEqual([true, true, true]);
   });
 
   it('saves the pick and the new stats, and drops a run of a difficulty it does not know', () => {

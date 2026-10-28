@@ -79,7 +79,6 @@ test('pause blurs the board and stops play', async ({ page }) => {
 });
 
 const screens: [string, RegExp][] = [
-  ['Fog', /Fog/],
   ['Free play', /Free play/],
   ['Stats', /Stats/],
   ['Settings', /Settings/],
@@ -97,7 +96,7 @@ test('each menu screen opens', async ({ page }) => {
     await menu.getByRole('button', { name: new RegExp(`^${name}`) }).click();
     await expect(menu).toBeHidden();
     await expect(page.locator('.cb-top-title')).toHaveText(title);
-    if (name === 'Fog' || name === 'Free play') {
+    if (name === 'Free play') {
       await expect(page.locator('.cb-board, .cb-form').first()).toBeVisible();
     }
     await shot(page, name.toLowerCase().replace(' ', '-'));

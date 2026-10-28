@@ -9,9 +9,9 @@ import { useStats } from '../game/stats';
 import { extraModes, learn } from '../modes';
 import { useAccount } from '../sync/account';
 import { APP_NAME } from './brand';
-import { AboutIcon, CloseIcon, DailyIcon, FogIcon, FreeIcon, LearnIcon, PersonIcon, RunIcon, SettingsIcon, StatsIcon, TrophyIcon } from './icons';
+import { AboutIcon, CloseIcon, DailyIcon, FreeIcon, LearnIcon, PersonIcon, RunIcon, SettingsIcon, StatsIcon, TrophyIcon } from './icons';
 import { LeaderboardScreen } from './leaderboard';
-import { AboutScreen, DailyScreen, FogScreen, FreeScreen, Loading, SettingsScreen, StatsScreen } from './screens';
+import { AboutScreen, DailyScreen, FreeScreen, Loading, SettingsScreen, StatsScreen } from './screens';
 import { OPEN_EVENT, ShellContext, type ScreenId, type Shell } from './shell';
 import { useApplyTheme } from './theme';
 
@@ -20,7 +20,6 @@ const MENU_ICONS: Partial<Record<ScreenId, ReactNode>> = {
   daily: <DailyIcon />,
   'mode:run': <RunIcon />,
   'mode:learn': <LearnIcon />,
-  fog: <FogIcon />,
   free: <FreeIcon />,
   stats: <StatsIcon />,
   leaderboard: <TrophyIcon />,
@@ -29,7 +28,7 @@ const MENU_ICONS: Partial<Record<ScreenId, ReactNode>> = {
 };
 
 /** Names for the page title; the Daily uses the app's name alone. */
-const SCREEN_NAMES: Partial<Record<ScreenId, string>> = { fog: 'Fog', free: 'Free play', stats: 'Stats', leaderboard: 'Leaderboard', settings: 'Settings', about: 'About' };
+const SCREEN_NAMES: Partial<Record<ScreenId, string>> = { free: 'Free play', stats: 'Stats', leaderboard: 'Leaderboard', settings: 'Settings', about: 'About' };
 
 interface Route {
   screen: ScreenId;
@@ -155,9 +154,6 @@ export default function App() {
     case 'daily':
       body = <DailyScreen key={route.date ?? today} date={route.date ?? today} />;
       break;
-    case 'fog':
-      body = <FogScreen />;
-      break;
     case 'free':
       body = <FreeScreen code={route.code} />;
       break;
@@ -193,8 +189,7 @@ export default function App() {
   const items: { screen: ScreenId; name: string; blurb: string }[] = [
     { screen: 'daily', name: 'Daily', blurb: 'One shared puzzle a day.' },
     ...extraModes.map((m) => ({ screen: `mode:${m.id}` as ScreenId, name: m.name, blurb: m.blurb })),
-    { screen: 'fog', name: 'Fog', blurb: 'Correct digits clear the fog around them.' },
-    { screen: 'free', name: 'Free play', blurb: 'Pick the size, rules and difficulty.' },
+    { screen: 'free', name: 'Free play', blurb: 'Pick the size, rules and difficulty, with or without fog.' },
   ];
   const more: { screen: ScreenId; name: string }[] = [
     { screen: 'stats', name: 'Stats' },

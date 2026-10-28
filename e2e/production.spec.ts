@@ -43,10 +43,13 @@ test('works offline after the first visit', async ({ page, context }) => {
     .poll(() => page.evaluate(() => [...document.fonts].some((f) => /Sora/.test(f.family) && f.status === 'loaded')))
     .toBe(true);
 
-  // New boards from the worker: Fog opens on a 9x9, and makes another on request.
+  // New boards from the worker: Free play under fog opens on a 9x9, and makes another on request.
   await page.getByRole('button', { name: 'Menu' }).first().click();
-  await page.locator('dialog.cb-menu').getByRole('button', { name: /^Fog/ }).click();
+  await page.locator('dialog.cb-menu').getByRole('button', { name: /^Free play/ }).click();
+  await page.getByLabel('Fog', { exact: true }).check();
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.locator('.cb-board[data-size="9"]')).toBeVisible();
+  await expect(page.locator('.cb-fog.is-on').first()).toBeAttached();
   await page.getByRole('button', { name: 'New board' }).click();
   await expect(page.locator('.cb-board[data-size="9"]')).toBeVisible();
   expect(workers.some((u) => /worker/.test(u))).toBe(true);

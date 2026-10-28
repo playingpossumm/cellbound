@@ -105,7 +105,8 @@ test('a run shows each target before its board, scores the board and moves on', 
   await expect(page.locator('.cb-run-shape .cb-run-pip')).toHaveCount(9);
   await expect(page.locator('.cb-run-shape .cb-run-pip.is-boss')).toHaveCount(3);
   await page.getByRole('button', { name: 'Start Run' }).click();
-  await expect(page.locator('.cb-run-title')).toHaveText('Ante 1');
+  // A new player starts on Easy.
+  await expect(page.locator('.cb-run-title')).toHaveText('Ante 1 Easy');
   await expect(page.locator('.cb-run-board')).toHaveCount(3);
   await expect(page.locator('.cb-run-board.is-now .cb-run-board-target')).toHaveText(/\d/, { timeout: 30_000 });
   await shot(page, 'run-ante');
@@ -320,7 +321,7 @@ test('a run of the first Run is not resumed, its save is left alone, and its run
   await expect(page.getByRole('button', { name: 'Resume run' })).toHaveCount(0);
   await expect(page.locator('.cb-run-stats')).toContainText('Runs4');
   await page.getByRole('button', { name: 'Start Run' }).click();
-  await expect(page.locator('.cb-run-title')).toHaveText('Ante 1');
+  await expect(page.locator('.cb-run-title')).toHaveText('Ante 1 Easy');
   expect(await page.evaluate(() => localStorage.getItem('cellbound:run:v1'))).toBe(v1);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cellbound:run:v2') ?? '{}').current?.v)).toBe(2);
 });

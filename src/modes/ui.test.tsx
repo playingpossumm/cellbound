@@ -190,24 +190,31 @@ describe('Run screen', () => {
     expect(button('Start daily run')).toBeDefined();
     expect(button('Start Run')).toBeDefined();
     expect(text()).toContain('Not played');
-    // Three antes of three boards, every boss drawn larger, and three hearts.
+    // Three antes of three boards, every boss drawn larger, and a new player's four hearts on Easy.
     expect(host.querySelectorAll('.cb-run-shape .cb-run-pip')).toHaveLength(9);
     expect(host.querySelectorAll('.cb-run-shape .cb-run-pip.is-boss')).toHaveLength(3);
-    expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('3 hearts');
+    expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('4 hearts');
     expect(text()).not.toMatch(/How a run works|Everyone gets the same boards/);
   });
 
-  it('picks the free run’s difficulty under its button: Hard waits for a win, and the hearts drawn follow the pick', async () => {
+  it('starts a new player on Easy, opens Normal with a win on Easy, and draws the hearts of the pick', async () => {
     await run();
     const level = (name: string) => [...host.querySelectorAll<HTMLButtonElement>('.cb-run-levels button')].find((b) => b.textContent === name)!;
-    expect(level('Normal').getAttribute('aria-pressed')).toBe('true');
+    expect(level('Easy').getAttribute('aria-pressed')).toBe('true');
+    expect(level('Normal').getAttribute('aria-disabled')).toBe('true');
     expect(level('Hard').getAttribute('aria-disabled')).toBe('true');
+    expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('4 hearts');
+    await click(level('Normal'));
+    expect(text()).toContain('Win a run on Easy to open Normal.');
     await click(level('Hard'));
     expect(text()).toContain('Win a run on Normal to open Hard.');
+    // A win on Easy opens Normal, which a player who never picked moves up to.
+    await act(async () => useRunStore.setState({ data: { ...state().data, stats: { ...state().data.stats, won: 1, wonEasy: 1 } } }));
+    expect(level('Normal').getAttribute('aria-disabled')).toBeNull();
     expect(level('Normal').getAttribute('aria-pressed')).toBe('true');
+    expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('3 hearts');
     await click(level('Easy'));
     expect(level('Easy').getAttribute('aria-pressed')).toBe('true');
-    expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('4 hearts');
     await click(button('Start Run'));
     expect(state().run!.difficulty).toBe('easy');
     expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 1 Easy');
@@ -222,7 +229,7 @@ describe('Run screen', () => {
   it('shows the ante with each target before the board starts, then plays it with the score band', async () => {
     await run();
     await click(button('Start Run'));
-    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 1');
+    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 1 Easy');
     expect(host.querySelectorAll('.cb-run-board')).toHaveLength(3);
     await until(() => state().run!.targets[0] !== null, 'the first target', 20_000);
     const digits = (s: string | null | undefined) => (s ?? '').replace(/\D/g, '');
@@ -286,7 +293,8 @@ describe('Run screen', () => {
     await act(async () => {
       const g = getGame()!;
       const cell = g.puzzle.givens.findIndex((d) => !d);
-      for (const d of [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((x) => x !== g.puzzle.solution[cell]).slice(0, 3)) {
+      // A different wrong digit for each heart the run has.
+      for (const d of [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((x) => x !== g.puzzle.solution[cell]).slice(0, state().run!.hearts)) {
         actions.select(cell);
         actions.input(d);
       }
@@ -348,7 +356,7 @@ describe('Run screen', () => {
     expect(state().run!.coins).toBe(26);
     await click(button('Next board'));
     expect(state().run!).toMatchObject({ phase: 'select', slot: 3 });
-    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 2');
+    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 2 Easy');
   });
 
   it('keeps a lens picked while it moves, and drops the pick when it is sold, so a second tap cannot sell the next one', async () => {
@@ -376,7 +384,7 @@ describe('Run screen', () => {
     const r = state().run!;
     useRunStore.setState({ run: { ...r, perks: { prismShard: 2, peek: 1, lifeLink: 1 } } });
     await run();
-    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 1');
+    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 1 Easy');
     const pills = [...host.querySelectorAll('.cb-run-perk')];
     expect(pills.map((p) => p.textContent)).toEqual(['Life Link', 'Peek', 'Prism Shard×2']);
     expect(host.querySelector('.cb-run-detail')).toBeNull();
