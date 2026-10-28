@@ -1,11 +1,13 @@
 // The run summary: how it ended, the score, the best placement, the techniques by tier, the
 // nine boards, anything the run unlocked, and sharing. Two columns on a wide screen. A won run
 // opens on the prism of the play screen's band, which bursts once when the run was won in view.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { NewBadges } from '../../../app/badges';
 import { APP_NAME } from '../../../app/brand';
 import { EASE_OUT, moves, shakeLoose } from '../../../app/motion';
 import { soundWin } from '../../../app/sound';
 import { TECHNIQUES, type TechniqueId } from '../../../engine/techniques';
+import { allRunStats, useAccount } from '../../../sync/account';
 import { shareResult, type ShareOutcome } from '../../share';
 import { ANTES, KINDS, slotOf } from '../boards';
 import { TIER_NAMES } from '../items';
@@ -206,6 +208,10 @@ export function Summary({ run, dailyBest, fresh, onFree, onHome }: SummaryProps)
   const text = shareText(run);
   const best = run.results.reduce<RunState['results'][number]['best']>((b, r) => (r.best && (!b || r.best.points > b.points) ? r.best : b), null);
   const opened = unlockedNames(fresh);
+  // Every device's runs, with this one's fresh from the store rather than from its save.
+  const data = useRunStore((s) => s.data);
+  const others = useAccount((s) => s.others);
+  const runStats = useMemo(() => allRunStats(data.stats, others), [data.stats, others]);
   // How the run ended, in words, for screen readers; the track and the hearts show it.
   const how = text.split('\n')[1] ?? '';
   return (
@@ -238,6 +244,7 @@ export function Summary({ run, dailyBest, fresh, onFree, onHome }: SummaryProps)
 
         <div className="cb-run-sum-col">
           <Boards run={run} />
+          <NewBadges run={runStats} />
           {opened.length > 0 && (
             <section className="cb-run-unlocked" aria-labelledby="cb-run-new-h">
               <h2 id="cb-run-new-h" className="cb-run-h2">

@@ -14,6 +14,7 @@ import { LeaderboardScreen } from './leaderboard';
 import { AboutScreen, DailyScreen, FreeScreen, Loading, SettingsScreen, StatsScreen } from './screens';
 import { OPEN_EVENT, ShellContext, type ScreenId, type Shell } from './shell';
 import { useApplyTheme } from './theme';
+import { primeBadges, useBadges, useNewBadges } from './badges';
 
 /** An icon for each screen in the menu, so the list reads at a glance. */
 const MENU_ICONS: Partial<Record<ScreenId, ReactNode>> = {
@@ -92,6 +93,9 @@ export default function App() {
   const player = useAccount((s) => (s.token ? s.name : null));
 
   useEffect(() => onGameEnd((g) => useStats.getState().record(g)), []);
+  // Badges earned before badges arrived count as seen; a badge earned since marks Stats in the menu.
+  useEffect(primeBadges, []);
+  const badgesNew = useNewBadges(useBadges()).length > 0;
 
   // Counts visits, so choosing a mode from the menu always opens it at its start,
   // even when that mode is already on screen.
@@ -256,10 +260,12 @@ export default function App() {
                     type="button"
                     className={`cb-menu-item${route.screen === it.screen ? ' on' : ''}`}
                     aria-current={route.screen === it.screen ? 'page' : undefined}
+                    aria-label={it.screen === 'stats' && badgesNew ? 'Stats, a new badge' : undefined}
                     onClick={() => go(it.screen)}
                   >
                     {MENU_ICONS[it.screen]}
                     <span className="cb-menu-item-name">{it.name}</span>
+                    {it.screen === 'stats' && badgesNew && <span className="cb-menu-dot" aria-hidden="true" />}
                   </button>
                 </li>
               ))}

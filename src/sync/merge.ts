@@ -26,7 +26,10 @@ export function mergeStats(a: StatsData, b: StatsData): StatsData {
   }
   const daily = { ...a.daily };
   for (const [date, e] of Object.entries(b.daily)) daily[date] = daily[date] ? betterDaily(daily[date], e) : e;
-  return { solves: add(a.solves, b.solves), fails: add(a.fails, b.fails), times, daily, recorded: a.recorded };
+  // The badges' counts, only where a device has them, so stats without any stay as they were.
+  const fog = (a.fog ?? 0) + (b.fog ?? 0);
+  const rules = a.rules || b.rules ? add(a.rules ?? {}, b.rules ?? {}) : undefined;
+  return { solves: add(a.solves, b.solves), fails: add(a.fails, b.fails), times, daily, recorded: a.recorded, ...(fog ? { fog } : {}), ...(rules ? { rules } : {}) };
 }
 
 const higher = <T extends { score: number }>(a: T | null, b: T | null): T | null => (!a ? b : !b ? a : b.score > a.score ? b : a);
@@ -43,6 +46,7 @@ export function mergeRunStats(a: RunStats, b: RunStats): RunStats {
     started: a.started + b.started,
     won: a.won + b.won,
     wonEasy: a.wonEasy + b.wonEasy,
+    wonHard: (a.wonHard ?? 0) + (b.wonHard ?? 0),
     lost: a.lost + b.lost,
     abandoned: a.abandoned + b.abandoned,
     bestFree: higher(a.bestFree, b.bestFree),
@@ -51,6 +55,7 @@ export function mergeRunStats(a: RunStats, b: RunStats): RunStats {
     dailyBest,
     topAnte: Math.max(a.topAnte, b.topAnte),
     bosses: a.bosses + b.bosses,
+    bossRules: add(a.bossRules ?? {}, b.bossRules ?? {}),
     cleanBoards: a.cleanBoards + b.cleanBoards,
     codex,
     best: !a.best ? b.best : !b.best ? a.best : b.best.points > a.best.points ? b.best : a.best,

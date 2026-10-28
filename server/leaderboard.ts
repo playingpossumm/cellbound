@@ -104,12 +104,13 @@ export function cleanSnapshot(raw: unknown): Snapshot {
   };
   const best = obj(u.best);
   return {
-    stats: { solves: counts(s.solves), fails: counts(s.fails), times, daily },
+    stats: { solves: counts(s.solves), fails: counts(s.fails), times, daily, fog: num(s.fog), rules: counts(s.rules) },
     run: {
       ...BLANK_RUN,
       started: num(u.started),
       won: num(u.won),
       wonEasy: Math.min(num(u.won), num(u.wonEasy)),
+      wonHard: Math.min(num(u.won), num(u.wonHard)),
       lost: num(u.lost),
       abandoned: num(u.abandoned),
       bestFree: bestOf(u.bestFree),
@@ -118,6 +119,7 @@ export function cleanSnapshot(raw: unknown): Snapshot {
       dailyBest,
       topAnte: Math.min(3, num(u.topAnte)),
       bosses: num(u.bosses),
+      bossRules: counts(u.bossRules),
       cleanBoards: num(u.cleanBoards),
       codex,
       best: typeof best.points === 'number' && typeof best.technique === 'string' ? { technique: best.technique as NonNullable<Snapshot['run']['best']>['technique'], points: num(best.points) } : null,

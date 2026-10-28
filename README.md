@@ -48,6 +48,12 @@ Tap Log in at the top of the menu and choose a username and a 4-digit PIN. There
 
 Your stats go with your username. Log in with the same username and PIN on another phone or laptop, and from then on each device adds its games to the others': the streak, the Stats screen, the daily run you already played and the Run's unlocks all count every device. A board you are halfway through stays on the device you started it on. Log out in Settings to take a device off your username; your scores stay.
 
+## Badges
+
+The Stats screen holds twenty-one badges with three levels each, drawn as cut glass gems whose rim lights a third more of the spectrum at each level. They count the Dailies (a streak, how many, the fastest and the clean ones), the techniques placed in runs, the best run score and the biggest single placement, bosses and boss rules beaten, runs won on each difficulty, Run boards finished clean, Fiendish boards, fog boards, the rules played and the lessons finished. Tap a gem to see what it counts and how far its next level is.
+
+A new level shows on the result card of the game that earned it, or on the Run's summary, and one earned out of sight puts a dot by Stats in the menu until you see it. Badges read the stats the app already keeps, from every device for a player who is logged in, so whatever was played before them counts.
+
 ## Look
 
 Cellbound has one look, Prism, in a light and a dark version. Digits sit on glass cells in a single ink, so the board reads at a glance, under a band where a beam of white light splits into one ray per digit. Each digit owns the colour of its ray, which also marks its key on the pad. Select a cell with a digit and every cell holding that digit lights up in its colour, along with the matching pencil marks. On Auto the light or dark version follows your device, and Settings can keep either one.

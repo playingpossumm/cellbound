@@ -9,6 +9,7 @@ import { useSettings, type MistakeSetting, type NightSetting } from '../game/set
 import { bestStreak, currentStreak } from '../game/stats';
 import { leaveLeaderboard, useAccount, useAllStats } from '../sync/account';
 import type { ModeId } from '../game/types';
+import { BadgesCard } from './badges';
 import { APP_NAME } from './brand';
 import { GameView } from './GameView';
 import { NewBoardIcon, RulesIcon } from './icons';
@@ -280,6 +281,7 @@ export function StatsScreen() {
           </div>
         </dl>
       </section>
+      <BadgesCard />
       <section className="cb-card">
         <h2>Solves</h2>
         <dl className="cb-figures">

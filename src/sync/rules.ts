@@ -44,6 +44,7 @@ export const BLANK_RUN: RunStats = {
   started: 0,
   won: 0,
   wonEasy: 0,
+  wonHard: 0,
   lost: 0,
   abandoned: 0,
   bestFree: null,
@@ -52,6 +53,7 @@ export const BLANK_RUN: RunStats = {
   dailyBest: {},
   topAnte: 0,
   bosses: 0,
+  bossRules: {},
   cleanBoards: 0,
   codex: {},
   best: null,
@@ -67,6 +69,9 @@ export interface Standing {
   streak: number;
 }
 
+/** The best run score: a daily run's, or a free one's on Normal or Hard; Easy runs are left out. */
+export const bestRunScore = (run: RunStats): number => Math.max(run.bestFree?.score ?? 0, run.bestHard?.score ?? 0, ...Object.values(run.dailyBest).map((r) => r.score));
+
 export function standingOf(stats: StatsData, run: RunStats, dates: readonly string[]): Standing {
   const daily: Standing['daily'] = {};
   const drun: Standing['drun'] = {};
@@ -77,6 +82,5 @@ export function standingOf(stats: StatsData, run: RunStats, dates: readonly stri
     const r = run.dailyBest[d];
     if (r) drun[d] = r.score;
   }
-  const best = Math.max(run.bestFree?.score ?? 0, run.bestHard?.score ?? 0, ...Object.values(run.dailyBest).map((r) => r.score));
-  return { daily, drun, best, streak: bestStreak(stats.daily) };
+  return { daily, drun, best: bestRunScore(run), streak: bestStreak(stats.daily) };
 }

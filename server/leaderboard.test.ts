@@ -156,3 +156,13 @@ describe('a snapshot of runs at each difficulty', () => {
     expect(s.run.bestEasy).toBeNull();
   });
 });
+
+describe('a snapshot of what the badges count', () => {
+  it('keeps fog boards, rules, boss rules and wins on Hard, never more Hard wins than wins', () => {
+    const s = cleanSnapshot({ stats: { fog: 3, rules: { thermo: 2 } }, run: { won: 1, wonHard: 4, bossRules: { fog: 2 } } });
+    expect(s.stats.fog).toBe(3);
+    expect(s.stats.rules).toEqual({ thermo: 2 });
+    expect(s.run.wonHard).toBe(1);
+    expect(s.run.bossRules).toEqual({ fog: 2 });
+  });
+});

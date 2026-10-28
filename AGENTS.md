@@ -82,6 +82,13 @@ Run the unit tests, typecheck, build and e2e before calling a change done.
 - `server/store.ts` speaks to Redis through Upstash's REST API in production, from `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or the `UPSTASH_REDIS_REST_*` pair) that Vercel's Upstash integration sets; without them the functions answer 503 and the app says the leaderboard is not set up. The dev server serves `/api` from `server/` with a store in memory (`server/dev.ts`), so `npm run dev` and the e2e tests need no Redis; `vite preview` has no `/api`. The e2e tests share that store for a whole run, so each picks a name of its own.
 - The functions ship as plain JavaScript because Vercel's TypeScript builder cannot run on the project's TypeScript 7. `npm run build` bundles `server/entries` into `api/` before anything else reads it, so run it before `vercel build`; files under `api/_lib` are shared code, never routes.
 
+## Badges
+
+- `src/game/badges.ts` defines the twenty-one badges (`BADGES`, each with the steps for levels I to III and a `value` read from the game stats, the Run's stats and the lessons done) and works out levels and progress. It is pure and tested in `badges.test.ts`. `src/app/badges.tsx` draws each as a gem (`Gem`), the Stats screen's grid and card (`BadgesCard`) and the strip of new ones on the result card and the Run's summary (`NewBadges`).
+- A device keeps the levels it has announced in `cellbound:v1:badges`. The first time the app opens with badges, `primeBadges` counts what was earned before as seen, so nobody is handed a pile at once. A screen that announces new levels (`useAnnounced`) keeps them for the visit and marks them seen at once, which also holds under React's doubled effects in development. The menu puts a dot by Stats while a level is unannounced.
+- Badges need counts the stats did not keep before: `fog` and `rules` in the game stats (boards solved in fog, and per rule outside Learn), and `bossRules` and `wonHard` in the Run's. They sync like the rest (`merge.ts`, `cleanSnapshot`). Technique tiers come from `src/engine/techniqueNames.ts`, so the main bundle never loads the detector.
+- The result card may grow past the board on a short phone, over the band and the pad, which are idle once a game is over, so its buttons never scroll out of reach.
+
 ## Look
 
 - Prism is the only look, in a light and a dark version. Settings offers Auto, Light and Dark and has no look picker, because there is nothing to pick. Auto follows the device, and Prism's `defaultNight` decides when the device has no preference.

@@ -1251,8 +1251,8 @@ button {
 
 .cb-result-card {
   width: min(100%, 340px);
-  max-height: 100%;
-  overflow-y: auto;
+  /* Taller than the board on a short phone, it spills over the band and the pad, idle once the game
+     is over, so its buttons never scroll out of reach. */
   padding: 20px;
   border: 1px solid var(--cb-line-box);
   /* The board colour over the ground: solid even where a theme's board is see-through. */
@@ -1727,6 +1727,15 @@ button {
   font-weight: 500;
 }
 
+/* A badge not seen yet, by Stats. */
+.cb-menu-dot {
+  width: 8px;
+  height: 8px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--cb-accent);
+}
+
 /* Logged in: the name, quiet like the small list, cut short when it is long. */
 .cb-menu-you {
   min-height: 46px;
@@ -1897,6 +1906,222 @@ button {
 
 .cb-account-name {
   font-weight: 600;
+}
+
+/* Badges (src/app/badges.tsx): a cut glass gem per badge, whose rim lights a third more of the
+   spectrum at each level. */
+.cb-gem {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.cb-gem-rim {
+  fill: var(--pr-gem-rim, rgba(127, 127, 127, 0.12));
+}
+
+.cb-gem-body {
+  fill: var(--pr-gem-glass, transparent);
+  stroke: var(--pr-gem-edge, var(--cb-line-box));
+  stroke-width: 0.8;
+}
+
+.cb-gem-facets line {
+  stroke: var(--pr-gem-facet, transparent);
+  stroke-width: 0.7;
+}
+
+.cb-gem-shine {
+  fill: var(--pr-gem-shine, transparent);
+}
+
+.cb-gem-ink {
+  fill: none;
+  stroke: var(--cb-text);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cb-gem-glint {
+  fill: var(--pr-gem-glint, #fff);
+}
+
+.cb-gem .is-new,
+.cb-gem-glint {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.cb-gem.is-locked .cb-gem-ink {
+  opacity: 0.3;
+}
+
+.cb-gem.is-locked .cb-gem-body {
+  stroke-dasharray: 3 3;
+}
+
+.cb-gem.is-full {
+  filter: drop-shadow(0 0 7px color-mix(in oklch, var(--h7) var(--pr-gem-glow, 30%), transparent));
+}
+
+/* The Stats screen: the gems in a grid, a mark on any not shown yet, and the picked one's card. */
+.cb-badges-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cb-badges-head span {
+  color: var(--cb-text-dim);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cb-gems {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 12px 8px;
+  margin-top: 12px;
+}
+
+.cb-gem-btn {
+  position: relative;
+  display: block;
+  min-height: 44px;
+  padding: 4px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.cb-gem-btn[aria-pressed='true'] {
+  background: var(--cb-peer);
+  box-shadow: inset 0 0 0 1px var(--cb-line-box);
+}
+
+.cb-gem-btn.is-new::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--cb-accent);
+  box-shadow: 0 0 0 2px var(--cb-ground);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cb-gem-btn:hover {
+    background: var(--cb-peer);
+  }
+}
+
+.cb-badge-card {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--cb-peer);
+}
+
+.cb-badge-card h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.cb-badge-card p {
+  margin: 2px 0 8px;
+  font-size: 14px;
+  color: var(--cb-text-dim);
+}
+
+.cb-badge-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cb-badge-steps li {
+  padding: 2px 9px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--cb-line-box);
+  color: var(--cb-text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cb-badge-steps li.is-got {
+  background: var(--cb-text);
+  box-shadow: none;
+  color: var(--cb-ground);
+}
+
+.cb-badge-meter {
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: var(--cb-line-box);
+  overflow: hidden;
+}
+
+.cb-badge-meter span {
+  display: block;
+  height: 100%;
+  transform-origin: left;
+  background: linear-gradient(90deg, var(--h1, var(--cb-accent)), var(--h4, var(--cb-accent)), var(--h7, var(--cb-accent)), var(--h9, var(--cb-accent)));
+}
+
+.cb-badge-card .cb-badge-next {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Just earned: on the result card and the Run's summary, each gem drawing in its new level. */
+.cb-newbadges {
+  margin: 0 0 14px;
+}
+
+.cb-newbadges h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cb-text-dim);
+}
+
+.cb-newbadges ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cb-newbadges li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.cb-newbadges .cb-gem {
+  width: 36px;
 }
 
 /* A copy of some points on its way to the score (fly in motion.ts), above everything. Its size and

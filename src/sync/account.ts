@@ -72,8 +72,8 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 /** This device's own stats, as the server keeps them. */
 export function snapshotOf(stats: StatsData, run: RunStats): Snapshot {
-  const { solves, fails, times, daily } = stats;
-  return { stats: { solves, fails, times, daily }, run };
+  const { solves, fails, times, daily, fog, rules } = stats;
+  return { stats: { solves, fails, times, daily, fog, rules }, run };
 }
 
 /** The Run's stats from its save, or none yet. */
@@ -128,14 +128,18 @@ export function fetchBoards(date: string): Promise<Boards> {
 }
 
 /** The player's stats on every device: this one's, with the others' added in. */
+export function allStats(mine: StatsData = useStats.getState(), others: Snapshot | null = useAccount.getState().others): StatsData {
+  return others ? mergeStats(mine, { ...others.stats, recorded: [] }) : mine;
+}
+
 export function useAllStats(): StatsData {
   const mine = useStats();
   const others = useAccount((s) => s.others);
-  return useMemo(() => (others ? mergeStats(mine, { ...others.stats, recorded: [] }) : mine), [mine, others]);
+  return useMemo(() => allStats(mine, others), [mine, others]);
 }
 
-/** The Run's stats on every device. */
-export function allRunStats(mine: RunStats, others: Snapshot | null = useAccount.getState().others): RunStats {
+/** The Run's stats on every device; this device's come from the Run's save unless given. */
+export function allRunStats(mine: RunStats = savedRunStats(), others: Snapshot | null = useAccount.getState().others): RunStats {
   return others ? mergeRunStats(mine, others.run) : mine;
 }
 

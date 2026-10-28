@@ -3,6 +3,13 @@
    when that digit is picked. Contrast is checked per mode and board size in contrast.test.ts. */
 
 [data-theme="prism"][data-night="true"] {
+  --pr-gem-glass: rgba(255, 255, 255, 0.055);
+  --pr-gem-edge: rgba(255, 255, 255, 0.16);
+  --pr-gem-rim: rgba(255, 255, 255, 0.075);
+  --pr-gem-facet: rgba(255, 255, 255, 0.07);
+  --pr-gem-shine: rgba(255, 255, 255, 0.07);
+  --pr-gem-glint: #ffffff;
+  --pr-gem-glow: 42%;
   --pr-glass: rgba(255, 255, 255, 0.035);
   --pr-edge: rgba(255, 255, 255, 0.09);
   --pr-text: #eef1f6;
@@ -27,6 +34,13 @@
 }
 
 [data-theme="prism"][data-night="false"] {
+  --pr-gem-glass: rgba(255, 255, 255, 0.9);
+  --pr-gem-edge: rgba(10, 12, 17, 0.22);
+  --pr-gem-rim: rgba(10, 12, 17, 0.1);
+  --pr-gem-facet: rgba(10, 12, 17, 0.08);
+  --pr-gem-shine: rgba(255, 255, 255, 0.85);
+  --pr-gem-glint: oklch(0.8 0.16 85);
+  --pr-gem-glow: 22%;
   --pr-glass: rgba(255, 255, 255, 0.72);
   --pr-edge: rgba(10, 12, 17, 0.08);
   --pr-text: #12151c;
@@ -63,6 +77,8 @@
 [data-theme="prism"][data-night="true"] :is(.cb-game, .cb-board, .pr-band)[data-size="4"] {
   --h1: oklch(0.78 0.128 28); --h2: oklch(0.84 0.17 95); --h3: oklch(0.8 0.136 195); --h4: oklch(0.8 0.104 285);
 }
+/* Badges' gems and their progress light in the 9x9 hues (src/app/badges.tsx). */
+[data-theme="prism"][data-night="true"] :is(.cb-gem, .cb-badge-meter),
 [data-theme="prism"][data-night="true"] :is(.cb-game, .cb-board, .pr-band)[data-size="9"] {
   --h1: oklch(0.72 0.174 20); --h2: oklch(0.766 0.161 76); --h3: oklch(0.9 0.191 107);
   --h4: oklch(0.878 0.218 155); --h5: oklch(0.721 0.127 179); --h6: oklch(0.9 0.1 200);
@@ -75,6 +91,7 @@
 [data-theme="prism"][data-night="false"] :is(.cb-game, .cb-board, .pr-band)[data-size="4"] {
   --h1: oklch(0.52 0.17 28); --h2: oklch(0.505 0.104 95); --h3: oklch(0.495 0.084 195); --h4: oklch(0.515 0.15 285);
 }
+[data-theme="prism"][data-night="false"] :is(.cb-gem, .cb-badge-meter),
 [data-theme="prism"][data-night="false"] :is(.cb-game, .cb-board, .pr-band)[data-size="9"] {
   --h1: oklch(0.457 0.156 9); --h2: oklch(0.519 0.145 46); --h3: oklch(0.42 0.087 78);
   --h4: oklch(0.478 0.163 142); --h5: oklch(0.42 0.076 166); --h6: oklch(0.498 0.093 223);

@@ -13,6 +13,7 @@ import { currentStreak } from '../game/stats';
 import { useAllStats } from '../sync/account';
 import { useLessonDone } from '../modes';
 import { getTheme } from '../themes';
+import { NewBadges } from './badges';
 import { APP_NAME } from './brand';
 import { CheckIcon, EraseIcon, HintIcon, NotesIcon, PauseIcon, PlayIcon, ShareIcon, StatsIcon, UndoIcon } from './icons';
 import { PRESS } from './motion';
@@ -790,6 +791,7 @@ function ResultCard({ game, title, subtitle, next, shareUrl }: { game: GameState
             </div>
           )}
         </dl>
+        <NewBadges />
         <div className="cb-result-actions">
           {next && (
             <button type="button" className="cb-btn primary" onClick={next.run}>

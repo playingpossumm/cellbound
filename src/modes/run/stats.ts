@@ -2,6 +2,7 @@
 // counters, so there is no separate list to keep in step.
 import type { TechniqueId } from '../../engine/techniques';
 import { anteOf } from './boards';
+import type { BossRule } from './bosses';
 import { LENSES, type LensDef } from './lenses';
 import type { BestPlacement, BoardResult, RunDifficulty, RunOutcome, RunState, TechTally, UnlockId } from './model';
 import { REWARDS, type RewardDef } from './rewards';
@@ -16,8 +17,9 @@ export interface DailyRecord {
 export interface RunStats {
   started: number;
   won: number;
-  /** Of the runs won, those on Easy. A win on Normal opens Hard (hardOpen). */
+  /** Of the runs won, those on Easy and those on Hard; a win on the level below opens the next (levelOpen). */
   wonEasy: number;
+  wonHard: number;
   lost: number;
   abandoned: number;
   /** Highest score of any free run on Normal, which every free run was before there was a choice. */
@@ -29,8 +31,9 @@ export interface RunStats {
   dailyBest: Record<string, DailyRecord>;
   /** Furthest ante reached in any run, 0 to 3. */
   topAnte: number;
-  /** Boss boards cleared. */
+  /** Boss boards cleared, and how many of each rule. */
   bosses: number;
+  bossRules: Partial<Record<BossRule, number>>;
   /** Boards finished with every box clean. */
   cleanBoards: number;
   /** Placements and best single placement per technique, over every run. */
@@ -44,6 +47,7 @@ export function emptyStats(): RunStats {
     started: 0,
     won: 0,
     wonEasy: 0,
+    wonHard: 0,
     lost: 0,
     abandoned: 0,
     bestFree: null,
@@ -52,6 +56,7 @@ export function emptyStats(): RunStats {
     dailyBest: {},
     topAnte: 0,
     bosses: 0,
+    bossRules: {},
     cleanBoards: 0,
     codex: {},
     best: null,
@@ -81,7 +86,7 @@ export function addToCodex(s: RunStats, tech: TechTally, best: BestPlacement | n
 
 export function onBoardEnd(s: RunStats, r: BoardResult, boxesAllClean: boolean): RunStats {
   let next = addToCodex(s, r.tech, r.best);
-  if (r.status === 'cleared' && r.rule !== null) next = { ...next, bosses: next.bosses + 1 };
+  if (r.status === 'cleared' && r.rule !== null) next = { ...next, bosses: next.bosses + 1, bossRules: { ...next.bossRules, [r.rule]: (next.bossRules[r.rule] ?? 0) + 1 } };
   if (boxesAllClean && (r.status === 'cleared' || r.status === 'missed')) next = { ...next, cleanBoards: next.cleanBoards + 1 };
   return next;
 }
@@ -94,6 +99,7 @@ export function onRunEnd(s: RunStats, run: RunState, today: string): RunStats {
   if (run.outcome === 'won') {
     next.won += 1;
     if (level === 'easy') next.wonEasy += 1;
+    if (level === 'hard') next.wonHard += 1;
   } else if (run.outcome === 'lost') next.lost += 1;
   else next.abandoned += 1;
   if (run.daily) {

@@ -1,6 +1,7 @@
 // Solve statistics, Daily history and streaks.
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { ClueKind } from '../engine/types';
 import type { GameState, ModeId } from './types';
 import { localDate, shiftDate } from './logic';
 import { safeStorage } from './storage';
@@ -29,6 +30,10 @@ export interface StatsData {
   daily: Record<string, DailyEntry>;
   /** Save keys already counted, newest last. */
   recorded: string[];
+  /** Boards solved in fog, in any mode. */
+  fog?: number;
+  /** Boards solved with each rule, outside Learn. */
+  rules?: Partial<Record<ClueKind, number>>;
 }
 
 const EMPTY: StatsData = { solves: {}, fails: {}, times: {}, daily: {}, recorded: [] };
@@ -52,9 +57,18 @@ export function addResult(s: StatsData, g: GameState, today: string = localDate(
     times: { ...s.times },
     daily: { ...s.daily },
     recorded: [...s.recorded, g.key].slice(-400),
+    ...(s.fog ? { fog: s.fog } : {}),
+    ...(s.rules ? { rules: { ...s.rules } } : {}),
   };
   if (g.status === 'solved') {
     next.solves[g.mode] = (next.solves[g.mode] ?? 0) + 1;
+    if (g.fog) next.fog = (s.fog ?? 0) + 1;
+    // Learn's practice boards teach one rule each, so they leave Variety to real boards.
+    if (g.mode !== 'learn') {
+      const rules = { ...(s.rules ?? {}) };
+      for (const k of new Set(g.puzzle.clues.map((c) => c.kind))) rules[k] = (rules[k] ?? 0) + 1;
+      next.rules = rules;
+    }
     const k = timeKey(g.puzzle.size, g.puzzle.difficulty);
     const t = next.times[k] ?? { count: 0, totalMs: 0, bestMs: 0 };
     next.times[k] = {
@@ -90,6 +104,8 @@ function sanitize(raw: unknown): StatsData {
     times: obj(r.times) as StatsData['times'],
     daily: obj(r.daily) as StatsData['daily'],
     recorded: Array.isArray(r.recorded) ? r.recorded.filter((k) => typeof k === 'string') : [],
+    ...(typeof r.fog === 'number' ? { fog: r.fog } : {}),
+    ...(r.rules ? { rules: obj(r.rules) as StatsData['rules'] } : {}),
   };
 }
 

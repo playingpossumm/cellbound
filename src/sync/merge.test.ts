@@ -59,3 +59,14 @@ describe('runs at each difficulty, together', () => {
     expect(standingOf(stats(), both, []).best).toBe(700);
   });
 });
+
+describe('what the badges count, together', () => {
+  it('adds fog boards, rules, boss rules and wins on Hard', () => {
+    const both = mergeStats(stats({ fog: 2, rules: { thermo: 1 } }), stats({ fog: 1, rules: { thermo: 2, xv: 1 } }));
+    expect(both.fog).toBe(3);
+    expect(both.rules).toEqual({ thermo: 3, xv: 1 });
+    const runs = mergeRunStats({ ...emptyStats(), wonHard: 1, bossRules: { fog: 1 } }, { ...emptyStats(), wonHard: 2, bossRules: { fog: 2, mute: 1 } });
+    expect(runs.wonHard).toBe(3);
+    expect(runs.bossRules).toEqual({ fog: 3, mute: 1 });
+  });
+});

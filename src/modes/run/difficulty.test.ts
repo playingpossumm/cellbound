@@ -9,12 +9,12 @@ import { anteOf, kindOf, SLOT_COUNT, SLOT_SPECS, specFor } from './boards';
 import { bossAhead, bossesFor, BOSS_RULES, COUNTERS, SCOUT_STOCK, type BossRule } from './bosses';
 import { ITEMS } from './items';
 import { LENSES, lensPool } from './lenses';
-import type { RunDifficulty, RunState } from './model';
+import type { BoardResult, RunDifficulty, RunState } from './model';
 import { makeOffer } from './offers';
 import { REWARDS, rewardPool } from './rewards';
 import { stockFor } from './shop';
 import { modsFor, newRun, shareText } from './state';
-import { emptyStats, levelOpen, onRunEnd } from './stats';
+import { emptyStats, levelOpen, onBoardEnd, onRunEnd } from './stats';
 import { emptyStorage, isRunState, loadRunStorage, saveRunStorage, type StorageLike } from './storage';
 import { targetFor } from './targets';
 import { DIFFICULTY, SHOP } from './tuning';
@@ -109,6 +109,32 @@ describe('difficulty', () => {
     // A daily run is always Normal, so winning one opens Normal and Hard.
     const daily: RunState = { ...newRun('t:day', '2026-10-28', 1), outcome: 'won', score: 500 };
     expect(LEVELS.map((level) => levelOpen(onRunEnd(emptyStats(), daily, '2026-10-28'), level))).toEqual([true, true, true]);
+  });
+
+  it('counts the boss rules beaten and the runs won on Hard, for the badges', () => {
+    const board = (rule: BoardResult['rule'], status: BoardResult['status'] = 'cleared'): BoardResult => ({
+      slot: 2,
+      status,
+      score: 1,
+      target: 1,
+      coins: null,
+      heartsLost: 0,
+      heartsAfter: 3,
+      mistakes: 0,
+      hintsUsed: 0,
+      elapsedMs: 1,
+      tech: {},
+      best: null,
+      clean: 0,
+      rule,
+    });
+    let s = onBoardEnd(emptyStats(), board('fog'), false);
+    s = onBoardEnd(s, board('fog'), false);
+    s = onBoardEnd(s, board('glass', 'missed'), false);
+    expect(s.bossRules).toEqual({ fog: 2 });
+    expect(s.bosses).toBe(2);
+    s = onRunEnd(s, { ...newRun('t:hardwin', null, 1, false, 'hard'), outcome: 'won', score: 9 }, '2026-10-28');
+    expect([s.won, s.wonHard, s.wonEasy]).toEqual([1, 1, 0]);
   });
 
   it('saves the pick and the new stats, and drops a run of a difficulty it does not know', () => {
