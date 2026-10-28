@@ -15,6 +15,7 @@ import { getTheme } from '../themes';
 import { APP_NAME } from './brand';
 import { CheckIcon, EraseIcon, HintIcon, NotesIcon, PauseIcon, PlayIcon, ShareIcon, StatsIcon, UndoIcon } from './icons';
 import { PRESS } from './motion';
+import { soundKey } from './sound';
 import { kindsIn, RULE_NAMES, ruleText } from './rules';
 import { appUrl, shareResult } from './share';
 import { useShell } from './shell';
@@ -48,6 +49,11 @@ export interface GameViewProps {
   band?: ReactNode;
   /** Chips placed before the rule chips, for example a Run boss rule. */
   chipsLead?: ReactNode;
+  /**
+   * Sets the rule chips on the line of the mode's panel, after it, when they fit, and below it when
+   * they do not: a Run's lenses leave room for them, and a short phone needs the row.
+   */
+  chipsBeside?: boolean;
   /** Laid over the board without taking input, for example the Run's placement popups. */
   boardOverlay?: ReactNode;
   /** Hides the clock on a board with no time limit, for a mode whose score ignores time (a Run). */
@@ -62,6 +68,15 @@ export interface GameNote {
   text: string;
   action?: { label: string; run: () => void; disabled?: boolean };
 }
+
+/** A key or a tool under the pointer ticks (sound.ts) and squashes (motion.ts); a typed key does neither. */
+const KEY = {
+  ...PRESS,
+  onPointerDown(e: { button: number; currentTarget: Element }) {
+    if (e.button === 0 && !(e.currentTarget as HTMLButtonElement).disabled) soundKey();
+    PRESS.onPointerDown(e);
+  },
+};
 
 /** The two-column layout: a wide window, or a phone held sideways. Keep in step with base.css. */
 const WIDE = '(min-width: 900px), (min-width: 700px) and (max-height: 520px)';
@@ -84,6 +99,13 @@ function useMedia(query: string): boolean {
 const NO_NOTES = 'Notes are off for this board.';
 /** Smallest cell, in CSS pixels, that the stacked layout shrinks the board to when that avoids scrolling. */
 const MIN_CELL: Record<number, number> = { 4: 56, 6: 50, 9: 33 };
+/**
+ * On a short phone (Safari's bars showing, or an iPhone mini) a 9x9 may give up a little more, so a
+ * Run's full screen, with its lenses, chips and pad, fits without a scroll. Keep in step with the
+ * short-phone rules in base.css and run.css.
+ */
+const SHORT = '(max-width: 699px) and (max-height: 799px)';
+const MIN_CELL_SHORT: Record<number, number> = { ...MIN_CELL, 9: 30 };
 /** Largest board edge in the two-column layout, and stacked (an upright tablet). */
 const MAX_SIDE = 720;
 const MAX_STACKED_SIDE = 640;
@@ -144,7 +166,8 @@ function useBoardSide(playRef: React.RefObject<HTMLDivElement | null>, topRef: R
         }
         const room = Math.floor(smallViewportHeight() - rest);
         const cap = Math.max(240, Math.min(inner, MAX_STACKED_SIDE));
-        const floor = Math.min(cap, size * (MIN_CELL[size] ?? 52));
+        const minCell = (window.matchMedia?.(SHORT).matches ? MIN_CELL_SHORT : MIN_CELL)[size] ?? 52;
+        const floor = Math.min(cap, size * minCell);
         next = Math.max(floor, Math.min(cap, room));
       }
       next = Math.floor(next);
@@ -183,6 +206,7 @@ export function GameView({
   shareUrl,
   band,
   chipsLead,
+  chipsBeside,
   boardOverlay,
   quietClock,
   note,
@@ -445,6 +469,29 @@ export function GameView({
   const toolsOff = ended || paused;
   // A board with a set number of hints shows how many are left on the hint key.
   const hintsLeft = game.mods?.hints === undefined ? null : Math.max(0, game.mods.hints - game.hintsUsed);
+  const chips =
+    !hideRuleChips && (kinds.length > 0 || chipsLead) ? (
+      <div className="cb-chips" role="group" aria-label="Rules">
+        {chipsLead}
+        {kinds.map((k) => (
+          <RuleChip
+            key={k}
+            kind={k}
+            on={lit === k}
+            newRuleId={newRuleId}
+            onToggle={() => {
+              setNotice(null);
+              actions.dismissHint();
+              if (lit !== k) onNoteDismiss?.();
+              setLit(lit === k ? null : k);
+            }}
+          />
+        ))}
+        <span id={newRuleId} hidden>
+          New rule
+        </span>
+      </div>
+    ) : null;
 
   return (
     <div className="cb-game" data-mode={game.mode} data-size={n} style={{ ['--cb-side' as string]: `${side}px` }}>
@@ -541,37 +588,17 @@ export function GameView({
         </div>
 
         {(extra || hearts !== null) && (
-          <div className="cb-extra">
+          <div className={`cb-extra${chipsBeside && extra && chips ? ' has-chips' : ''}`}>
             {extra ?? (
               <p className="cb-hearts" aria-label={`${hearts} hearts left`}>
                 Hearts: {hearts}
               </p>
             )}
+            {chipsBeside && extra && chips}
           </div>
         )}
 
-        {!hideRuleChips && (kinds.length > 0 || chipsLead) && (
-          <div className="cb-chips" role="group" aria-label="Rules">
-            {chipsLead}
-            {kinds.map((k) => (
-              <RuleChip
-                key={k}
-                kind={k}
-                on={lit === k}
-                newRuleId={newRuleId}
-                onToggle={() => {
-                  setNotice(null);
-                  actions.dismissHint();
-                  if (lit !== k) onNoteDismiss?.();
-                  setLit(lit === k ? null : k);
-                }}
-              />
-            ))}
-            <span id={newRuleId} hidden>
-              New rule
-            </span>
-          </div>
-        )}
+        {!(chipsBeside && extra) && chips}
 
         {/* Spoken lines. The panel below shows the same text, for the eyes only. */}
         <p className="cb-sr" aria-live="polite">
@@ -611,7 +638,7 @@ export function GameView({
                 aria-label={`${game.notesMode ? 'Note' : 'Enter'} ${d}${done ? ', all placed' : ''}`}
                 onClick={() => enter(d)}
                 disabled={toolsOff}
-                {...PRESS}
+                {...KEY}
               >
                 <span className="cb-key-d">{d}</span>
                 {done && (
@@ -625,8 +652,8 @@ export function GameView({
         </div>
 
         {/* Each tool's data-key shows in its corner once the keyboard has been used (base.css). The
-            keys and tools squash under the pointer and spring back (PRESS); a key typed on the
-            keyboard moves nothing. */}
+            keys and tools tick and squash under the pointer (KEY); a key typed on the keyboard
+            does neither. */}
         <div className="cb-tools" role="group" aria-label="Tools">
           <button
             type="button"
@@ -637,7 +664,7 @@ export function GameView({
             title="Undo (Z)"
             onClick={actions.undo}
             disabled={toolsOff || !game.undo.length}
-            {...PRESS}
+            {...KEY}
           >
             <UndoIcon />
           </button>
@@ -650,7 +677,7 @@ export function GameView({
             title="Erase (E)"
             onClick={actions.erase}
             disabled={toolsOff}
-            {...PRESS}
+            {...KEY}
           >
             <EraseIcon />
           </button>
@@ -664,7 +691,7 @@ export function GameView({
             title={game.mods?.noNotes ? NO_NOTES : 'Notes (N)'}
             onClick={actions.toggleNotes}
             disabled={toolsOff || !!game.mods?.noNotes}
-            {...PRESS}
+            {...KEY}
           >
             <NotesIcon />
           </button>
@@ -677,7 +704,7 @@ export function GameView({
             title="Hint (H)"
             onClick={doHint}
             disabled={toolsOff}
-            {...PRESS}
+            {...KEY}
           >
             <HintIcon />
             {hintsLeft !== null && (

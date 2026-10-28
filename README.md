@@ -52,6 +52,8 @@ The board moves a little. A key squashes under your finger and springs back, a p
 
 With reduced motion, from the device or from Settings, all of it stays still.
 
+Every digit also plays its own note, so a solve plays back as a tune, a digit the board marks as wrong buzzes low, and a Run's big moments climb the scale. The Sound switch in Settings turns it off, and on an iPhone the ring switch silences it too. A wrong digit only buzzes when the board already shows it as wrong, so the sound never gives an answer away.
+
 ## Run it
 
 You need Node.js 22.12 or newer.

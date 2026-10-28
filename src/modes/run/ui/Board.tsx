@@ -4,6 +4,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import type { GameNote, GameViewProps } from '../../../app/GameView';
 import { bump, EASE_OUT, fly, moves, scale, shake, shakeLoose, spring } from '../../../app/motion';
+import { soundBeat, soundChime, soundChord, soundCoins } from '../../../app/sound';
 import { useReducedMotion } from '../../../app/theme';
 import { TECHNIQUES, type TechniqueId } from '../../../engine/techniques';
 import { getGame, startGame, useGame } from '../../../game/store';
@@ -83,7 +84,8 @@ function TallyShow({ t }: { t: TallyFx }) {
       landSoon(t.id);
     };
   }, [plan, t.id, t.points]);
-  // Each beat bumps what it changed, and the last one shakes the sum.
+  // Each beat bumps what it changed and sounds a note higher, from where the flow stands; the last
+  // one shakes the sum and plays a chord.
   const was = useRef<Beat | null>(null);
   useEffect(() => {
     const b = plan.beats[beat];
@@ -91,12 +93,14 @@ function TallyShow({ t }: { t: TallyFx }) {
     const prev = was.current;
     if (!prev || prev.marks !== b.marks) bump(marks.current, 0.16);
     if (b.mult !== null && prev?.mult !== b.mult) bump(mult.current, 0.16);
+    const pitch = Math.max(0, Math.min(5, Math.round((t.flow - 1) * 10))) + beat;
     if (b.points) {
       bump(points.current, 0.2);
       shake(line.current, t.tier >= 6 ? 6 : 3.5);
-    }
+      soundChord(pitch);
+    } else soundBeat(pitch);
     was.current = b;
-  }, [beat, plan, t.tier]);
+  }, [beat, plan, t.tier, t.flow]);
   const b = plan.full ? (plan.beats[beat] ?? null) : null;
   const wait = (on: boolean) => (plan.full && !on ? ' is-wait' : '');
   return (
@@ -145,10 +149,13 @@ function ScoreBand({ run }: { run: RunState }) {
   const score = useCountUp(landed, 240);
   const scoreEl = useRef<HTMLSpanElement>(null);
   const before = useRef(landed);
+  const target = now?.target ?? 0;
   useEffect(() => {
     if (landed > before.current) bump(scoreEl.current, 0.08);
+    // The points that take the score past its target chime.
+    if (target > 0 && before.current < target && landed >= target) soundChime();
     before.current = landed;
-  }, [landed]);
+  }, [landed, target]);
   if (!now) return null;
   const last = popups[popups.length - 1];
   const met = landed >= now.target;
@@ -449,7 +456,8 @@ function PanelShow({ run, r, onNext }: { run: RunState; r: BoardResult; onNext: 
     if (!motion || !step.rows) return;
     spring(body.current?.rows[step.rows - 1]?.querySelector('.cb-run-tierdot'), 0.4, 1, scale, 600, 18);
     bump(num.current, 0.06);
-  }, [motion, step.rows]);
+    if (!step.coins) soundBeat(step.rows);
+  }, [motion, step.rows, step.coins]);
 
   // Cleared stamps in a moment after the score passes the target.
   const crossed = motion && cleared && !step.stamped && at >= r.target;
@@ -469,6 +477,7 @@ function PanelShow({ run, r, onNext }: { run: RunState; r: BoardResult; onNext: 
     }
     spring(title.current, 1.35, 1, scale, 420, 18);
     shakeLoose(title.current, { lift: 12, tilt: 10, k: 380, c: 14, gap: 40 });
+    soundChord(5);
     shake(panel.current, 3 * Math.min(2.5, ratio));
     if (flare.current) {
       flare.current.style.opacity = String(glow * 0.6);
@@ -476,10 +485,21 @@ function PanelShow({ run, r, onNext }: { run: RunState; r: BoardResult; onNext: 
     }
   }, [motion, cleared, step.stamped, step.coins, glow, ratio]);
 
-  // The coin turns as the coins come in.
+  // The coin turns as the coins come in, a tick for each.
   useLayoutEffect(() => {
-    if (motion && step.coins) coin.current?.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(360deg)' }], { duration: 520, easing: EASE_OUT });
-  }, [motion, step.coins]);
+    if (!motion || !step.coins) return;
+    coin.current?.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(360deg)' }], { duration: 520, easing: EASE_OUT });
+    soundCoins(r.coins?.total ?? 0);
+  }, [motion, step.coins, r.coins]);
+
+  // Without motion the tally shows at once, and so do its chord and its coins.
+  useEffect(() => {
+    if (motion) return;
+    if (cleared) soundChord(5);
+    soundCoins(r.coins?.total ?? 0);
+    // Once, as the tally shows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const c = r.coins;
   const skip = (e: React.PointerEvent) => {
@@ -635,6 +655,7 @@ export function BoardScreen({ run, GameViewComponent }: { run: RunState; GameVie
       subtitle={run.daily ? formatDateLong(run.daily) : 'Free run'}
       band={<ScoreBand key={key} run={run} />}
       extra={<LensRow run={run} pick={pick} onPick={setPick} />}
+      chipsBeside
       chipsLead={
         rule || bet ? (
           <>

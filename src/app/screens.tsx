@@ -12,6 +12,7 @@ import { APP_NAME } from './brand';
 import { GameView } from './GameView';
 import { NewBoardIcon, RulesIcon } from './icons';
 import { KeyList } from './keys';
+import { soundOn } from './sound';
 import { TopBar } from './TopBar';
 import { ALL_KINDS, RULE_NAMES } from './rules';
 import { appUrl, decodeFree, encodeFree, type FreeOptions } from './share';
@@ -471,6 +472,14 @@ export function SettingsScreen() {
           <Toggle label="Highlights" checked={s.highlights} onChange={(v) => s.update({ highlights: v })} />
           <Toggle label="Timer" checked={!s.hideTimer} onChange={(v) => s.update({ hideTimer: !v })} />
           <Toggle label="Reduce motion" checked={s.reducedMotion === 'on'} onChange={(v) => s.update({ reducedMotion: v ? 'on' : 'auto' })} />
+          <Toggle
+            label="Sound"
+            checked={s.sound}
+            onChange={(v) => {
+              s.update({ sound: v });
+              if (v) soundOn();
+            }}
+          />
         </fieldset>
       </form>
       <section className="cb-keys">

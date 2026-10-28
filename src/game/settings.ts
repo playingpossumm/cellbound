@@ -18,6 +18,8 @@ export interface Settings {
   hideTimer: boolean;
   /** 'on' forces reduced motion; 'auto' follows the device. */
   reducedMotion: MotionSetting;
+  /** Short notes on each move (sound.ts). On an iPhone the ring switch silences them too. */
+  sound: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -28,6 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   highlights: true,
   hideTimer: false,
   reducedMotion: 'auto',
+  sound: true,
 };
 
 interface SettingsStore extends Settings {
@@ -52,6 +55,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     highlights: typeof r.highlights === 'boolean' ? r.highlights : DEFAULT_SETTINGS.highlights,
     hideTimer: typeof r.hideTimer === 'boolean' ? r.hideTimer : DEFAULT_SETTINGS.hideTimer,
     reducedMotion: pick(r.reducedMotion, ['auto', 'on'] as const, DEFAULT_SETTINGS.reducedMotion),
+    sound: typeof r.sound === 'boolean' ? r.sound : DEFAULT_SETTINGS.sound,
   };
 }
 

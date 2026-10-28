@@ -4,6 +4,7 @@
 // pointer; the one taken lifts and flies up into the run while the others drop away.
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { EASE_IN_OUT, EASE_OUT, moves } from '../../../app/motion';
+import { soundDeal, soundTake } from '../../../app/sound';
 import { anteOf, slotOf } from '../boards';
 import { BOSS_NAMES, bossText } from '../bosses';
 import type { RewardId, RunState } from '../model';
@@ -130,6 +131,12 @@ export function Reward({ run, onTake, onPass, onHome }: RewardProps) {
   }, []);
   const offer = run.offer;
   const cards = offer?.cards ?? [];
+  // The cards deal in with a note each, a step apart.
+  useEffect(() => {
+    cards.forEach((_, k) => soundDeal(k));
+    // Once, as the hand is dealt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // The card taken lifts and flies up to the run's row of hearts and coins in 640 ms, the others
   // drop away, and then the card is the run's.
@@ -187,6 +194,7 @@ export function Reward({ run, onTake, onPass, onHome }: RewardProps) {
   const scout = !!run.perks.scout && offer.kind !== 'boss' && !resultOf(run, bossSlot) ? run.bosses[anteOf(run.slot) - 1] : null;
   const take = () => {
     if (!chosen || leaving) return;
+    soundTake();
     if (moves()) setLeaving(chosen);
     else onTake(chosen);
   };

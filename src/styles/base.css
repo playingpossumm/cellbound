@@ -482,6 +482,22 @@ button {
   gap: 6px;
 }
 
+/* A mode's panel with the rule chips beside it (chipsBeside, a Run's lenses): one line when they
+   fit, the chips taking the room left, and the chips on a line of their own when they do not. */
+.cb-extra.has-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.cb-extra.has-chips > .cb-chips {
+  flex: 1 1 auto;
+  width: auto;
+  max-width: none;
+  margin-top: 0;
+}
+
 .cb-chip {
   position: relative;
   flex: 1 1 auto;

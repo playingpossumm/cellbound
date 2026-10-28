@@ -2,6 +2,7 @@
 // the track of nine boards, the score meter, lens and item tiles and reward cards.
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { bump, EASE_IN_OUT, moves, scale, spring } from '../../../app/motion';
+import { soundLand } from '../../../app/sound';
 import { TopBar } from '../../../app/TopBar';
 import { useReducedMotion } from '../../../app/theme';
 import { useScreenEntry } from '../../screenEntry';
@@ -213,6 +214,7 @@ function useArrival(key: string, ref: RefObject<HTMLElement | null>): void {
     if (!a.from) {
       spring(el, 0.82, 1, scale, 520, 18);
       el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+      soundLand();
       return;
     }
     const to = el.getBoundingClientRect();
@@ -227,7 +229,10 @@ function useArrival(key: string, ref: RefObject<HTMLElement | null>): void {
       ],
       { duration: 640, easing: EASE_IN_OUT },
     ).finished.then(
-      () => bump(el, 0.12),
+      () => {
+        bump(el, 0.12);
+        soundLand();
+      },
       () => undefined,
     );
     // Once, on the tile's first draw.

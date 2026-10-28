@@ -1,6 +1,7 @@
 // The shop after a board: two lenses and two consumables for sale, a reroll, and the run's own
 // lenses to sell or reorder (they fire in slot order). The stock deals in as the shop opens and on
 // every reroll, and a lens or an ink bought flies from its card into the loadout.
+import { soundCoins } from '../../../app/sound';
 import { itemById } from '../items';
 import { lensById } from '../lenses';
 import type { RunState } from '../model';
@@ -25,7 +26,16 @@ const tileOf = (button: Element) => button.closest('li')?.querySelector('.cb-run
 
 function Price({ value, can, label, onClick }: { value: number; can: boolean; label: string; onClick: (button: HTMLButtonElement) => void }) {
   return (
-    <button type="button" className="cb-run-btn is-price" disabled={!can} aria-label={`${label} for ${value} coins`} onClick={(e) => onClick(e.currentTarget)}>
+    <button
+      type="button"
+      className="cb-run-btn is-price"
+      disabled={!can}
+      aria-label={`${label} for ${value} coins`}
+      onClick={(e) => {
+        soundCoins(3);
+        onClick(e.currentTarget);
+      }}
+    >
       <CoinIcon className="cb-run-coin" />
       {value}
     </button>

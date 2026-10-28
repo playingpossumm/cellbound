@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { APP_NAME } from '../../../app/brand';
 import { EASE_OUT, moves, shakeLoose } from '../../../app/motion';
+import { soundWin } from '../../../app/sound';
 import { TECHNIQUES, type TechniqueId } from '../../../engine/techniques';
 import { shareResult, type ShareOutcome } from '../../share';
 import { ANTES, KINDS, slotOf } from '../boards';
@@ -80,8 +81,10 @@ function WinBand({ text, play }: { text: string; play: boolean }) {
   useEffect(() => {
     if (!play) return;
     runActions.celebrated();
-    if (!moves()) return;
-    const t = setTimeout(() => svg.current && burst(svg.current, h1.current), 250);
+    const t = setTimeout(() => {
+      soundWin();
+      if (moves() && svg.current) burst(svg.current, h1.current);
+    }, 250);
     return () => clearTimeout(t);
   }, [play]);
   return (
