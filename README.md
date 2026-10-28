@@ -1,6 +1,6 @@
 # Cellbound
 
-Cellbound is a variant sudoku game that runs in the browser and installs as an app on phones and laptops. It opens straight into the day's puzzle, and every board is made or stored on your device. Progress stays in the browser's local storage, there is no advertising, and after the first visit the whole app works offline. A leaderboard is there for anyone who wants it: a name and a 4-digit PIN put your results on boards everyone shares, and nothing leaves your device until you join.
+Cellbound is a variant sudoku game that runs in the browser and installs as an app on phones and laptops. It opens straight into the day's puzzle, and every board is made or stored on your device. Progress stays in the browser's local storage, there is no advertising, and after the first visit the whole app works offline. A leaderboard is there for anyone who wants it. Logging in takes only a username and a 4-digit PIN, with no email or password, and nothing leaves your device until you do.
 
 Play it at [cellbound-sudoku.vercel.app](https://cellbound-sudoku.vercel.app).
 
@@ -46,9 +46,9 @@ A hint comes in three steps for the same deduction. The first shows where to loo
 
 ## Leaderboard
 
-Open Leaderboard from the menu and choose a name and a 4-digit PIN. Four boards rank everyone who has joined: today's Daily by time (a Daily counts on its own day), today's daily run by score, the best run anyone has played, and the longest Daily streak. Your own row is lit, and players level on a board share a place.
+Tap Log in at the top of the menu and choose a username and a 4-digit PIN. There is no email, password or sign-up, and a new username is yours straight away. Four boards rank everyone who has logged in: today's Daily by time (a Daily counts on its own day), today's daily run by score, the best run anyone has played, and the longest Daily streak. Your own row is lit, and players level on a board share a place.
 
-Your stats go with your name. Type the same name and PIN on another phone or laptop and it signs in, and from then on each device adds its games to the others': the streak, the Stats screen, the daily run you already played and the Run's unlocks all count every device. A board you are halfway through stays on the device you started it on. Sign out in Settings to take a device off your name; your scores stay.
+Your stats go with your username. Log in with the same username and PIN on another phone or laptop, and from then on each device adds its games to the others': the streak, the Stats screen, the daily run you already played and the Run's unlocks all count every device. A board you are halfway through stays on the device you started it on. Log out in Settings to take a device off your username; your scores stay.
 
 ## Look
 

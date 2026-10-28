@@ -89,7 +89,7 @@ function savedRunStats(): RunStats {
 
 /** Joins with a name and PIN: a new name, or the player's own on another device. */
 export async function joinLeaderboard(name: string, pin: string): Promise<void> {
-  if (!validName(name)) throw new LeaderboardError(400, 'A name is 2 to 16 letters or digits.');
+  if (!validName(name)) throw new LeaderboardError(400, 'A username is 2 to 16 letters or digits.');
   if (!validPin(pin)) throw new LeaderboardError(400, 'A PIN is 4 digits.');
   const { device } = useAccount.getState();
   const r = await call<{ token: string; name: string; others: Snapshot }>('/api/join', { method: 'POST', body: JSON.stringify({ name: cleanName(name), pin, device }) });

@@ -491,12 +491,12 @@ export function SettingsScreen() {
             <div className="cb-account">
               <span className="cb-account-name">{player}</span>
               <button type="button" className="cb-btn" onClick={leaveLeaderboard}>
-                Sign out
+                Log out
               </button>
             </div>
           ) : (
             <button type="button" className="cb-btn" onClick={() => shell.go('leaderboard')}>
-              Join
+              Log in
             </button>
           )}
         </fieldset>
@@ -514,7 +514,7 @@ export function AboutScreen() {
     <Page title="About" back>
       <section className="cb-card cb-prose">
         <p>{APP_NAME} is variant sudoku: a shared Daily, roguelite runs, fog boards, free play and a lesson for each rule.</p>
-        <p>The game runs on your device. If you join the leaderboard, it keeps the name and PIN you choose with your scores and history, so they follow you to another device. There are no ads.</p>
+        <p>The game runs on your device. If you log in, the leaderboard keeps the username and PIN you choose with your scores and history, so they follow you to another device. There are no ads.</p>
         <p>Released under the MIT licence.</p>
       </section>
     </Page>

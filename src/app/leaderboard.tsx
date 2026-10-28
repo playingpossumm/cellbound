@@ -1,6 +1,7 @@
 // The leaderboard: today's Daily by time, today's Daily Run by score, the best run and the longest
-// Daily streak, for everyone who plays. A device joins with a name and a 4-digit PIN; the same name
-// and PIN on another device bring the player's history and scores along (src/sync/account.ts).
+// Daily streak, for everyone who plays. A device logs in with a username and a 4-digit PIN and
+// nothing else: a new username is made on the spot, and the same username and PIN on another device
+// bring the player's history and scores along (src/sync/account.ts).
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { dailyDate } from '../engine';
 import { formatTime } from '../game/logic';
@@ -30,13 +31,13 @@ const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 export function LeaderboardScreen() {
   const token = useAccount((s) => s.token);
   return (
-    <Page title="Leaderboard" back>
-      {token ? <BoardView /> : <JoinForm />}
+    <Page title={token ? 'Leaderboard' : 'Log in'} back>
+      {token ? <BoardView /> : <LogInForm />}
     </Page>
   );
 }
 
-function JoinForm() {
+function LogInForm() {
   const [name, setName] = useState(() => useAccount.getState().name ?? '');
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
@@ -54,8 +55,11 @@ function JoinForm() {
   };
   return (
     <form className="cb-form cb-join" onSubmit={submit} aria-describedby="cb-join-d">
+      <p id="cb-join-d" className="cb-join-note">
+        Just a username and a 4-digit PIN.
+      </p>
       <label className="cb-field">
-        <span>Name</span>
+        <span>Username</span>
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={16} autoComplete="nickname" autoCapitalize="words" spellCheck={false} required />
       </label>
       <label className="cb-field">
@@ -71,16 +75,13 @@ function JoinForm() {
           required
         />
       </label>
-      <p id="cb-join-d" hidden>
-        Choose a name and a 4-digit PIN. The same name and PIN on another device bring your scores and history with you.
-      </p>
       {error && (
         <p className="cb-error" role="alert">
           {error}
         </p>
       )}
       <button type="submit" className="cb-btn primary cb-join-go" disabled={busy}>
-        Join
+        Log in
       </button>
     </form>
   );

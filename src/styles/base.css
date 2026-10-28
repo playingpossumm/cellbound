@@ -1662,6 +1662,15 @@ button {
   color: var(--cb-accent);
 }
 
+/* Log in, or the name this device plays under, between the app's name and the modes. */
+.cb-menu-account {
+  margin: -4px 0 14px;
+}
+
+.cb-menu-login {
+  margin-left: 8px;
+}
+
 .cb-menu-list {
   list-style: none;
   margin: 0 0 16px;
@@ -1714,6 +1723,28 @@ button {
 }
 
 .cb-menu-list.small .cb-menu-item-name {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Logged in: the name, quiet like the small list, cut short when it is long. */
+.cb-menu-you {
+  min-height: 46px;
+  color: var(--cb-text-dim);
+}
+
+.cb-menu-you .cb-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--cb-text-dim);
+}
+
+.cb-menu-you .cb-menu-item-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 16px;
   font-weight: 500;
 }
@@ -1810,11 +1841,17 @@ button {
   margin: 48px auto;
 }
 
-/* Joining the leaderboard: a name, a PIN and the button. */
+/* Logging in: what it takes, a username, a PIN and the button. */
 .cb-join {
   display: grid;
   gap: 16px;
   max-width: 360px;
+}
+
+.cb-join-note {
+  margin: 0;
+  color: var(--cb-text-dim);
+  line-height: 1.45;
 }
 
 .cb-field {

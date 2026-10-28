@@ -166,11 +166,11 @@ export async function join(store: Store, body: unknown): Promise<{ token: string
   const name = cleanName(String(b.name ?? ''));
   const pin = String(b.pin ?? '');
   const device = String(b.device ?? '');
-  if (!validName(name)) throw new Refusal(400, 'A name is 2 to 16 letters or digits.');
+  if (!validName(name)) throw new Refusal(400, 'A username is 2 to 16 letters or digits.');
   if (!validPin(pin)) throw new Refusal(400, 'A PIN is 4 digits.');
   if (!/^[\w-]{8,64}$/.test(device)) throw new Refusal(400, 'This device could not be read. Reload and try again.');
   const key = nameKey(name);
-  if ((await store.count(keys.tries(key), TRIES_SECONDS)) > TRIES) throw new Refusal(429, 'Too many tries for that name. Try again in a few minutes.');
+  if ((await store.count(keys.tries(key), TRIES_SECONDS)) > TRIES) throw new Refusal(429, 'Too many tries for that username. Try again in a few minutes.');
   const salt = randomId(16);
   const fresh: Player = { name, salt, hash: await hashPin(pin, salt), created: Date.now() };
   let player = fresh;
@@ -178,9 +178,9 @@ export async function join(store: Store, body: unknown): Promise<{ token: string
     await store.hset(keys.names, key, name);
   } else {
     player = JSON.parse((await store.get(keys.player(key)))!) as Player;
-    if ((await hashPin(pin, player.salt)) !== player.hash) throw new Refusal(403, 'That name is taken, or the PIN is wrong.');
+    if ((await hashPin(pin, player.salt)) !== player.hash) throw new Refusal(403, 'That username is taken, or the PIN is wrong.');
     const devices = await devicesOf(store, key);
-    if (!devices[device] && Object.keys(devices).length >= MAX_DEVICES) throw new Refusal(409, `That name is on ${MAX_DEVICES} devices already.`);
+    if (!devices[device] && Object.keys(devices).length >= MAX_DEVICES) throw new Refusal(409, `That username is on ${MAX_DEVICES} devices already.`);
   }
   const token = randomId();
   await store.set(keys.token(await sha256(token)), JSON.stringify({ key, device } satisfies Session));
@@ -190,7 +190,7 @@ export async function join(store: Store, body: unknown): Promise<{ token: string
 /** A device's stats as they stand: kept, put on the boards, and answered with the other devices'. */
 export async function sync(store: Store, token: string | null, body: unknown, now = Date.now()): Promise<{ name: string; others: Snapshot }> {
   const me = await session(store, token);
-  if (!me) throw new Refusal(401, 'Sign in again with your name and PIN.');
+  if (!me) throw new Refusal(401, 'Log in again with your username and PIN.');
   const { key, device } = me;
   const mine = cleanSnapshot(obj(body).snapshot);
   await store.hset(keys.devices(key), device, JSON.stringify({ ...mine, at: now } satisfies Kept));

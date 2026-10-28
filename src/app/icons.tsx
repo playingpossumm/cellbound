@@ -99,6 +99,11 @@ export const TrophyIcon = () => (
     <path d="M8 4.5h8v5a4 4 0 0 1-8 0zM8 6.5H5v1.5a3 3 0 0 0 3 3M16 6.5h3v1.5a3 3 0 0 1-3 3M12 13.5V17M8.5 20h7M9.5 17h5v3h-5z" />
   </Icon>
 );
+export const PersonIcon = () => (
+  <Icon>
+    <path d="M12 4.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM5 20a7 7 0 0 1 14 0" />
+  </Icon>
+);
 export const AboutIcon = () => (
   <Icon>
     <path d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 11v5.5M12 7.6v.1" />

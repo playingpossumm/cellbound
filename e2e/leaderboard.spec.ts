@@ -2,8 +2,9 @@ import { expect, test, type BrowserContextOptions, type Page } from '@playwright
 import { openFresh, openScreen, shot } from './helpers';
 
 // The leaderboard, against the dev server's /api (a store in memory for the whole run, so every
-// test picks a name of its own): joining with a name and a PIN, a solved Daily on the board, the
-// same name and PIN bringing a player's history to another device, and signing out.
+// test picks a name of its own): logging in from the menu with a username and a PIN, a solved Daily
+// on the board, the same username and PIN bringing a player's history to another device, and
+// logging out.
 
 type Hook = {
   actions: { select(i: number | null): void; input(d: number): void };
@@ -13,11 +14,12 @@ type Hook = {
 /** A name no other test of the run has: letters and digits, under 16. */
 const freshName = () => `T${Date.now().toString(36).slice(-5)}${Math.random().toString(36).slice(2, 6)}`;
 
-async function join(page: Page, name: string, pin: string) {
-  await openScreen(page, 'Leaderboard');
-  await page.getByLabel('Name').fill(name);
+/** Logs in with the Log in button at the top of the menu. */
+async function logIn(page: Page, name: string, pin: string) {
+  await openScreen(page, 'Log in');
+  await page.getByLabel('Username').fill(name);
   await page.getByLabel('PIN').fill(pin);
-  await page.getByRole('button', { name: 'Join' }).click();
+  await page.getByRole('button', { name: 'Log in' }).click();
 }
 
 /** Fills in today's Daily with its solution. */
@@ -37,11 +39,17 @@ async function solveDaily(page: Page) {
   });
 }
 
-test('a player joins with a name and a PIN, and their solved Daily goes on the board', async ({ page }) => {
+test('a player logs in from the menu with a username and a PIN, and their solved Daily goes on the board', async ({ page }) => {
   const name = freshName();
   await openFresh(page);
-  await join(page, name, '2468');
+  await openScreen(page, 'Log in');
+  await expect(page.locator('.cb-join-note')).toHaveText('Just a username and a 4-digit PIN.');
+  await logIn(page, name, '2468');
   await expect(page.getByRole('tab', { name: 'Daily', exact: true })).toHaveAttribute('aria-selected', 'true');
+  // The menu shows who this device plays as, where Log in was.
+  await page.getByRole('button', { name: 'Menu' }).first().click();
+  await expect(page.getByRole('button', { name: `Logged in as ${name}` })).toBeVisible();
+  await page.getByRole('button', { name: 'Close menu' }).click();
   await solveDaily(page);
   await openScreen(page, 'Leaderboard');
   const me = page.locator('.cb-lb-row.is-you');
@@ -51,10 +59,10 @@ test('a player joins with a name and a PIN, and their solved Daily goes on the b
   await shot(page, 'leaderboard');
 });
 
-test('the same name and PIN bring a player’s history to another device, and a wrong PIN does not', async ({ page, browser }) => {
+test('the same username and PIN bring a player’s history to another device, and a wrong PIN does not', async ({ page, browser }) => {
   const name = freshName();
   await openFresh(page);
-  await join(page, name, '1357');
+  await logIn(page, name, '1357');
   await solveDaily(page);
   await openScreen(page, 'Leaderboard');
   await expect(page.locator('.cb-lb-row.is-you')).toContainText(name);
@@ -71,10 +79,10 @@ test('the same name and PIN bring a player’s history to another device, and a 
   } as BrowserContextOptions);
   const second = await other.newPage();
   await openFresh(second);
-  await join(second, name, '0000');
-  await expect(second.locator('.cb-error')).toHaveText('That name is taken, or the PIN is wrong.');
+  await logIn(second, name, '0000');
+  await expect(second.locator('.cb-error')).toHaveText('That username is taken, or the PIN is wrong.');
   await second.getByLabel('PIN').fill('1357');
-  await second.getByRole('button', { name: 'Join' }).click();
+  await second.getByRole('button', { name: 'Log in' }).click();
   await expect(second.locator('.cb-lb-row.is-you')).toContainText(name);
   // The first device's Daily counts in this one's Stats.
   await openScreen(second, 'Stats');
@@ -82,15 +90,15 @@ test('the same name and PIN bring a player’s history to another device, and a 
   await other.close();
 });
 
-test('Settings shows the name, and signing out leaves the leaderboard on this device', async ({ page }) => {
+test('Settings shows the username, and logging out leaves the leaderboard on this device', async ({ page }) => {
   const name = freshName();
   await openFresh(page);
-  await join(page, name, '9753');
+  await logIn(page, name, '9753');
   await expect(page.getByRole('tablist', { name: 'Boards' })).toBeVisible();
   await openScreen(page, 'Settings');
   await expect(page.locator('.cb-account')).toContainText(name);
-  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByRole('button', { name: 'Log out' }).click();
   await expect(page.locator('.cb-account')).toHaveCount(0);
-  await openScreen(page, 'Leaderboard');
-  await expect(page.getByLabel('Name')).toBeVisible();
+  await openScreen(page, 'Log in');
+  await expect(page.getByLabel('Username')).toBeVisible();
 });

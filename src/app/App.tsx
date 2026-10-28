@@ -7,8 +7,9 @@ import { closeGame, onGameEnd } from '../game/store';
 import { parseLocalDate } from '../game/logic';
 import { useStats } from '../game/stats';
 import { extraModes, learn } from '../modes';
+import { useAccount } from '../sync/account';
 import { APP_NAME } from './brand';
-import { AboutIcon, CloseIcon, DailyIcon, FogIcon, FreeIcon, LearnIcon, RunIcon, SettingsIcon, StatsIcon, TrophyIcon } from './icons';
+import { AboutIcon, CloseIcon, DailyIcon, FogIcon, FreeIcon, LearnIcon, PersonIcon, RunIcon, SettingsIcon, StatsIcon, TrophyIcon } from './icons';
 import { LeaderboardScreen } from './leaderboard';
 import { AboutScreen, DailyScreen, FogScreen, FreeScreen, Loading, SettingsScreen, StatsScreen } from './screens';
 import { OPEN_EVENT, ShellContext, type ScreenId, type Shell } from './shell';
@@ -88,6 +89,8 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', check);
   }, []);
   const menuRef = useRef<HTMLDialogElement>(null);
+  // The name this device plays under on the leaderboard, or null before logging in.
+  const player = useAccount((s) => (s.token ? s.name : null));
 
   useEffect(() => onGameEnd((g) => useStats.getState().record(g)), []);
 
@@ -217,6 +220,19 @@ export default function App() {
             <button type="button" className="cb-ib" aria-label="Close menu" onClick={() => menuRef.current?.close()}>
               <CloseIcon />
             </button>
+          </div>
+          <div className="cb-menu-account">
+            {player ? (
+              <button type="button" className="cb-menu-item cb-menu-you" aria-label={`Logged in as ${player}`} onClick={() => go('leaderboard')}>
+                <PersonIcon />
+                <span className="cb-menu-item-name">{player}</span>
+              </button>
+            ) : (
+              <button type="button" className="cb-btn cb-menu-login" onClick={() => go('leaderboard')}>
+                <PersonIcon />
+                Log in
+              </button>
+            )}
           </div>
           <nav aria-label="Modes">
             <ul className="cb-menu-list">
