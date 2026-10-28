@@ -27,6 +27,8 @@
   --cb-accent: #2f55b8;
   --cb-font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --cb-font-digit: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* The strong ease-out of every entrance and landing. */
+  --cb-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 :where(:root[data-night='true']) {
@@ -1698,6 +1700,23 @@ button {
 .cb-menu-list.small .cb-menu-item-name {
   font-size: 16px;
   font-weight: 500;
+}
+
+/* A copy of some points on its way to the score (fly in motion.ts), above everything. Its size and
+   colour come from what it copies. */
+.cb-fly {
+  position: fixed;
+  z-index: 60;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--cb-ground);
+  box-shadow: inset 0 0 0 1px var(--cb-line-box), 0 6px 18px -8px rgba(0, 0, 0, 0.5);
+  font-family: var(--cb-font-digit);
+  font-weight: 600;
+  line-height: 1.5;
+  font-variant-numeric: lining-nums tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* Reduced motion, from the device or the setting. */

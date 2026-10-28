@@ -223,6 +223,19 @@ describe('lenses fire in slot order', () => {
     expect(scorePlacement(f, setup({ lenses: lenses('mirror', 'spyglass') }), fresh).fired).toEqual([1]);
   });
 
+  it('keeps marks and mult before the lenses and after each one that fired, so the sum can be shown being built', () => {
+    const s = scorePlacement(facts({ tier: 5 }), setup({ lenses: [{ id: 'kaleidoscope', n: 10 }, { id: 'loupe' }, { id: 'spyglass' }], perks: { prismShard: 1 } }), fresh);
+    const afterKaleidoscope = 1 + 10 * LENS.kaleidoscope;
+    expect(s.base).toEqual({ marks: MARKS[5], mult: 1 });
+    // Loupe reads singles only, so it takes no step.
+    expect(s.steps).toEqual([
+      { lens: 0, marks: MARKS[5], mult: afterKaleidoscope },
+      { lens: 2, marks: MARKS[5], mult: afterKaleidoscope * LENS.spyglass },
+    ]);
+    expect(s.fired).toEqual(s.steps.map((x) => x.lens));
+    expect(s.mult).toBeCloseTo(afterKaleidoscope * LENS.spyglass * allScoringOf({ prismShard: 1 }), 9);
+  });
+
   it('applies the all-scoring multiplier after the lenses', () => {
     const s = scorePlacement(facts({ tier: 4 }), setup({ lenses: lenses('monocle'), perks: { prismShard: 1 } }), fresh);
     expect(s.mult).toBeCloseTo((1 + LENS.monocle) * 1.2, 9);

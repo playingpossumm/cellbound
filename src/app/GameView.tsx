@@ -14,6 +14,7 @@ import { useLessonDone } from '../modes';
 import { getTheme } from '../themes';
 import { APP_NAME } from './brand';
 import { CheckIcon, EraseIcon, HintIcon, NotesIcon, PauseIcon, PlayIcon, ShareIcon, StatsIcon, UndoIcon } from './icons';
+import { PRESS } from './motion';
 import { kindsIn, RULE_NAMES, ruleText } from './rules';
 import { appUrl, shareResult } from './share';
 import { useShell } from './shell';
@@ -283,8 +284,8 @@ export function GameView({
       return;
     }
     const reduce = document.documentElement.dataset.reducedMotion === 'true';
-    // Long enough for the whole-board wave to reach the far corner of a 9x9.
-    const t = setTimeout(() => setShowEnd(true), reduce ? 0 : 1500);
+    // Long enough for the whole-board wave (45 ms a step, 560 ms a cell) to reach the far corner of a 9x9.
+    const t = setTimeout(() => setShowEnd(true), reduce ? 0 : 1100);
     return () => clearTimeout(t);
   }, [ended, game.key]);
 
@@ -610,6 +611,7 @@ export function GameView({
                 aria-label={`${game.notesMode ? 'Note' : 'Enter'} ${d}${done ? ', all placed' : ''}`}
                 onClick={() => enter(d)}
                 disabled={toolsOff}
+                {...PRESS}
               >
                 <span className="cb-key-d">{d}</span>
                 {done && (
@@ -622,7 +624,9 @@ export function GameView({
           })}
         </div>
 
-        {/* Each tool's data-key shows in its corner once the keyboard has been used (base.css). */}
+        {/* Each tool's data-key shows in its corner once the keyboard has been used (base.css). The
+            keys and tools squash under the pointer and spring back (PRESS); a key typed on the
+            keyboard moves nothing. */}
         <div className="cb-tools" role="group" aria-label="Tools">
           <button
             type="button"
@@ -633,6 +637,7 @@ export function GameView({
             title="Undo (Z)"
             onClick={actions.undo}
             disabled={toolsOff || !game.undo.length}
+            {...PRESS}
           >
             <UndoIcon />
           </button>
@@ -645,6 +650,7 @@ export function GameView({
             title="Erase (E)"
             onClick={actions.erase}
             disabled={toolsOff}
+            {...PRESS}
           >
             <EraseIcon />
           </button>
@@ -658,6 +664,7 @@ export function GameView({
             title={game.mods?.noNotes ? NO_NOTES : 'Notes (N)'}
             onClick={actions.toggleNotes}
             disabled={toolsOff || !!game.mods?.noNotes}
+            {...PRESS}
           >
             <NotesIcon />
           </button>
@@ -670,6 +677,7 @@ export function GameView({
             title="Hint (H)"
             onClick={doHint}
             disabled={toolsOff}
+            {...PRESS}
           >
             <HintIcon />
             {hintsLeft !== null && (

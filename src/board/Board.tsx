@@ -100,6 +100,11 @@ function BoardImpl(props: BoardProps) {
   const selD = selected === null || hidden?.[selected] ? 0 : full[selected];
   // The digit the selection holds: every cell and pencil mark with it lights up, the selected cell too.
   const sameD = highlights ? selD : 0;
+  // The notes as they were before their latest change. A cell whose last pencil marks just went
+  // keeps its empty grid until the next change, so a theme can let the marks shrink away.
+  const notesSeen = useRef({ now: notes, before: notes });
+  if (notesSeen.current.now !== notes) notesSeen.current = { now: notes, before: notesSeen.current.now };
+  const notesBefore = notesSeen.current.before;
 
   // Keep keyboard focus on the selected cell when it moves.
   useEffect(() => {
@@ -147,6 +152,7 @@ function BoardImpl(props: BoardProps) {
         type="button"
         className={cls}
         data-cell={i}
+        data-digit={d || undefined}
         tabIndex={i === tabCell ? 0 : -1}
         style={style}
         aria-label={cellLabel(r, c, d, given, noteList, isHidden, wrong[i] && !given)}
@@ -174,7 +180,7 @@ function BoardImpl(props: BoardProps) {
           {d}
         </span>
       );
-    } else if (noteList.length) {
+    } else if (noteList.length || (!isHidden && notesBefore[i] && !notes[i])) {
       inner = (
         <span className="cb-notes" aria-hidden="true">
           {Array.from({ length: n }, (_, k) => (

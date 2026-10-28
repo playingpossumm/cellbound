@@ -1,6 +1,7 @@
 // The pieces every Run screen shares, drawn rather than written: the page frame, hearts, coins,
 // the track of nine boards, the score meter, lens and item tiles and reward cards.
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { bump, EASE_IN_OUT, moves, scale, spring } from '../../../app/motion';
 import { TopBar } from '../../../app/TopBar';
 import { useReducedMotion } from '../../../app/theme';
 import { useScreenEntry } from '../../screenEntry';
@@ -15,27 +16,61 @@ import { formatScore, KIND_NAMES, resultOf } from '../state';
 import { SLOTS } from '../tuning';
 import { CategoryIcon, CheckIcon, CoinIcon, HeartIcon, InkIcon, ShieldIcon, SpectrumIcon } from './icons';
 
-/** A Run page: the app's top bar (menu and back), then the page. The page's title is its heading. */
-export function Page({ title, onBack, children, wide }: { title?: string; onBack?: () => void; children: ReactNode; wide?: boolean }) {
+/**
+ * A Run page: the app's top bar (menu and back), then the page. The page's title is its heading,
+ * unless the page brings a heading of its own (a won run's prism).
+ */
+export function Page({ title, heading, onBack, children, wide }: { title?: string; heading?: ReactNode; onBack?: () => void; children: ReactNode; wide?: boolean }) {
   const ref = useScreenEntry<HTMLElement>();
   return (
     <div className="cb-run">
-      <TopBar title="Run" quietTitle={!!title} onBack={onBack} />
+      <TopBar title="Run" quietTitle={!!title || !!heading} onBack={onBack} />
       <main className={`cb-run-page${wide ? ' is-wide' : ''}`} ref={ref} tabIndex={-1}>
-        {title && <h1 className="cb-run-title">{title}</h1>}
+        {heading ?? (title && <h1 className="cb-run-title">{title}</h1>)}
         {children}
       </main>
     </div>
   );
 }
 
+/** A word as one span per letter, so the letters can move one by one; it reads as the word. */
+export function Letters({ text }: { text: string }) {
+  return (
+    <>
+      {Array.from(text, (ch, i) => (
+        <span key={i} className="cb-run-ch">
+          {ch}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/**
+ * Hearts out of their slots. A heart lost in view falls out of the row (360 ms) before it shows as
+ * lost; the label says the new count at once.
+ */
 export function Hearts({ now, slots, shield = 0 }: { now: number; slots: number; shield?: number }) {
   const label = `${now} ${now === 1 ? 'heart' : 'hearts'}` + (shield ? `, ${shield} ${shield === 1 ? 'shield' : 'shields'}` : '');
+  const [fall, setFall] = useState<{ from: number; to: number } | null>(null);
+  const was = useRef(now);
+  useLayoutEffect(() => {
+    const before = was.current;
+    was.current = now;
+    if (now >= before || !moves()) {
+      setFall(null);
+      return;
+    }
+    setFall({ from: now, to: before });
+    const t = setTimeout(() => setFall(null), 380);
+    return () => clearTimeout(t);
+  }, [now]);
   return (
     <span className="cb-run-hearts" role="img" aria-label={label}>
-      {Array.from({ length: Math.max(slots, now) }, (_, i) => (
-        <HeartIcon key={i} className={'cb-run-heart' + (i < now ? ' is-full' : '')} filled={i < now} />
-      ))}
+      {Array.from({ length: Math.max(slots, now) }, (_, i) => {
+        const falling = !!fall && i >= fall.from && i < fall.to;
+        return <HeartIcon key={i} className={'cb-run-heart' + (i < now || falling ? ' is-full' : '') + (falling ? ' is-falling' : '')} filled={i < now || falling} />;
+      })}
       {shield > 0 && (
         <span className="cb-run-shield">
           <ShieldIcon className="cb-run-shield-icon" filled />
@@ -154,12 +189,59 @@ export function useCountUp(value: number, ms = 240, start: number = value): numb
   return shown;
 }
 
+// ---- arrivals --------------------------------------------------------------------------
+
+/**
+ * What was just bought or taken, on its way into the loadout: where its tile was in the shop, or
+ * nowhere for a card taken on the screen before. The tile that shows it in the loadout picks it up
+ * when it first draws, and flies in from the shop's tile or springs in where it lands.
+ */
+const arriving = new Map<string, { from: DOMRect | null; at: number }>();
+
+/** Sends a lens, an item or a card into the loadout (`lens:id`, `item:id`, `perk:id`). */
+export function sendToLoadout(key: string, from?: Element | null): void {
+  arriving.clear();
+  if (moves()) arriving.set(key, { from: from?.getBoundingClientRect() ?? null, at: Date.now() });
+}
+
+function useArrival(key: string, ref: RefObject<HTMLElement | null>): void {
+  useLayoutEffect(() => {
+    const a = arriving.get(key);
+    const el = ref.current;
+    if (!a || !el || Date.now() - a.at > 2000) return;
+    arriving.delete(key);
+    if (!a.from) {
+      spring(el, 0.82, 1, scale, 520, 18);
+      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+      return;
+    }
+    const to = el.getBoundingClientRect();
+    const dx = a.from.left + a.from.width / 2 - (to.left + to.width / 2);
+    const dy = a.from.top + a.from.height / 2 - (to.top + to.height / 2);
+    const s = to.width ? a.from.width / to.width : 1;
+    el.animate(
+      [
+        { transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${s.toFixed(3)})` },
+        { transform: `translate(${dx.toFixed(1)}px, ${(dy - 18).toFixed(1)}px) scale(${(s * 1.06).toFixed(3)})`, offset: 0.3 },
+        { transform: 'none' },
+      ],
+      { duration: 640, easing: EASE_IN_OUT },
+    ).finished.then(
+      () => bump(el, 0.12),
+      () => undefined,
+    );
+    // Once, on the tile's first draw.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
 // ---- lenses and items ------------------------------------------------------------------
 
 export function LensTile({
   slot,
   firing = false,
   delay = 0,
+  kick = 1,
   selected = false,
   onClick,
   size = 'md',
@@ -167,10 +249,14 @@ export function LensTile({
   slot: LensSlot;
   firing?: boolean;
   delay?: number;
+  /** How hard a firing lens kicks: 1 for its turn in a placement's whole show, less for a quick one. */
+  kick?: number;
   selected?: boolean;
   onClick?: () => void;
   size?: 'md' | 'lg';
 }) {
+  const ref = useRef<HTMLElement>(null);
+  useArrival(`lens:${slot.id}`, ref);
   const def = lensById(slot.id);
   if (!def) return null;
   const body = (
@@ -180,19 +266,30 @@ export function LensTile({
     </>
   );
   const cls = `cb-run-lens is-${def.rarity} is-${size}${firing ? ' is-firing' : ''}${selected ? ' is-selected' : ''}`;
-  const style = firing ? { animationDelay: `${delay}ms` } : undefined;
+  const style = firing ? ({ animationDelay: `${delay}ms`, '--rn-jolt': kick } as React.CSSProperties) : undefined;
   return onClick ? (
-    <button type="button" className={cls} style={style} aria-pressed={selected} aria-label={`${def.name}: ${def.text}`} title={def.name} onClick={onClick}>
+    <button
+      type="button"
+      ref={ref as RefObject<HTMLButtonElement | null>}
+      className={cls}
+      style={style}
+      aria-pressed={selected}
+      aria-label={`${def.name}: ${def.text}`}
+      title={def.name}
+      onClick={onClick}
+    >
       {body}
     </button>
   ) : (
-    <span className={cls} style={style} role="img" aria-label={`${def.name}: ${def.text}`}>
+    <span ref={ref as RefObject<HTMLSpanElement | null>} className={cls} style={style} role="img" aria-label={`${def.name}: ${def.text}`}>
       {body}
     </span>
   );
 }
 
 export function ItemTile({ id, selected = false, onClick, size = 'md' }: { id: ItemId; selected?: boolean; onClick?: () => void; size?: 'md' | 'lg' }) {
+  const ref = useRef<HTMLElement>(null);
+  useArrival(`item:${id}`, ref);
   const def = itemById(id);
   if (!def) return null;
   const tier = def.tier ?? 0;
@@ -207,11 +304,19 @@ export function ItemTile({ id, selected = false, onClick, size = 'md' }: { id: I
     );
   const cls = `cb-run-item is-${def.kind} is-${size}${def.kind === 'spectra' ? ` cb-run-t${tier}` : ''}${selected ? ' is-selected' : ''}`;
   return onClick ? (
-    <button type="button" className={cls} aria-pressed={selected} aria-label={`${def.name}: ${def.text}`} title={def.name} onClick={onClick}>
+    <button
+      type="button"
+      ref={ref as RefObject<HTMLButtonElement | null>}
+      className={cls}
+      aria-pressed={selected}
+      aria-label={`${def.name}: ${def.text}`}
+      title={def.name}
+      onClick={onClick}
+    >
       {body}
     </button>
   ) : (
-    <span className={cls} role="img" aria-label={`${def.name}: ${def.text}`}>
+    <span ref={ref as RefObject<HTMLSpanElement | null>} className={cls} role="img" aria-label={`${def.name}: ${def.text}`}>
       {body}
     </span>
   );
@@ -222,6 +327,8 @@ export function ItemTile({ id, selected = false, onClick, size = 'md' }: { id: I
  * stacks, how many of it the run holds. A glyph alone would not tell three hint cards apart.
  */
 export function PerkTile({ id, count, selected = false, onClick }: { id: RewardId; count: number; selected?: boolean; onClick?: () => void }) {
+  const ref = useRef<HTMLElement>(null);
+  useArrival(`perk:${id}`, ref);
   const def = rewardById(id);
   if (!def) return null;
   const name = count > 1 ? `${def.name} ×${count}` : def.name;
@@ -234,11 +341,11 @@ export function PerkTile({ id, count, selected = false, onClick }: { id: RewardI
   );
   const cls = `cb-run-perk is-${def.category} is-${def.rarity}${selected ? ' is-selected' : ''}`;
   return onClick ? (
-    <button type="button" className={cls} aria-pressed={selected} aria-label={`${name}: ${def.text}`} onClick={onClick}>
+    <button type="button" ref={ref as RefObject<HTMLButtonElement | null>} className={cls} aria-pressed={selected} aria-label={`${name}: ${def.text}`} onClick={onClick}>
       {body}
     </button>
   ) : (
-    <span className={cls} role="img" aria-label={`${name}: ${def.text}`}>
+    <span ref={ref as RefObject<HTMLSpanElement | null>} className={cls} role="img" aria-label={`${name}: ${def.text}`}>
       {body}
     </span>
   );

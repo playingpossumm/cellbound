@@ -1,11 +1,12 @@
-// The shop after a boss: two lenses and two consumables for sale, a reroll, and the run's own
-// lenses to sell or reorder (they fire in slot order).
+// The shop after a board: two lenses and two consumables for sale, a reroll, and the run's own
+// lenses to sell or reorder (they fire in slot order). The stock deals in as the shop opens and on
+// every reroll, and a lens or an ink bought flies from its card into the loadout.
 import { itemById } from '../items';
 import { lensById } from '../lenses';
 import type { RunState } from '../model';
 import { canBuyItem, canBuyLens, priceOfItem, rerollCost } from '../shop';
 import { CoinIcon, RerollIcon } from './icons';
-import { Coins, ItemTile, LensCard, Loadout, LoadoutActions, Page, RunHearts, RunScore, Track, whereLabel } from './parts';
+import { Coins, ItemTile, LensCard, Loadout, LoadoutActions, Page, RunHearts, RunScore, sendToLoadout, Track, whereLabel } from './parts';
 
 export interface ShopProps {
   run: RunState;
@@ -19,9 +20,12 @@ export interface ShopProps {
   onHome: () => void;
 }
 
-function Price({ value, can, label, onClick }: { value: number; can: boolean; label: string; onClick: () => void }) {
+/** The tile on the card a price button sits on, for the flight into the loadout. */
+const tileOf = (button: Element) => button.closest('li')?.querySelector('.cb-run-lens, .cb-run-item') ?? null;
+
+function Price({ value, can, label, onClick }: { value: number; can: boolean; label: string; onClick: (button: HTMLButtonElement) => void }) {
   return (
-    <button type="button" className="cb-run-btn is-price" disabled={!can} aria-label={`${label} for ${value} coins`} onClick={onClick}>
+    <button type="button" className="cb-run-btn is-price" disabled={!can} aria-label={`${label} for ${value} coins`} onClick={(e) => onClick(e.currentTarget)}>
       <CoinIcon className="cb-run-coin" />
       {value}
     </button>
@@ -46,14 +50,22 @@ export function Shop({ run, onBuyLens, onBuyItem, onSell, onMove, onReroll, onUs
       </div>
 
       <section aria-label="For sale">
-        <ul className="cb-run-stock">
+        <ul className="cb-run-stock is-dealt">
           {shop.lenses.map((id, k) => {
             const def = id ? lensById(id) : undefined;
             return (
-              <li key={`l${k}`} className={def ? '' : 'is-sold'}>
+              <li key={`l${k}:${shop.rerolls}`} className={def ? '' : 'is-sold'} style={{ ['--k' as string]: k }}>
                 {def ? (
                   <LensCard def={def}>
-                    <Price value={def.price} can={canBuyLens(run, k)} label={`Buy ${def.name}`} onClick={() => onBuyLens(k)} />
+                    <Price
+                      value={def.price}
+                      can={canBuyLens(run, k)}
+                      label={`Buy ${def.name}`}
+                      onClick={(b) => {
+                        sendToLoadout(`lens:${def.id}`, tileOf(b));
+                        onBuyLens(k);
+                      }}
+                    />
                   </LensCard>
                 ) : (
                   <span className="cb-run-sold" aria-label="Sold" />
@@ -64,7 +76,7 @@ export function Shop({ run, onBuyLens, onBuyItem, onSell, onMove, onReroll, onUs
           {shop.items.map((id, k) => {
             const def = id ? itemById(id) : undefined;
             return (
-              <li key={`i${k}`} className={def ? '' : 'is-sold'}>
+              <li key={`i${k}:${shop.rerolls}`} className={def ? '' : 'is-sold'} style={{ ['--k' as string]: shop.lenses.length + k }}>
                 {def ? (
                   <div className="cb-run-lenscard is-item">
                     <ItemTile id={def.id} size="lg" />
@@ -72,7 +84,15 @@ export function Shop({ run, onBuyLens, onBuyItem, onSell, onMove, onReroll, onUs
                       <span className="cb-run-card-name">{def.name}</span>
                       <span className="cb-run-card-text">{def.text}</span>
                     </div>
-                    <Price value={priceOfItem(def.id)} can={canBuyItem(run, k)} label={`Buy ${def.name}`} onClick={() => onBuyItem(k)} />
+                    <Price
+                      value={priceOfItem(def.id)}
+                      can={canBuyItem(run, k)}
+                      label={`Buy ${def.name}`}
+                      onClick={(b) => {
+                        sendToLoadout(`item:${def.id}`, tileOf(b));
+                        onBuyItem(k);
+                      }}
+                    />
                   </div>
                 ) : (
                   <span className="cb-run-sold" aria-label="Sold" />

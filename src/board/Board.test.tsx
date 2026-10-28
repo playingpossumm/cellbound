@@ -122,6 +122,46 @@ describe('the picked digit', () => {
   });
 });
 
+describe('what a theme needs to move', () => {
+  it('tells each cell its digit, for the colour of the finish wave', async () => {
+    const p = props(LYRA);
+    const values = p.values.slice();
+    values[0] = 4;
+    const el = await render({ ...p, values });
+    const cells = el.querySelectorAll('.cb-cell');
+    expect(cells[0].getAttribute('data-digit')).toBe('4');
+    expect(cells[17].getAttribute('data-digit')).toBe(String(LYRA.givens[17]));
+    expect(cells[2].hasAttribute('data-digit')).toBe(false);
+  });
+
+  it('keeps the empty grid of a cell whose last pencil marks just went, so they can shrink away', async () => {
+    const p = props(LYRA);
+    const notes = p.notes.slice();
+    notes[2] = 1 << 4;
+    notes[3] = (1 << 4) | (1 << 5);
+    host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    await act(async () => root.render(<Board {...p} notes={notes} />));
+    const cleared = notes.slice();
+    cleared[2] = 0;
+    cleared[3] = 1 << 5;
+    await act(async () => root.render(<Board {...p} notes={cleared} />));
+    const slots = host.querySelectorAll('.cb-slot');
+    // Cell 2 lost its only mark: its grid stays, with every mark off.
+    expect(slots[2].querySelector('.cb-notes')).not.toBeNull();
+    expect(slots[2].querySelectorAll('.cb-note.on')).toHaveLength(0);
+    expect(slots[3].querySelectorAll('.cb-note.on')).toHaveLength(1);
+    // The next change of notes lets the empty grid go.
+    const next = cleared.slice();
+    next[3] = 0;
+    await act(async () => root.render(<Board {...p} notes={next} />));
+    expect(slots[2].querySelector('.cb-notes')).toBeNull();
+    expect(host.querySelectorAll('.cb-slot')[3].querySelector('.cb-notes')).not.toBeNull();
+    await act(async () => root.unmount());
+  });
+});
+
 describe('grid, finished boxes and clue layers', () => {
   it('draws the box lines and the frame', async () => {
     const el = await render(props(LYRA));

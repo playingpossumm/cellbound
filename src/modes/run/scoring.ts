@@ -63,6 +63,9 @@ export interface PlacementScore {
   flat: number;
   /** Lens slots that fired, in slot order. */
   fired: number[];
+  /** Marks and mult before the lenses, and after each lens that fired, so the sum can be shown being built. */
+  base: { marks: number; mult: number };
+  steps: { lens: number; marks: number; mult: number }[];
   next: Streak;
 }
 
@@ -95,7 +98,7 @@ function round2(x: number): number {
   return Math.round(x * 100) / 100;
 }
 
-const nothing = (next: Streak): PlacementScore => ({ points: 0, marks: 0, mult: 0, flow: 1, clean: 1, flat: 0, fired: [], next });
+const nothing = (next: Streak): PlacementScore => ({ points: 0, marks: 0, mult: 0, flow: 1, clean: 1, flat: 0, fired: [], base: { marks: 0, mult: 0 }, steps: [], next });
 
 export function scorePlacement(f: PlacementFacts, s: ScoreSetup, at: Streak): PlacementScore {
   if (f.source === 'reveal') return nothing(at);
@@ -125,6 +128,8 @@ export function scorePlacement(f: PlacementFacts, s: ScoreSetup, at: Streak): Pl
     hearts: s.hearts,
   };
   const fired: number[] = [];
+  const base = { marks, mult: round2(mult) };
+  const steps: PlacementScore['steps'] = [];
   s.lenses.forEach((_, k) => {
     const e = effectiveLens(s.lenses, k);
     const fx = e?.def.score?.(ctx, e.slot);
@@ -133,10 +138,11 @@ export function scorePlacement(f: PlacementFacts, s: ScoreSetup, at: Streak): Pl
     mult += fx.mult ?? 0;
     mult *= fx.xmult ?? 1;
     fired.push(k);
+    steps.push({ lens: k, marks, mult: round2(mult) });
   });
   mult *= allScoringOf(s.perks);
 
   const flat = f.tier >= REWARD.expertTier ? REWARD.expertPay * perk(s, 'expertPay') : 0;
   mult = round2(mult);
-  return { points: Math.round(marks * mult) + flat, marks, mult, flow, clean: round2(clean), flat, fired, next: { streak: at.streak + 1, chain } };
+  return { points: Math.round(marks * mult) + flat, marks, mult, flow, clean: round2(clean), flat, fired, base, steps, next: { streak: at.streak + 1, chain } };
 }

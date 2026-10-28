@@ -49,6 +49,9 @@ export interface TallyFx {
   flow: number;
   fired: number[];
   tier: TechniqueTier;
+  /** Marks and mult before the lenses, then after each one that fired (scoring.ts). */
+  base: { marks: number; mult: number };
+  steps: { lens: number; marks: number; mult: number }[];
 }
 
 export interface PlacedOut {
@@ -210,7 +213,7 @@ export function applyPlaced(run: RunState, e: Placed, cls: PlacementClass | null
     // it would always be the best placement of a run: the best is the best deduction.
     if (id !== 'fullHouse' && (!next.best || sc.points > next.best.points)) next.best = { technique: id, points: sc.points };
     out.popup = { id: next.seq, cell: e.cell, name: cls?.name ?? 'Guess', points: sc.points, tier, clean: sc.clean };
-    if (tier > 0) out.tally = { id: next.seq, marks: sc.marks, mult: sc.mult, points: sc.points, flow: sc.flow, fired: sc.fired, tier };
+    if (tier > 0) out.tally = { id: next.seq, marks: sc.marks, mult: sc.mult, points: sc.points, flow: sc.flow, fired: sc.fired, tier, base: sc.base, steps: sc.steps };
   }
 
   // Finished boxes: Kaleidoscope grows, and a clean one may heal.

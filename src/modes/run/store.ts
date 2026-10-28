@@ -4,6 +4,7 @@
 // engine off the input path (a macrotask later, never in the tap) and applied in the order the
 // digits went in, so scoring never delays or blocks a move.
 import { create } from 'zustand';
+import { moves } from '../../app/motion';
 import { dailyDate, dailyRunSeed } from '../../engine';
 import { classifyPlacementAsync, hardestPlacementAsync, type PlacementClass } from '../../engine/techniques';
 import { actions, getGame, onGameEnd, onPlacement, type PlacementEvent } from '../../game/store';
@@ -42,6 +43,11 @@ import { legacyRuns, loadRunStorage, saveRunStorage, type RunStorage } from './s
 export interface RunFx {
   popups: Popup[];
   tally: TallyFx | null;
+  /**
+   * Points on their way to the score, by placement. With motion on, a placement's points fly up to
+   * the score, and the band shows the score without them until they land (landPoints).
+   */
+  air: Record<number, number>;
 }
 
 interface RunStore {
@@ -50,6 +56,8 @@ interface RunStore {
   run: RunState | null;
   /** Milestones the run that just ended reached. */
   fresh: UnlockId[];
+  /** A run just won in view, until its summary has played the win (runId). */
+  won: string | null;
   /** Boards of the run on screen, as they get ready. Not saved: they rebuild the same. */
   ready: Record<number, Prepared | 'failed'>;
   readyFor: string;
@@ -58,12 +66,22 @@ interface RunStore {
   legacy: number;
 }
 
-const noFx = (): RunFx => ({ popups: [], tally: null });
+/** Points in the air land by then at the latest, flown or not, so the band can never stay behind. */
+const AIR_MS = 4000;
+const airTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
+/** The board's passing effects, cleared: nothing on show and nothing in the air. */
+function noFx(): RunFx {
+  airTimers.forEach(clearTimeout);
+  airTimers.clear();
+  return { popups: [], tally: null, air: {} };
+}
 
 export const useRunStore = create<RunStore>(() => ({
   data: loadRunStorage(),
   run: null,
   fresh: [],
+  won: null,
   ready: {},
   readyFor: '',
   fx: noFx(),
@@ -71,7 +89,18 @@ export const useRunStore = create<RunStore>(() => ({
 }));
 
 const get = () => useRunStore.getState();
-const runId = (run: RunState) => `${run.seed}@${run.createdAt}`;
+export const runId = (run: RunState) => `${run.seed}@${run.createdAt}`;
+
+/** A placement's points reach the score: the band counts them in. */
+export function landPoints(id: number): void {
+  clearTimeout(airTimers.get(id));
+  airTimers.delete(id);
+  const { fx } = get();
+  if (!(id in fx.air)) return;
+  const air = { ...fx.air };
+  delete air[id];
+  useRunStore.setState({ fx: { ...fx, air } });
+}
 
 /** Milestones reached since the run began, which the summary announces. */
 export function unlockedByRun(run: RunState, stats: RunStats): UnlockId[] {
@@ -233,7 +262,9 @@ function apply(placed: Placed, cls: PlacementClass | null) {
   if (out.popup || out.tally) {
     const fx = get().fx;
     const popups = out.popup ? [...fx.popups.slice(-5), out.popup] : fx.popups;
-    useRunStore.setState({ fx: { popups, tally: out.tally ?? fx.tally } });
+    const up = out.popup && out.popup.points > 0 && moves() ? out.popup : null;
+    useRunStore.setState({ fx: { popups, tally: out.tally ?? fx.tally, air: up ? { ...fx.air, [up.id]: up.points } : fx.air } });
+    if (up) airTimers.set(up.id, setTimeout(() => landPoints(up.id), AIR_MS));
   }
   const game = getGame();
   if (!game || game.key !== placed.key) return;
@@ -269,6 +300,8 @@ function finish(end: BoardEnd, today: string = dailyDate()) {
     const ended = { ...next, recorded: true };
     stats = onRunEnd(stats, ended, today);
     commit({ ...data, current: null, last: ended, stats }, onScreen ? ended : shown, onScreen ? unlockedByRun(ended, stats) : undefined);
+    // A run won in front of the player gets its summary's burst, once.
+    if (onScreen && ended.outcome === 'won') useRunStore.setState({ won: runId(ended) });
   } else {
     commit({ ...data, current: next, stats }, onScreen ? next : shown);
   }
@@ -311,6 +344,11 @@ export const runActions = {
   /** Back to the Run home. An unfinished run stays saved. */
   home(): void {
     useRunStore.setState({ run: null, fx: noFx() });
+  },
+
+  /** The summary has played the win. */
+  celebrated(): void {
+    useRunStore.setState({ won: null });
   },
 
   /** Builds the boards ahead in the ante again, after a failure. */
@@ -524,5 +562,5 @@ export function inkUsable(run: RunState, game: GameState, k: number): boolean {
 /** Test helper: put the store back to a given state. */
 export function resetRunStore(data: RunStorage = loadRunStorage(null)): void {
   queue = Promise.resolve();
-  useRunStore.setState({ data, run: null, fresh: [], ready: {}, readyFor: '', fx: noFx(), legacy: 0 });
+  useRunStore.setState({ data, run: null, fresh: [], won: null, ready: {}, readyFor: '', fx: noFx(), legacy: 0 });
 }

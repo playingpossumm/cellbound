@@ -1,8 +1,9 @@
 // The board in play, on the shared play screen: the score band in the band's place (score against
 // target, the last marks times mult, the flow, hearts and coins), the lenses and items under it,
 // the boss rule as a chip, popups over the cells, and the board's tally when it ends.
-import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import type { GameNote, GameViewProps } from '../../../app/GameView';
+import { bump, EASE_OUT, fly, moves, scale, shake, shakeLoose, spring } from '../../../app/motion';
 import { useReducedMotion } from '../../../app/theme';
 import { TECHNIQUES, type TechniqueId } from '../../../engine/techniques';
 import { getGame, startGame, useGame } from '../../../game/store';
@@ -14,25 +15,102 @@ import { BOSS_NAMES, bossText, clockMs } from '../bosses';
 import { itemById, TIER_NAMES } from '../items';
 import { lensById, maxHeartsOf } from '../lenses';
 import type { TallyFx } from '../live';
+import { planOf, SHOW_TIER, type Beat } from '../show';
 import type { BoardResult, RunState } from '../model';
 import { flowCap, flowOf } from '../scoring';
 import { placePopup, popupSize, WEIGHT, type Box, type Ground } from '../popups';
 import { formatMult, formatScore, slotName } from '../state';
-import { inkUsable, playedBoard, runActions, useRunStore } from '../store';
+import { inkUsable, landPoints, playedBoard, runActions, useRunStore } from '../store';
 import { CheckIcon, CoinIcon, TargetIcon } from './icons';
-import { Coins, Hearts, ItemTile, LensTile, Meter, Page, TierDot, useCountUp } from './parts';
+import { Coins, Hearts, ItemTile, Letters, LensTile, Meter, Page, TierDot, useCountUp } from './parts';
 
 // ---- the score band --------------------------------------------------------------------
 
-/** One placement's marks times mult, fading in as it lands. */
+const bandScore = () => document.querySelector('.cb-run-band-score');
+
+// Points whose show or popup went before they flew land on the next tick, so that React's
+// development double mount, which unmounts and mounts again at once, keeps them in the air.
+const landing = new Map<number, ReturnType<typeof setTimeout>>();
+function landSoon(id: number) {
+  clearTimeout(landing.get(id));
+  landing.set(
+    id,
+    setTimeout(() => {
+      landing.delete(id);
+      landPoints(id);
+    }, 0),
+  );
+}
+function stayAloft(id: number) {
+  clearTimeout(landing.get(id));
+  landing.delete(id);
+}
+
+/** One placement's marks times mult. */
 function TallyLine({ t }: { t: TallyFx | null }) {
   if (!t) return <span className="cb-run-tally is-empty" aria-hidden="true" />;
+  return <TallyShow key={t.id} t={t} />;
+}
+
+function TallyShow({ t }: { t: TallyFx }) {
+  const [plan] = useState(() => planOf(t, moves()));
+  const [beat, setBeat] = useState(-1);
+  const line = useRef<HTMLSpanElement>(null);
+  const marks = useRef<HTMLSpanElement>(null);
+  const mult = useRef<HTMLSpanElement>(null);
+  const points = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!plan.full) {
+      // Marks and mult light together, a beat after the digit lands.
+      const t0 = setTimeout(() => {
+        bump(marks.current, 0.16);
+        bump(mult.current, 0.16);
+      }, 60);
+      return () => clearTimeout(t0);
+    }
+    stayAloft(t.id);
+    const timers = plan.beats.map((b, i) => setTimeout(() => setBeat(i), b.at));
+    timers.push(
+      setTimeout(() => {
+        const to = bandScore();
+        if (points.current && to) void fly(points.current, to, `+${formatScore(t.points)}`, 480).then(() => landPoints(t.id));
+        else landPoints(t.id);
+      }, plan.flyAt),
+    );
+    // A newer placement cuts the show short: these points land at once.
+    return () => {
+      timers.forEach(clearTimeout);
+      landSoon(t.id);
+    };
+  }, [plan, t.id, t.points]);
+  // Each beat bumps what it changed, and the last one shakes the sum.
+  const was = useRef<Beat | null>(null);
+  useEffect(() => {
+    const b = plan.beats[beat];
+    if (!b) return;
+    const prev = was.current;
+    if (!prev || prev.marks !== b.marks) bump(marks.current, 0.16);
+    if (b.mult !== null && prev?.mult !== b.mult) bump(mult.current, 0.16);
+    if (b.points) {
+      bump(points.current, 0.2);
+      shake(line.current, t.tier >= 6 ? 6 : 3.5);
+    }
+    was.current = b;
+  }, [beat, plan, t.tier]);
+  const b = plan.full ? (plan.beats[beat] ?? null) : null;
+  const wait = (on: boolean) => (plan.full && !on ? ' is-wait' : '');
   return (
-    <span key={t.id} className="cb-run-tally" aria-hidden="true">
-      <span className="cb-run-marks">{formatScore(t.marks)}</span>
-      <span className="cb-run-times">×</span>
-      <span className="cb-run-mult">{formatMult(t.mult)}</span>
-      <span className="cb-run-points">+{formatScore(t.points)}</span>
+    <span className={`cb-run-tally${plan.full ? ' is-show' : ''}`} ref={line} aria-hidden="true">
+      <span className={`cb-run-marks${wait(!!b)}`} ref={marks}>
+        {formatScore(b ? b.marks : t.marks)}
+      </span>
+      <span className={`cb-run-times${wait(!!b && b.mult !== null)}`}>×</span>
+      <span className={`cb-run-mult${wait(!!b && b.mult !== null)}`} ref={mult}>
+        {formatMult(b?.mult ?? t.mult)}
+      </span>
+      <span className={`cb-run-points${wait(!!b?.points)}`} ref={points}>
+        +{formatScore(t.points)}
+      </span>
     </span>
   );
 }
@@ -57,17 +135,27 @@ function FlowMeter({ flow, cap }: { flow: number; cap: number }) {
 function ScoreBand({ run }: { run: RunState }) {
   const tally = useRunStore((s) => s.fx.tally);
   const popups = useRunStore((s) => s.fx.popups);
+  const air = useRunStore((s) => s.fx.air);
   const live = run.live;
   // Once the board is over, the band keeps its final score while the tally is on screen.
   const done = live ? null : run.results[run.results.length - 1];
   const now = live ? { score: live.score, target: live.target, hearts: live.hearts, shield: live.shield } : done ? { score: done.score, target: done.target, hearts: run.hearts, shield: run.shield } : null;
-  const score = useCountUp(now?.score ?? 0, 240);
+  // The score on show leaves out the points still flying to it, and bumps as each lands.
+  const landed = (now?.score ?? 0) - Object.values(air).reduce((s, x) => s + x, 0);
+  const score = useCountUp(landed, 240);
+  const scoreEl = useRef<HTMLSpanElement>(null);
+  const before = useRef(landed);
+  useEffect(() => {
+    if (landed > before.current) bump(scoreEl.current, 0.08);
+    before.current = landed;
+  }, [landed]);
   if (!now) return null;
   const last = popups[popups.length - 1];
+  const met = landed >= now.target;
   return (
-    <div className={`cb-run-band${now.score >= now.target ? ' is-met' : ''}`} role="group" aria-label="Score">
+    <div className={`cb-run-band${met ? ' is-met' : ''}`} role="group" aria-label="Score">
       <div className="cb-run-band-top">
-        <span className="cb-run-band-score" aria-label={`Score ${formatScore(now.score)} of ${formatScore(now.target)}`}>
+        <span className="cb-run-band-score" ref={scoreEl} aria-label={`Score ${formatScore(now.score)} of ${formatScore(now.target)}`}>
           {formatScore(score)}
         </span>
         <span className="cb-run-band-side">
@@ -76,9 +164,9 @@ function ScoreBand({ run }: { run: RunState }) {
         </span>
       </div>
       <div className="cb-run-band-meter">
-        <Meter score={now.score} target={now.target} />
+        <Meter score={landed} target={now.target} />
         <span className="cb-run-band-target" aria-hidden="true">
-          {now.score >= now.target ? <CheckIcon className="cb-run-target-icon" /> : <TargetIcon className="cb-run-target-icon" />}
+          {met ? <CheckIcon className="cb-run-target-icon" /> : <TargetIcon className="cb-run-target-icon" />}
           {formatScore(now.target)}
         </span>
       </div>
@@ -112,7 +200,12 @@ type Pick = { kind: 'boss' } | { kind: 'bet' } | { kind: 'lens'; k: number } | {
 
 function LensRow({ run, pick, onPick }: { run: RunState; pick: Pick; onPick: (p: Pick) => void }) {
   const tally = useRunStore((s) => s.fx.tally);
-  const fired = useHeld(tally && tally.fired.length ? tally : null, 700);
+  // A fired lens glows and kicks when its turn in the placement's sum comes (planOf), and stays lit
+  // until the sum is done.
+  const incoming = tally && tally.fired.length ? tally : null;
+  const hold = useMemo(() => (incoming ? planOf(incoming, moves()).hold : 700), [incoming]);
+  const fired = useHeld(incoming, hold);
+  const plan = useMemo(() => (fired ? planOf(fired, moves()) : null), [fired]);
   if (!run.lenses.length && !run.items.length) return null;
   return (
     <div className="cb-run-tiles is-board" role="group" aria-label="Lenses and items">
@@ -123,7 +216,8 @@ function LensRow({ run, pick, onPick }: { run: RunState; pick: Pick; onPick: (p:
             key={`${l.id}${k}${order >= 0 ? `@${fired!.id}` : ''}`}
             slot={l}
             firing={order >= 0}
-            delay={order * 60}
+            delay={plan ? plan.lensAt(order) : 0}
+            kick={plan?.full ? 1 : 0.6}
             selected={pick?.kind === 'lens' && pick.k === k}
             onClick={() => onPick(pick?.kind === 'lens' && pick.k === k ? null : { kind: 'lens', k })}
           />
@@ -196,6 +290,40 @@ function Popups() {
     const t = setTimeout(() => tick((x) => x + 1), POPUP_MS + 20);
     return () => clearTimeout(t);
   }, [popups, spots]);
+  // Most placements send their points up to the score from here: 220 ms after the popup shows they
+  // fly for 380 ms, and the band counts them in as they land. A pair or harder flies from the band.
+  const [sent, setSent] = useState<ReadonlySet<number>>(() => new Set());
+  const flights = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+  useEffect(() => {
+    const air = useRunStore.getState().fx.air;
+    for (const p of popups) {
+      if (flights.current.has(p.id) || !(p.id in air) || p.tier >= SHOW_TIER) continue;
+      stayAloft(p.id);
+      flights.current.set(
+        p.id,
+        setTimeout(() => {
+          const from = host.current?.querySelector(`[data-pop="${p.id}"] .cb-run-pop-points`);
+          const to = bandScore();
+          if (!from || !to) {
+            landPoints(p.id);
+            return;
+          }
+          setSent((s) => new Set(s).add(p.id));
+          void fly(from, to, `+${formatScore(p.points)}`, 380).then(() => landPoints(p.id));
+        }, 220),
+      );
+    }
+  }, [popups]);
+  useEffect(() => {
+    const map = flights.current;
+    return () => {
+      map.forEach((t, id) => {
+        clearTimeout(t);
+        landSoon(id);
+      });
+      map.clear();
+    };
+  }, []);
   const n = game?.puzzle.size ?? 9;
   return (
     <div className="cb-run-pops" ref={host} aria-hidden="true">
@@ -205,7 +333,12 @@ function Popups() {
           ? { left: box.x, top: box.y, minWidth: box.w }
           : { left: `${(((p.cell % n) + 0.5) / n) * 100}%`, top: `${(Math.floor(p.cell / n) / n) * 100}%` };
         return (
-          <span key={p.id} className={`cb-run-pop cb-run-t${p.tier}${box ? '' : ' is-unplaced'}${reduce ? ' is-still' : ''}${p.points ? '' : ' is-zero'}${p.note ? ' is-event' : ''}`} style={style}>
+          <span
+            key={p.id}
+            data-pop={p.id}
+            className={`cb-run-pop cb-run-t${p.tier}${box ? '' : ' is-unplaced'}${reduce ? ' is-still' : ''}${p.points ? '' : ' is-zero'}${p.note ? ' is-event' : ''}${sent.has(p.id) ? ' is-sent' : ''}`}
+            style={style}
+          >
             <span className="cb-run-pop-name">{p.name}</span>
             <span className="cb-run-pop-points">{p.note ?? `+${formatScore(p.points)}`}</span>
             {p.clean > 1 && <span className="cb-run-pop-clean">Clean ×{formatMult(p.clean)}</span>}
@@ -250,55 +383,153 @@ function rows(tech: BoardResult['tech']) {
     .sort((a, b) => b.points - a.points || b.tier - a.tier);
 }
 
+/** A number that counts up from nothing once it is given. */
+function Count({ value, ms }: { value: number; ms: number }) {
+  return <>{formatScore(useCountUp(value, ms, 0))}</>;
+}
+
+/** How far the tally has got: rows shown, Cleared stamped, coins in. */
+interface TallyStep {
+  rows: number;
+  stamped: boolean;
+  coins: boolean;
+}
+
+const ROW_MS = 340;
+const FIRST_ROW_MS = 300;
+
+/**
+ * The board's tally, played as a short show (the Motion Lab's Lively): the rows tick in 340 ms apart
+ * and the score counts up with them; when it passes the target, Cleared stamps in with its letters
+ * shaking loose, the panel jolts once and the spectrum flares behind the score, brighter the further
+ * past the target it lands; then the coins. A tap on the panel skips to the end, and its button
+ * works all along. Without motion it shows the end at once.
+ */
 export function TallyPanel({ run, onNext }: { run: RunState; onNext: () => void }) {
   const r = run.phase === 'tally' || run.phase === 'done' ? run.results[run.results.length - 1] : undefined;
-  // The board's score counts up from nothing as the tally opens: the end of a board's moment.
-  const score = useCountUp(r?.score ?? 0, 900, 0);
   if (!r || r.status === 'skipped') return <span className="cb-run-wait is-big" role="status" aria-label="Adding up the board" />;
+  return <PanelShow key={r.slot} run={run} r={r} onNext={onNext} />;
+}
+
+function PanelShow({ run, r, onNext }: { run: RunState; r: BoardResult; onNext: () => void }) {
   const list = rows(r.tech);
-  const shownRows = list.slice(0, 5);
   const more = list.slice(5).reduce((s, x) => s + x.points, 0);
+  const lines = [
+    ...list.slice(0, 5).map((t) => ({ key: t.id as string, tier: t.tier as number | null, name: TECHNIQUES[t.id].name, n: t.n as number | null, points: t.points })),
+    ...(more > 0 ? [{ key: 'others', tier: null, name: 'Others', n: null, points: more }] : []),
+  ];
+  const cleared = r.status === 'cleared';
+  const end: TallyStep = { rows: lines.length, stamped: cleared, coins: true };
+  const [motion] = useState(moves);
+  const [step, setStep] = useState<TallyStep>(() => (motion ? { rows: 0, stamped: !cleared, coins: false } : end));
+  // The score so far: the rows shown, then the board's own total (with any head start) once all are in.
+  const at = step.rows < lines.length ? lines.slice(0, step.rows).reduce((s, l) => s + l.points, 0) : r.score;
+  const score = useCountUp(at, motion ? 300 : 0, motion ? 0 : at);
+  const panel = useRef<HTMLElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+  const flare = useRef<HTMLSpanElement>(null);
+  const body = useRef<HTMLTableSectionElement>(null);
+  const coin = useRef<HTMLSpanElement>(null);
+  const num = useRef<HTMLSpanElement>(null);
+  const ratio = r.target > 0 ? r.score / r.target : 1;
+  // How bright the flare burns: from a quarter at the target to full at two and a half times it.
+  const glow = Math.min(1, 0.25 + (ratio - 1) * 0.5);
+
+  useEffect(() => {
+    if (!motion) return;
+    const timers = lines.map((_, k) => setTimeout(() => setStep((s) => ({ ...s, rows: Math.max(s.rows, k + 1) })), FIRST_ROW_MS + k * ROW_MS));
+    timers.push(setTimeout(() => setStep((s) => ({ ...s, rows: lines.length, coins: true })), FIRST_ROW_MS + lines.length * ROW_MS + 520));
+    return () => timers.forEach(clearTimeout);
+    // The show plays once, for the board that just ended.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [motion]);
+
+  // Each row's dot pops in on a spring as the row ticks in, and the score bumps.
+  useLayoutEffect(() => {
+    if (!motion || !step.rows) return;
+    spring(body.current?.rows[step.rows - 1]?.querySelector('.cb-run-tierdot'), 0.4, 1, scale, 600, 18);
+    bump(num.current, 0.06);
+  }, [motion, step.rows]);
+
+  // Cleared stamps in a moment after the score passes the target.
+  const crossed = motion && cleared && !step.stamped && at >= r.target;
+  useEffect(() => {
+    if (!crossed) return;
+    const t = setTimeout(() => setStep((s) => ({ ...s, stamped: true })), 280);
+    return () => clearTimeout(t);
+  }, [crossed]);
+  const stampedOnce = useRef(false);
+  useLayoutEffect(() => {
+    if (!motion || !cleared || !step.stamped || stampedOnce.current) return;
+    stampedOnce.current = true;
+    if (step.coins) {
+      // Skipped to the end: the flare rests where it would have settled.
+      if (flare.current) flare.current.style.opacity = String(glow * 0.6);
+      return;
+    }
+    spring(title.current, 1.35, 1, scale, 420, 18);
+    shakeLoose(title.current, { lift: 12, tilt: 10, k: 380, c: 14, gap: 40 });
+    shake(panel.current, 3 * Math.min(2.5, ratio));
+    if (flare.current) {
+      flare.current.style.opacity = String(glow * 0.6);
+      flare.current.animate([{ opacity: 0 }, { opacity: Math.min(1, glow * 1.2) }, { opacity: glow * 0.6 }], { duration: 900, easing: 'ease-out' });
+    }
+  }, [motion, cleared, step.stamped, step.coins, glow, ratio]);
+
+  // The coin turns as the coins come in.
+  useLayoutEffect(() => {
+    if (motion && step.coins) coin.current?.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(360deg)' }], { duration: 520, easing: EASE_OUT });
+  }, [motion, step.coins]);
+
   const c = r.coins;
+  const skip = (e: React.PointerEvent) => {
+    if (step.coins || (e.target as HTMLElement).closest('button')) return;
+    setStep(end);
+  };
   return (
-    <section className={`cb-run-panel is-${r.status}`} aria-labelledby="cb-run-panel-h">
-      <h2 id="cb-run-panel-h" className="cb-run-panel-title">
-        {headline(r)}
+    <section ref={panel} className={`cb-run-panel is-${r.status}`} aria-labelledby="cb-run-panel-h" onPointerDown={motion ? skip : undefined}>
+      <h2 id="cb-run-panel-h" ref={title} className={`cb-run-panel-title${step.stamped ? '' : ' is-wait'}`} aria-label={headline(r)}>
+        <Letters text={headline(r)} />
       </h2>
       <p className="cb-run-panel-score" aria-label={`${formatScore(r.score)} of ${formatScore(r.target)}`}>
-        <span className="cb-run-panel-num">{formatScore(score)}</span>
+        <span className="cb-run-panel-numwrap">
+          {cleared && (
+            <span ref={flare} className={`cb-run-flare${motion ? '' : ' is-still'}`} style={motion ? undefined : { opacity: glow * 0.6 }} aria-hidden="true">
+              <span className="cb-run-flare-ring" />
+            </span>
+          )}
+          <span className="cb-run-panel-num" ref={num}>
+            {formatScore(score)}
+          </span>
+        </span>
         <span className="cb-run-dim"> / {formatScore(r.target)}</span>
       </p>
       <Meter score={score} target={r.target} />
-      {shownRows.length > 0 && (
+      {lines.length > 0 && (
         <table className="cb-run-techs">
           <caption className="cb-run-sr">Points by technique</caption>
-          <tbody>
-            {shownRows.map((t) => (
-              <tr key={t.id}>
-                <th scope="row">
-                  <TierDot tier={t.tier} />
-                  {TECHNIQUES[t.id].name}
+          <tbody ref={body}>
+            {lines.map((t, k) => (
+              <tr key={t.key} className={k < step.rows ? (motion ? 'is-in' : '') : 'is-wait'}>
+                <th scope="row" className={t.tier === null ? 'cb-run-dim' : undefined}>
+                  {t.tier !== null && <TierDot tier={t.tier} />}
+                  {t.name}
                 </th>
                 <td className="cb-run-dim">{t.n}</td>
-                <td className="is-num">{formatScore(t.points)}</td>
+                <td className="is-num">
+                  <Count value={k < step.rows ? t.points : 0} ms={motion ? 260 : 0} />
+                </td>
               </tr>
             ))}
-            {more > 0 && (
-              <tr>
-                <th scope="row" className="cb-run-dim">
-                  Others
-                </th>
-                <td />
-                <td className="is-num">{formatScore(more)}</td>
-              </tr>
-            )}
           </tbody>
         </table>
       )}
-      <div className="cb-run-panel-foot">
+      <div className={`cb-run-panel-foot${step.coins ? (motion ? ' is-in' : '') : ' is-wait'}`}>
         {c && c.total > 0 ? (
           <span className="cb-run-panel-coins">
-            <CoinIcon className="cb-run-coin" />
+            <span ref={coin} className="cb-run-coin-turn">
+              <CoinIcon className="cb-run-coin" />
+            </span>
             <strong>+{c.total}</strong>
             <span className="cb-run-panel-why">{coinWhy(c)}</span>
           </span>

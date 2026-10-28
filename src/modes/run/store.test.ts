@@ -25,9 +25,16 @@ vi.mock('../../engine/techniques', async (importOriginal) => {
   };
 });
 
+// Motion is off where the page cannot animate; a test turns it on to see the points fly.
+const motion = vi.hoisted(() => ({ on: false }));
+vi.mock('../../app/motion', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../app/motion')>();
+  return { ...real, moves: () => motion.on };
+});
+
 import type { Prepared } from './board';
 import { LEGACY_KEY, RUN_KEY } from './storage';
-import { playedBoard, resetRunStore, runActions, settled, useRunStore } from './store';
+import { landPoints, playedBoard, resetRunStore, runActions, settled, useRunStore } from './store';
 
 const state = () => useRunStore.getState();
 
@@ -69,6 +76,7 @@ beforeEach(() => {
   engine.hard = null;
   engine.calls = [];
   engine.hardCalls = [];
+  motion.on = false;
 });
 
 describe('the Run store', () => {
@@ -100,6 +108,39 @@ describe('the Run store', () => {
     expect(call.values[b]).toBe(0);
     expect(call.values.filter(Boolean).length).toBe(p.givens.filter(Boolean).length);
     expect(state().fx.popups.at(-1)).toMatchObject({ cell: a, name: 'Hidden single', points: 20 });
+  });
+
+  it('with motion, keeps the points of a placement in the air until they land on the score', async () => {
+    motion.on = true;
+    runActions.start('free', 1000, '2026-10-26');
+    const p = await playBoard();
+    engine.technique = 'hiddenSingle';
+    const [a, b] = emptyCells(p);
+    type(a, p.solution[a]);
+    await settled();
+    const first = state().fx.popups.at(-1)!;
+    // The score has them already; the band shows it without them until they land.
+    expect(state().run!.live!.score).toBe(20);
+    expect(state().fx.air).toEqual({ [first.id]: 20 });
+    landPoints(first.id);
+    expect(state().fx.air).toEqual({});
+    // Leaving the board lets everything still in the air land.
+    type(b, p.solution[b]);
+    await settled();
+    expect(Object.keys(state().fx.air)).toHaveLength(1);
+    runActions.home();
+    expect(state().fx.air).toEqual({});
+  });
+
+  it('keeps nothing in the air without motion', async () => {
+    runActions.start('free', 1000, '2026-10-26');
+    const p = await playBoard();
+    engine.technique = 'hiddenSingle';
+    const [a] = emptyCells(p);
+    type(a, p.solution[a]);
+    await settled();
+    expect(state().fx.popups).toHaveLength(1);
+    expect(state().fx.air).toEqual({});
   });
 
   it('scores by the hardest technique that proves the digit when the run holds Microscope', async () => {

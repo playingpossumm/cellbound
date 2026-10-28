@@ -48,7 +48,9 @@ A hint comes in three steps for the same deduction. The first shows where to loo
 
 Cellbound has one look, Prism, in a light and a dark version. Digits sit on glass cells in a single ink, so the board reads at a glance, under a band where a beam of white light splits into one ray per digit. Each digit owns the colour of its ray, which also marks its key on the pad. Select a cell with a digit and every cell holding that digit lights up in its colour, along with the matching pencil marks. On Auto the light or dark version follows your device, and Settings can keep either one.
 
-Prism honours reduced motion, from the device or from Settings.
+The board moves a little. A key squashes under your finger and springs back, a placed digit lands on a spring, a wrong one shakes, a pencil mark that a digit clears shrinks away, and a finished row, column or box lights up cell by cell in its digits' colours. A Run moves more: each placement's points fly from the cell to the score, and a pair or a harder technique first builds its marks times mult lens by lens. The board's tally ticks in row by row and stamps Cleared, reward cards deal in and lean toward the pointer, and a won run bursts out of the prism. None of it holds up the next tap.
+
+With reduced motion, from the device or from Settings, all of it stays still.
 
 ## Run it
 
