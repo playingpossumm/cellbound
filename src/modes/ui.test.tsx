@@ -188,13 +188,29 @@ describe('Run screen', () => {
   it('opens on the home with the daily and the free run, and draws the shape of a run', async () => {
     await run();
     expect(button('Start daily run')).toBeDefined();
-    expect(button('Start free run')).toBeDefined();
+    expect(button('Start Run')).toBeDefined();
     expect(text()).toContain('Not played');
     // Three antes of three boards, every boss drawn larger, and three hearts.
     expect(host.querySelectorAll('.cb-run-shape .cb-run-pip')).toHaveLength(9);
     expect(host.querySelectorAll('.cb-run-shape .cb-run-pip.is-boss')).toHaveLength(3);
     expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('3 hearts');
     expect(text()).not.toMatch(/How a run works|Everyone gets the same boards/);
+  });
+
+  it('picks the free run’s difficulty under its button: Hard waits for a win, and the hearts drawn follow the pick', async () => {
+    await run();
+    const level = (name: string) => [...host.querySelectorAll<HTMLButtonElement>('.cb-run-levels button')].find((b) => b.textContent === name)!;
+    expect(level('Normal').getAttribute('aria-pressed')).toBe('true');
+    expect(level('Hard').getAttribute('aria-disabled')).toBe('true');
+    await click(level('Hard'));
+    expect(text()).toContain('Win a run on Normal to open Hard.');
+    expect(level('Normal').getAttribute('aria-pressed')).toBe('true');
+    await click(level('Easy'));
+    expect(level('Easy').getAttribute('aria-pressed')).toBe('true');
+    expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('4 hearts');
+    await click(button('Start Run'));
+    expect(state().run!.difficulty).toBe('easy');
+    expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 1 Easy');
   });
 
   it('counts the runs of the first Run on the home', async () => {
@@ -205,7 +221,7 @@ describe('Run screen', () => {
 
   it('shows the ante with each target before the board starts, then plays it with the score band', async () => {
     await run();
-    await click(button('Start free run'));
+    await click(button('Start Run'));
     expect(host.querySelector('.cb-run-title')?.textContent).toBe('Ante 1');
     expect(host.querySelectorAll('.cb-run-board')).toHaveLength(3);
     await until(() => state().run!.targets[0] !== null, 'the first target', 20_000);
@@ -230,7 +246,7 @@ describe('Run screen', () => {
 
   it('tallies a solved board, then goes on to a card pick, the shop and the next board', async () => {
     await run();
-    await click(button('Start free run'));
+    await click(button('Start Run'));
     await playBoard();
     await solve();
     await until(() => !!host.querySelector('.cb-run-panel'), 'the tally', 20_000);
@@ -254,7 +270,7 @@ describe('Run screen', () => {
 
   it('skips a Small board for a pick of two cards, and its shop with it', async () => {
     await run();
-    await click(button('Start free run'));
+    await click(button('Start Run'));
     await click(button('Skip for a card'));
     expect(host.querySelectorAll('.cb-run-offers button')).toHaveLength(2);
     await click(host.querySelector('.cb-run-offers button') ?? undefined);
@@ -265,7 +281,7 @@ describe('Run screen', () => {
 
   it('ends the run when the hearts run out and shows the summary', async () => {
     await run();
-    await click(button('Start free run'));
+    await click(button('Start Run'));
     await playBoard();
     await act(async () => {
       const g = getGame()!;
@@ -290,7 +306,7 @@ describe('Run screen', () => {
 
   it('offers to resume a run that was left, and resumes it on the same board', async () => {
     await run();
-    await click(button('Start free run'));
+    await click(button('Start Run'));
     await playBoard();
     await click(button('Leave this board'));
     expect(text()).toContain('Run in progress');
@@ -301,9 +317,9 @@ describe('Run screen', () => {
 
   it('asks before a new run replaces one in progress, and ends it on request', async () => {
     await run();
-    await click(button('Start free run'));
+    await click(button('Start Run'));
     await click(host.querySelector('button[aria-label="Back"]') ?? undefined);
-    await click(button('Start free run'));
+    await click(button('Start Run'));
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('ends the one in progress');
     await click(button('Keep playing'));
     expect(host.querySelector('[role="alert"]')).toBeNull();
@@ -400,7 +416,7 @@ describe('Run screen', () => {
 
   it('marks where a Thief gives come back with a question mark, and takes the mark off when the given returns', async () => {
     await run();
-    await click(button('Start free run'));
+    await click(button('Start Run'));
     await playBoard();
     const live = state().run!.live!;
     useRunStore.setState({ run: { ...state().run!, live: { ...live, stolen: [3, 17] } } });
@@ -420,7 +436,7 @@ describe('Run screen', () => {
     expect(host.querySelectorAll('.cb-run-box [class*="cb-run-pip"]').length).toBeGreaterThan(0);
     expect(buttons().filter((b) => /^Resume/.test(b.textContent ?? ''))).toHaveLength(1);
     expect(button(/daily/i)).toBeUndefined();
-    expect(button('Start free run')).toBeDefined();
+    expect(button('Start Run')).toBeDefined();
     // Neither start is the main button while there is a run to resume.
     expect(host.querySelectorAll('.cb-run-btn.is-primary')).toHaveLength(1);
   });
@@ -463,7 +479,7 @@ describe('Run screen', () => {
     await click(button('Collection'));
     expect(host.querySelector('header.cb-top button[aria-label="Menu"]')).not.toBeNull();
     await click(host.querySelector('button[aria-label="Back"]') ?? undefined);
-    await click(button('Start free run'));
+    await click(button('Start Run'));
     expect(host.querySelector('header.cb-top button[aria-label="Menu"]')).not.toBeNull();
   });
 });

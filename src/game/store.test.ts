@@ -320,3 +320,21 @@ describe('hint fallbacks', () => {
     expect(getGame()!.values[i]).toBe(LYRA.solution[i]);
   });
 });
+
+describe('notes a card writes', () => {
+  it('fills the candidate notes of some cells, even on a board without notes, as one undo step', () => {
+    startGame({ key: 'pencil', mode: 'run', puzzle: LYRA, mods: { noNotes: true } });
+    const cells = empty.slice(0, 3);
+    expect(actions.pencilIn(cells)).toBe(3);
+    const g = getGame()!;
+    expect(g.notes.filter((m) => m).length).toBe(3);
+    // Candidates, so the right digit is always among them.
+    expect(cells.every((i) => g.notes[i] & (1 << LYRA.solution[i]))).toBe(true);
+    expect(actions.pencilIn(cells)).toBe(0);
+    actions.undo();
+    expect(getGame()!.notes.every((m) => !m)).toBe(true);
+    // The player's own Fill notes still keeps to the board's rule.
+    actions.fillNotes();
+    expect(getGame()!.notes.every((m) => !m)).toBe(true);
+  });
+});

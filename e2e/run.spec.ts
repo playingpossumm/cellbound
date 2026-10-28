@@ -104,7 +104,7 @@ test('a run shows each target before its board, scores the board and moves on', 
   // The shape of a run: three antes of three boards, a boss in each.
   await expect(page.locator('.cb-run-shape .cb-run-pip')).toHaveCount(9);
   await expect(page.locator('.cb-run-shape .cb-run-pip.is-boss')).toHaveCount(3);
-  await page.getByRole('button', { name: 'Start free run' }).click();
+  await page.getByRole('button', { name: 'Start Run' }).click();
   await expect(page.locator('.cb-run-title')).toHaveText('Ante 1');
   await expect(page.locator('.cb-run-board')).toHaveCount(3);
   await expect(page.locator('.cb-run-board.is-now .cb-run-board-target')).toHaveText(/\d/, { timeout: 30_000 });
@@ -133,7 +133,7 @@ test('a run shows each target before its board, scores the board and moves on', 
 test('a Small board can be skipped for a pick of two cards and no shop, and the menu returns to the Run home', async ({ page }) => {
   await openFresh(page);
   await openScreen(page, 'Run');
-  await page.getByRole('button', { name: 'Start free run' }).click();
+  await page.getByRole('button', { name: 'Start Run' }).click();
   await page.getByRole('button', { name: 'Skip for a card' }).click();
   await expect(page.locator('.cb-run-offers .cb-run-card')).toHaveCount(2);
   await page.locator('.cb-run-offers .cb-run-card').last().click();
@@ -148,7 +148,7 @@ test('a Small board can be skipped for a pick of two cards and no shop, and the 
 test('a board left mid-way resumes where it was', async ({ page }) => {
   await openFresh(page);
   await openScreen(page, 'Run');
-  await page.getByRole('button', { name: 'Start free run' }).click();
+  await page.getByRole('button', { name: 'Start Run' }).click();
   await playWhenReady(page);
   const placed = await page.evaluate(() => {
     const { actions, getGame } = (window as unknown as { __cellbound: Hook }).__cellbound;
@@ -319,7 +319,7 @@ test('a run of the first Run is not resumed, its save is left alone, and its run
   await openRunWith(page, null, v1);
   await expect(page.getByRole('button', { name: 'Resume run' })).toHaveCount(0);
   await expect(page.locator('.cb-run-stats')).toContainText('Runs4');
-  await page.getByRole('button', { name: 'Start free run' }).click();
+  await page.getByRole('button', { name: 'Start Run' }).click();
   await expect(page.locator('.cb-run-title')).toHaveText('Ante 1');
   expect(await page.evaluate(() => localStorage.getItem('cellbound:run:v1'))).toBe(v1);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cellbound:run:v2') ?? '{}').current?.v)).toBe(2);

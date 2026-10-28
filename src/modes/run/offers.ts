@@ -1,10 +1,12 @@
 // Reward offers after a board. Seeded by the run seed and the board, so a run in the same state
 // is offered the same cards on every device. The draw leans on the run's state (heart cards when
-// hearts are low, hint cards after hints were used), never shows a card twice, spreads the cards
-// over the categories and favours a category the last offer left out, so every one comes round.
+// hearts are low, hint cards after hints were used, cards that answer the boss rule ahead), never
+// shows a card twice, spreads the cards over the categories and favours a category the last offer
+// left out, so every one comes round.
 import { makeRng } from '../../engine';
+import { bossAhead, COUNTERS } from './bosses';
 import { maxHeartsOf } from './lenses';
-import type { Category, Offer, OfferKind, RunState } from './model';
+import type { Category, Offer, OfferKind, RewardId, RunState } from './model';
 import { placedTiers, relevance } from './placed';
 import { canOffer, isBargain, type RewardDef } from './rewards';
 import { OFFERS } from './tuning';
@@ -36,11 +38,14 @@ export function makeOffer(run: RunState, kind: OfferKind, pool: readonly RewardD
   const cards = eligible(run, kind, pool);
   const chosen: RewardDef[] = [];
   const placed = placedTiers(run);
+  const ahead = bossAhead(run, run.slot);
+  const counters: readonly RewardId[] = ahead ? COUNTERS[ahead].rewards : [];
   const weight = (c: RewardDef) =>
     OFFERS.rarity[c.rarity] *
     categoryWeight(c.category, run) *
     relevance(c.tiers, placed) *
     (isBargain(c) ? OFFERS.bargain : 1) *
+    (counters.includes(c.id) ? OFFERS.counter : 1) *
     (chosen.some((x) => x.category === c.category) ? OFFERS.repeat : 1);
   const draw = (list: RewardDef[]): RewardDef | undefined => {
     if (!list.length) return undefined;

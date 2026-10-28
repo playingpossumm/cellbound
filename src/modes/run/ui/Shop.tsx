@@ -7,7 +7,7 @@ import { lensById } from '../lenses';
 import type { RunState } from '../model';
 import { canBuyItem, canBuyLens, priceOfItem, rerollCost } from '../shop';
 import { CoinIcon, RerollIcon } from './icons';
-import { Coins, ItemTile, LensCard, Loadout, LoadoutActions, Page, RunHearts, RunScore, sendToLoadout, Track, whereLabel } from './parts';
+import { BossAhead, Coins, ItemTile, LensCard, Loadout, LoadoutActions, Page, RunHearts, RunScore, sendToLoadout, Track, whereLabel } from './parts';
 
 export interface ShopProps {
   run: RunState;
@@ -58,6 +58,7 @@ export function Shop({ run, onBuyLens, onBuyItem, onSell, onMove, onReroll, onUs
           <RunScore value={run.score} />
         </div>
       </div>
+      <BossAhead run={run} />
 
       <section aria-label="For sale">
         <ul className="cb-run-stock is-dealt">

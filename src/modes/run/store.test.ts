@@ -35,6 +35,7 @@ vi.mock('../../app/motion', async (importOriginal) => {
 import type { Prepared } from './board';
 import { LEGACY_KEY, RUN_KEY } from './storage';
 import { landPoints, playedBoard, resetRunStore, runActions, settled, useRunStore } from './store';
+import { DIFFICULTY, INK } from './tuning';
 
 const state = () => useRunStore.getState();
 
@@ -240,6 +241,46 @@ describe('the Run store', () => {
     expect(runActions.useItem(0)).toBe(true);
     expect(getGame()!.mods!.noNotes).toBeUndefined();
     expect(state().run!.live!.rule).toBeNull();
+  });
+
+  it('uses Pencil Ink on a Mute board as one undo step, and Time Ink only on a clock', async () => {
+    runActions.start('free', 1000, '2026-10-26');
+    await until(() => !!state().ready[0], 'the board');
+    const run = state().run!;
+    useRunStore.setState({ run: { ...run, slot: 2, bosses: ['mute', 'fog', 'clock'], items: ['inkPencil', 'inkTime'] } });
+    runActions.retry();
+    const p = await playBoard();
+    expect(getGame()!.mods!.noNotes).toBe(true);
+    // No clock on this board, so Time Ink has nothing to add to.
+    expect(runActions.useItem(1)).toBe(false);
+    actions.select(emptyCells(p)[0]);
+    expect(runActions.useItem(0)).toBe(true);
+    expect(getGame()!.notes.some((m) => m)).toBe(true);
+    expect(state().run!.items).toEqual(['inkTime']);
+    actions.undo();
+    expect(getGame()!.notes.every((m) => !m)).toBe(true);
+    // With a clock (an Overtime card's), Time Ink adds its minutes.
+    actions.updateMods({ timeLimitMs: 60_000 });
+    expect(runActions.useItem(0)).toBe(true);
+    expect(getGame()!.mods!.timeLimitMs).toBe(60_000 + INK.timeMs);
+    expect(state().run!.items).toEqual([]);
+  });
+
+  it('starts a free run on the level picked and a daily run on Normal, and keeps Hard shut until a win on Normal', () => {
+    runActions.pickLevel('hard');
+    expect(state().data.pick).toBeUndefined();
+    runActions.pickLevel('easy');
+    runActions.start('free', 1000, '2026-10-26');
+    expect(state().run!.difficulty).toBe('easy');
+    expect(state().run!.hearts).toBe(DIFFICULTY.hearts.easy);
+    runActions.start('daily', 2000, '2026-10-26');
+    expect(state().run!.difficulty).toBe('normal');
+    useRunStore.setState({ data: { ...state().data, stats: { ...state().data.stats, won: 1 } } });
+    runActions.pickLevel('hard');
+    expect(JSON.parse(localStorage.getItem(RUN_KEY)!).pick).toBe('hard');
+    runActions.start('free', 3000, '2026-10-26');
+    expect(state().run!.difficulty).toBe('hard');
+    expect(state().run!.hearts).toBe(DIFFICULTY.hearts.hard);
   });
 
   it('never writes the first Run\'s key, and counts its runs', async () => {

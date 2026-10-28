@@ -6,14 +6,14 @@ import { soundLand } from '../../../app/sound';
 import { TopBar } from '../../../app/TopBar';
 import { useReducedMotion } from '../../../app/theme';
 import { useScreenEntry } from '../../screenEntry';
-import { anteOf, ANTES, isBoss, KINDS, slotOf } from '../boards';
-import { BOSS_NAMES, type BossRule } from '../bosses';
+import { anteOf, ANTES, isBoss, KINDS, slotOf, specFor } from '../boards';
+import { bossAhead, BOSS_NAMES, bossText, clockMs, type BossRule } from '../bosses';
 import { itemById, TIER_NAMES } from '../items';
 import { lensById, maxHeartsOf, type LensDef } from '../lenses';
 import type { BoardResult, ItemId, LensSlot, RewardId, RunState } from '../model';
 import { isBargain, REWARDS, rewardById } from '../rewards';
 import { sellValue } from '../shop';
-import { formatScore, KIND_NAMES, resultOf } from '../state';
+import { difficultyOf, formatScore, KIND_NAMES, LEVEL_NAMES, resultOf } from '../state';
 import { SLOTS } from '../tuning';
 import { CategoryIcon, CheckIcon, CoinIcon, HeartIcon, InkIcon, ShieldIcon, SpectrumIcon } from './icons';
 
@@ -577,8 +577,36 @@ export function LensCard({ def, n, children }: { def: LensDef; n?: number; child
 }
 
 /** A boss rule, as a chip. */
-export function BossTag({ rule, shown }: { rule: BossRule; shown: boolean }) {
-  return <span className={`cb-run-boss${shown ? '' : ' is-hidden'}`}>{shown ? BOSS_NAMES[rule] : '?'}</span>;
+export function BossTag({ rule }: { rule: BossRule }) {
+  return <span className="cb-run-boss">{BOSS_NAMES[rule]}</span>;
+}
+
+/**
+ * The boss rule ahead in this ante and what it does, on the card pick and the shop between its
+ * Small or Big board and the boss, which lean toward what answers it.
+ */
+export function BossAhead({ run }: { run: RunState }) {
+  const rule = bossAhead(run, run.slot);
+  if (!rule) return null;
+  const minutes = Math.round(clockMs(specFor(slotOf(anteOf(run.slot), 'boss'), difficultyOf(run)).minutes) / 60_000);
+  return (
+    <p className="cb-run-ahead">
+      <span className="cb-run-boss">{BOSS_NAMES[rule]} boss</span>
+      <span>{bossText(rule, rule === 'clock' ? minutes : undefined)}</span>
+    </p>
+  );
+}
+
+/** Easy or Hard, as a pill by a run's title; a Normal run shows none. */
+export function LevelPill({ run }: { run: RunState }) {
+  const level = difficultyOf(run);
+  // The space keeps "Ante 1 Hard" two words for a screen reader.
+  return level === 'normal' ? null : (
+    <>
+      {' '}
+      <span className={`cb-run-level is-${level}`}>{LEVEL_NAMES[level]}</span>
+    </>
+  );
 }
 
 /** A tier's dot, in its spectrum colour. */

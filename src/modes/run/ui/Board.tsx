@@ -10,7 +10,7 @@ import { TECHNIQUES, type TechniqueId } from '../../../engine/techniques';
 import { getGame, startGame, useGame } from '../../../game/store';
 import { formatDateLong } from '../../../game/logic';
 import type { GameState } from '../../../game/types';
-import { SLOT_SPECS } from '../boards';
+import { specFor } from '../boards';
 import { gameKey, prepareBoard, type Prepared } from '../board';
 import { BOSS_NAMES, bossText, clockMs } from '../bosses';
 import { itemById, TIER_NAMES } from '../items';
@@ -20,7 +20,7 @@ import { planOf, SHOW_TIER, type Beat } from '../show';
 import type { BoardResult, RunState } from '../model';
 import { flowCap, flowOf } from '../scoring';
 import { placePopup, popupSize, WEIGHT, type Box, type Ground } from '../popups';
-import { formatMult, formatScore, slotName } from '../state';
+import { difficultyOf, formatMult, formatScore, slotName } from '../state';
 import { inkUsable, landPoints, playedBoard, runActions, useRunStore } from '../store';
 import { CheckIcon, CoinIcon, TargetIcon } from './icons';
 import { Coins, Hearts, ItemTile, Letters, LensTile, Meter, Page, TierDot, useCountUp } from './parts';
@@ -706,7 +706,8 @@ function noteFor(run: RunState, game: GameState | null, pick: Pick, done: () => 
   if (pick.kind === 'boss') {
     const rule = run.live?.rule;
     if (!rule) return null;
-    const minutes = Math.round(clockMs(SLOT_SPECS[run.slot].minutes) / 60_000);
+    // The clock as it stands, Time Ink included.
+    const minutes = Math.round((game?.mods?.timeLimitMs ?? clockMs(specFor(run.slot, difficultyOf(run)).minutes)) / 60_000);
     return { text: `${BOSS_NAMES[rule]}. ${bossText(rule, rule === 'clock' ? minutes : undefined)}` };
   }
   if (pick.kind === 'lens') {

@@ -98,7 +98,10 @@ export function cleanSnapshot(raw: unknown): Snapshot {
   }
   const codex: Snapshot['run']['codex'] = {};
   for (const [id, c] of entries(u.codex, 80)) codex[id as keyof Snapshot['run']['codex']] = { n: num(obj(c).n), best: num(obj(c).best) };
-  const bestFree = obj(u.bestFree);
+  const bestOf = (v: unknown) => {
+    const b = obj(v);
+    return typeof b.score === 'number' ? { score: num(b.score), date: String(b.date ?? '').slice(0, 10) } : null;
+  };
   const best = obj(u.best);
   return {
     stats: { solves: counts(s.solves), fails: counts(s.fails), times, daily },
@@ -106,9 +109,12 @@ export function cleanSnapshot(raw: unknown): Snapshot {
       ...BLANK_RUN,
       started: num(u.started),
       won: num(u.won),
+      wonEasy: Math.min(num(u.won), num(u.wonEasy)),
       lost: num(u.lost),
       abandoned: num(u.abandoned),
-      bestFree: typeof bestFree.score === 'number' ? { score: num(bestFree.score), date: String(bestFree.date ?? '').slice(0, 10) } : null,
+      bestFree: bestOf(u.bestFree),
+      bestEasy: bestOf(u.bestEasy),
+      bestHard: bestOf(u.bestHard),
       dailyBest,
       topAnte: Math.min(3, num(u.topAnte)),
       bosses: num(u.bosses),

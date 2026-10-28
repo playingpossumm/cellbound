@@ -5,7 +5,8 @@ import { countSolutions, makeRng } from '../../engine';
 import { tierProfileAsync, type TierProfile } from '../../engine/techniques';
 import type { CellIndex, GeneratedPuzzle, GenerateOptions, Puzzle, PuzzleShape } from '../../engine/types';
 import { hashString } from '../../game/logic';
-import { ANTES, type Window } from './boards';
+import { anteOf, ANTES, isBoss, type Window } from './boards';
+import type { ItemId, LensId, RewardId, RunDifficulty } from './model';
 import { BOSS, HEARTS } from './tuning';
 
 export type BossRule = 'fog' | 'mute' | 'thief' | 'glass' | 'clock' | 'fish';
@@ -40,12 +41,13 @@ export function bossText(rule: BossRule, clockMinutes?: number): string {
 
 /**
  * The boss rule of each ante: three different rules. Fish Market needs a hard board, so it can
- * only be the last boss.
+ * only be the last boss, and never on Easy, whose last boss is not hard enough to hide an X-Wing.
  */
-export function bossesFor(runSeed: string): BossRule[] {
+export function bossesFor(runSeed: string, difficulty: RunDifficulty = 'normal'): BossRule[] {
   const rng = makeRng(`${runSeed}:bosses`);
   const out: BossRule[] = [];
-  const last = BOSS_RULES[Math.floor(rng() * BOSS_RULES.length)];
+  const lasts = difficulty === 'easy' ? BOSS_RULES.filter((r) => r !== 'fish') : BOSS_RULES;
+  const last = lasts[Math.floor(rng() * lasts.length)];
   const rest = BOSS_RULES.filter((r) => r !== last && r !== 'fish');
   for (let a = 0; a < ANTES - 1; a++) {
     const k = Math.floor(rng() * rest.length);
@@ -54,6 +56,38 @@ export function bossesFor(runSeed: string): BossRule[] {
   out.push(last);
   return out;
 }
+
+/**
+ * What answers each boss rule: cards to pick and inks, Spectra or lenses to buy. Every rule shows
+ * from the start of its ante, and the offers and shops before its board lean toward these
+ * (OFFERS.counter). Void Ink answers every rule.
+ */
+export const COUNTERS: Record<BossRule, { rewards: readonly RewardId[]; items: readonly ItemId[]; lenses: readonly LensId[] }> = {
+  fog: { rewards: [], items: ['inkClear', 'inkVoid'], lenses: [] },
+  mute: { rewards: [], items: ['inkPencil', 'inkVoid'], lenses: [] },
+  thief: { rewards: [], items: ['inkReveal', 'inkVoid'], lenses: [] },
+  glass: { rewards: ['shield', 'secondWind', 'insurance'], items: ['inkVoid'], lenses: [] },
+  clock: { rewards: [], items: ['inkTime', 'inkVoid'], lenses: [] },
+  fish: { rewards: ['fishbowl', 'microscope'], items: ['spectra6'], lenses: ['fisheye'] },
+};
+
+/**
+ * The boss rule still ahead after the board in a slot: its ante's, after a Small or a Big board.
+ * The offers and the shop that follow lean toward what answers it.
+ */
+export function bossAhead(run: { bosses: readonly BossRule[] }, slot: number): BossRule | null {
+  return isBoss(slot) ? null : (run.bosses[anteOf(slot) - 1] ?? null);
+}
+
+/** What Scout puts in every shop before a boss, when the draw has not already. */
+export const SCOUT_STOCK: Record<BossRule, ItemId> = {
+  fog: 'inkClear',
+  mute: 'inkPencil',
+  thief: 'inkReveal',
+  glass: 'inkVoid',
+  clock: 'inkTime',
+  fish: 'spectra6',
+};
 
 /** The clock of a board: the high end of its time window times BOSS.clock, to the whole minute. */
 export function clockMs(minutes: Window): number {

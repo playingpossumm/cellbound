@@ -5,12 +5,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { EASE_IN_OUT, EASE_OUT, moves } from '../../../app/motion';
 import { soundDeal, soundTake } from '../../../app/sound';
-import { anteOf, slotOf } from '../boards';
-import { BOSS_NAMES, bossText } from '../bosses';
 import type { RewardId, RunState } from '../model';
 import { rewardById } from '../rewards';
-import { resultOf } from '../state';
-import { BossTag, CardBody, cardClass, Coins, Page, RunHearts, RunScore, sendToLoadout, Track, whereLabel } from './parts';
+import { BossAhead, CardBody, cardClass, Coins, Page, RunHearts, RunScore, sendToLoadout, Track, whereLabel } from './parts';
 
 export interface RewardProps {
   run: RunState;
@@ -189,9 +186,6 @@ export function Reward({ run, onTake, onPass, onHome }: RewardProps) {
   if (!offer) return null;
   const chosen = sel && cards.includes(sel) ? sel : null;
   const def = chosen ? rewardById(chosen) : undefined;
-  // Scout shows the ante's boss rule while there is still a board to pick for before it.
-  const bossSlot = slotOf(anteOf(run.slot), 'boss');
-  const scout = !!run.perks.scout && offer.kind !== 'boss' && !resultOf(run, bossSlot) ? run.bosses[anteOf(run.slot) - 1] : null;
   const take = () => {
     if (!chosen || leaving) return;
     soundTake();
@@ -208,13 +202,7 @@ export function Reward({ run, onTake, onPass, onHome }: RewardProps) {
           <RunScore value={run.score} />
         </div>
       </div>
-      {scout && (
-        <p className="cb-run-scout">
-          <BossTag rule={scout} shown />
-          <span>{bossText(scout)}</span>
-          <span className="cb-run-sr">Boss rule: {BOSS_NAMES[scout]}</span>
-        </p>
-      )}
+      <BossAhead run={run} />
       {cards.length ? (
         <>
           <ul ref={list} className={`cb-run-offers is-${cards.length} is-dealt${leaving ? ' is-leaving' : ''}`}>

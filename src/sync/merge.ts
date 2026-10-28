@@ -42,9 +42,12 @@ export function mergeRunStats(a: RunStats, b: RunStats): RunStats {
   return {
     started: a.started + b.started,
     won: a.won + b.won,
+    wonEasy: a.wonEasy + b.wonEasy,
     lost: a.lost + b.lost,
     abandoned: a.abandoned + b.abandoned,
     bestFree: higher(a.bestFree, b.bestFree),
+    bestEasy: higher(a.bestEasy, b.bestEasy),
+    bestHard: higher(a.bestHard, b.bestHard),
     dailyBest,
     topAnte: Math.max(a.topAnte, b.topAnte),
     bosses: a.bosses + b.bosses,

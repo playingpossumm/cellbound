@@ -277,6 +277,21 @@ function freshGame(o: StartOptions): GameState {
   return g;
 }
 
+/** Writes the candidate notes into the empty cells given, as one undo step; returns how many changed. */
+function pencil(g: GameState, cells: readonly CellIndex[]): number {
+  const cands = candidateNotes(g);
+  const group = groupSeq++;
+  const moves: Move[] = [];
+  const notes = g.notes.slice();
+  for (const i of cells) {
+    if (i < 0 || i >= notes.length || g.values[i] || g.puzzle.givens[i] || cands[i] === g.notes[i]) continue;
+    moves.push({ cell: i, prevValue: 0, prevNotes: g.notes[i], value: 0, notes: cands[i], kind: 'note', group });
+    notes[i] = cands[i];
+  }
+  if (moves.length) setGame({ ...g, notes, undo: [...g.undo, ...moves].slice(-MAX_UNDO), redo: [] });
+  return moves.length;
+}
+
 function candidateNotes(g: GameState): number[] {
   const full = fullGrid(g.puzzle, g.values);
   let cands: number[];
@@ -721,16 +736,16 @@ export const actions = {
   fillNotes(): void {
     const g = getGame();
     if (!g || g.status !== 'playing' || g.mods?.noNotes) return;
-    const notes = candidateNotes(g);
-    const group = groupSeq++;
-    const moves: Move[] = [];
-    notes.forEach((m, i) => {
-      if (m !== g.notes[i] && !g.values[i] && !g.puzzle.givens[i]) {
-        moves.push({ cell: i, prevValue: 0, prevNotes: g.notes[i], value: 0, notes: m, kind: 'note', group });
-      }
-    });
-    if (!moves.length) return;
-    setGame({ ...g, notes: g.notes.map((old, i) => (g.values[i] || g.puzzle.givens[i] ? old : notes[i])), undo: [...g.undo, ...moves].slice(-MAX_UNDO), redo: [] });
+    pencil(g, g.puzzle.givens.map((_, i) => i));
+  },
+  /**
+   * Fills candidate notes in some cells, even on a board without notes (a Run's Pencil Ink on a
+   * Mute board). One undo step. Returns how many cells changed.
+   */
+  pencilIn(cells: readonly CellIndex[]): number {
+    const g = getGame();
+    if (!g || g.status !== 'playing') return 0;
+    return pencil(g, cells);
   },
   /**
    * Fills in the right digit, as a card or a rule does (a Run's Peek, Thief or Reveal ink). With no

@@ -64,8 +64,8 @@ export const TARGET = {
   tierCap: 5,
 } as const;
 
+/** A run's starting hearts are DIFFICULTY.hearts. */
 export const HEARTS = {
-  start: 3,
   /** No card or rule takes the hearts past this. */
   max: 5,
   maxShield: 3,
@@ -117,6 +117,31 @@ export const OFFERS = {
   repeat: 0.1,
   /** Bargains weigh this share of a plain card. */
   bargain: 0.6,
+  /** Before a boss, in its ante's offers and shops, what answers its rule weighs this many times more (COUNTERS). */
+  counter: 4,
+} as const;
+
+/**
+ * What a free run's difficulty changes; a daily run is always Normal, so everyone plays the same
+ * boards. Each slot's board is cut to one of the Normal ladder's specs (SLOT_SPECS): Easy's a step
+ * back and Hard's a step on, so every board is one the generator is known to make in time.
+ */
+export const DIFFICULTY = {
+  ladder: {
+    easy: [0, 0, 1, 1, 2, 3, 3, 4, 5],
+    normal: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    hard: [2, 3, 5, 5, 6, 8, 7, 8, 8],
+  },
+  /** On every target. */
+  target: { easy: 0.75, normal: 1, hard: 1.3 },
+  /** Hearts a run starts with. */
+  hearts: { easy: 4, normal: 3, hard: 2 },
+} as const;
+
+/** What the inks do, beyond what their names say. */
+export const INK = {
+  /** Time Ink adds this to a board's clock. */
+  timeMs: 3 * 60_000,
 } as const;
 
 export const BOSS = {
@@ -193,5 +218,5 @@ export const LENS = {
 
 export const PRICES = {
   spectra: 3,
-  ink: { reveal: 3, clear: 2, hint: 2, void: 4 },
+  ink: { reveal: 3, clear: 2, hint: 2, void: 4, pencil: 2, time: 2 },
 } as const;

@@ -4,30 +4,33 @@
 import { APP_NAME } from '../../app/brand';
 import { TECHNIQUES } from '../../engine/techniques';
 import type { CellIndex, Puzzle } from '../../engine/types';
-import { formatDateLong, regionCells } from '../../game/logic';
+import { formatDateLong, regionCells, regionOf } from '../../game/logic';
 import type { GameMods } from '../../game/types';
-import { anteOf, isBoss, kindOf, SLOT_COUNT, SLOT_SPECS, ANTES, KINDS, slotOf } from './boards';
+import { anteOf, isBoss, kindOf, SLOT_COUNT, ANTES, KINDS, slotOf, specFor } from './boards';
 import { bossesFor, clockMs, type BossRule } from './bosses';
 import { itemById } from './items';
 import { effectiveLens, maxHeartsOf, type LensDef } from './lenses';
 import { hurt, newLive, type LiveSetup } from './live';
-import type { BoardResult, BoardStatus, CashOut, Category, LiveBoard, RewardId, RunState } from './model';
+import type { BoardResult, BoardStatus, CashOut, Category, LiveBoard, RewardId, RunDifficulty, RunState } from './model';
 import { makeOffer } from './offers';
 import { rewardById, type RewardDef } from './rewards';
 import { openShop } from './shop';
-import { COINS, HEARTS, HINTS_PER_BOARD, SPECTRA_MAX } from './tuning';
+import { COINS, DIFFICULTY, HINTS_PER_BOARD, SPECTRA_MAX } from './tuning';
 
-export function newRun(seed: string, daily: string | null, now: number, replay = false): RunState {
+export function newRun(seed: string, daily: string | null, now: number, replay = false, chosen: RunDifficulty = 'normal'): RunState {
+  // A daily run is the same for everyone, so it is always Normal.
+  const difficulty = daily ? 'normal' : chosen;
   return {
     v: 2,
     seed,
     daily,
+    difficulty,
     createdAt: now,
     replay,
     phase: 'select',
     slot: 0,
-    hearts: HEARTS.start,
-    maxHearts: HEARTS.start,
+    hearts: DIFFICULTY.hearts[difficulty],
+    maxHearts: DIFFICULTY.hearts[difficulty],
     shield: 0,
     coins: COINS.start,
     hintPool: 0,
@@ -35,7 +38,7 @@ export function newRun(seed: string, daily: string | null, now: number, replay =
     items: [],
     perks: {},
     levels: new Array(9).fill(0),
-    bosses: bossesFor(seed),
+    bosses: bossesFor(seed, difficulty),
     targets: new Array(SLOT_COUNT).fill(null),
     next: {},
     pending: null,
@@ -60,10 +63,9 @@ export function ruleOf(run: Pick<RunState, 'bosses'>, slot: number): BossRule | 
   return isBoss(slot) ? (run.bosses[anteOf(slot) - 1] ?? null) : null;
 }
 
-/** True when the boss rule of the run's current ante shows: on the boss itself, or from the start with Scout. */
-export function bossShown(run: Pick<RunState, 'perks' | 'slot'>): boolean {
-  return !!run.perks.scout || isBoss(run.slot);
-}
+/** How hard the run is. Runs from before there was a choice were Normal. */
+export const difficultyOf = (run: Pick<RunState, 'difficulty'>): RunDifficulty => run.difficulty ?? 'normal';
+
 
 export function resultOf(run: RunState, slot: number): BoardResult | undefined {
   return run.results.find((r) => r.slot === slot);
@@ -73,14 +75,23 @@ export function canSkip(run: RunState): boolean {
   return run.phase === 'select' && !isBoss(run.slot);
 }
 
-/** The cells of the box with the most empty cells (the first on a tie), for Candidate Glass. */
-export function emptiestBox(p: Puzzle): CellIndex[] {
+/**
+ * The empty cells of the box with the most of them (the first on a tie): for Candidate Glass at
+ * the start of a board, and for Pencil Ink with no cell selected.
+ */
+export function emptiestBox(p: Puzzle, values: readonly number[] = []): CellIndex[] {
   let best: CellIndex[] = [];
   for (let b = 0; b < p.size; b++) {
-    const empty = regionCells(p, b).filter((i) => !p.givens[i]);
+    const empty = regionCells(p, b).filter((i) => !p.givens[i] && !values[i]);
     if (empty.length > best.length) best = empty;
   }
   return best;
+}
+
+/** The cells Pencil Ink fills: the empty cells of the selected cell's box, or of the emptiest box. */
+export function pencilCells(p: Puzzle, values: readonly number[], selected: CellIndex | null): CellIndex[] {
+  if (selected === null) return emptiestBox(p, values);
+  return regionCells(p, regionOf(p, selected)).filter((i) => !p.givens[i] && !values[i]);
 }
 
 /** The game modifiers a board starts with, from its rule, the cards for it and the run's perks. */
@@ -88,7 +99,7 @@ export function modsFor(run: RunState, slot: number, puzzle: Puzzle): GameMods {
   const rule = ruleOf(run, slot);
   const mods: GameMods = {};
   if (rule === 'mute') mods.noNotes = true;
-  if (rule === 'clock' || run.next.clock) mods.timeLimitMs = clockMs(SLOT_SPECS[slot].minutes);
+  if (rule === 'clock' || run.next.clock) mods.timeLimitMs = clockMs(specFor(slot, difficultyOf(run)).minutes);
   if (run.perks.peek) mods.reveal = run.perks.peek;
   mods.hints = HINTS_PER_BOARD + run.hintPool + (run.perks.sharpEye ? 1 : 0);
   if (run.perks.sharpEye) mods.quickHints = 1;
@@ -324,9 +335,13 @@ export function formatMult(x: number): string {
   return String(Math.round(x * 100) / 100);
 }
 
+/** The names of the difficulties, as the Run home and a run's own screens show them. */
+export const LEVEL_NAMES: Record<RunDifficulty, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+
 export function shareText(run: RunState): string {
   const lines: string[] = [];
-  lines.push(run.daily ? `${APP_NAME} Run, ${formatDateLong(run.daily)}` : `${APP_NAME} Run, free run`);
+  const level = difficultyOf(run);
+  lines.push(run.daily ? `${APP_NAME} Run, ${formatDateLong(run.daily)}` : `${APP_NAME} Run, free run${level === 'normal' ? '' : ` on ${LEVEL_NAMES[level]}`}`);
   const last = run.results[run.results.length - 1];
   if (run.outcome === 'won') lines.push(`Won with ${run.hearts} ${run.hearts === 1 ? 'heart' : 'hearts'} left`);
   else if (run.outcome === 'lost' && last) lines.push(`${last.status === 'out' || run.hearts <= 0 ? 'Out of hearts' : 'Run over'} on ${slotName(last.slot)}`);

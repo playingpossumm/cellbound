@@ -3,7 +3,8 @@
 // follows the board itself: a harder board asks for more. All the factors live in tuning.ts.
 import type { TierProfile } from '../../engine/techniques';
 import { anteOf, kindOf } from './boards';
-import { MARKS, TARGET } from './tuning';
+import type { RunDifficulty } from './model';
+import { DIFFICULTY, MARKS, TARGET } from './tuning';
 
 /** Marks that a count of placements per tier earns toward a target, at Spectra level 0, tiers above TARGET.tierCap counted at its marks. */
 export function marksOfTiers(counts: readonly number[], cap: number = TARGET.tierCap): number {
@@ -21,6 +22,7 @@ export function roundTarget(x: number): number {
   return Math.max(step, Math.round(x / step) * step);
 }
 
-export function targetFor(slot: number, profile: TierProfile): number {
-  return roundTarget(marksOfTiers(profile.typical) * slotFactor(slot));
+/** A board's target: its typical marks times the slot's factor and the run's difficulty. */
+export function targetFor(slot: number, profile: TierProfile, difficulty: RunDifficulty = 'normal'): number {
+  return roundTarget(marksOfTiers(profile.typical) * slotFactor(slot) * DIFFICULTY.target[difficulty]);
 }

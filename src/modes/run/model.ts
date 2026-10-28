@@ -62,7 +62,10 @@ export type RewardId =
   | 'overtime';
 
 export type SpectraId = 'spectra1' | 'spectra2' | 'spectra3' | 'spectra4' | 'spectra5' | 'spectra6' | 'spectra7' | 'spectra8';
-export type InkId = 'inkReveal' | 'inkClear' | 'inkHint' | 'inkVoid';
+export type InkId = 'inkReveal' | 'inkClear' | 'inkHint' | 'inkVoid' | 'inkPencil' | 'inkTime';
+
+/** How hard a free run is. A daily run is always Normal. */
+export type RunDifficulty = 'easy' | 'normal' | 'hard';
 export type ItemId = SpectraId | InkId;
 
 /** A lens in a slot. n is the lens's own counter, for a lens that grows (Kaleidoscope). */
@@ -200,6 +203,8 @@ export interface RunState {
   seed: string;
   /** The date of a daily run, or null for a free run. */
   daily: string | null;
+  /** How hard the run is; absent on runs from before there was a choice, which were Normal. */
+  difficulty?: RunDifficulty;
   createdAt: number;
   /** A daily run played again after the first attempt. It never changes the daily best. */
   replay?: boolean;

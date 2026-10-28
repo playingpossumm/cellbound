@@ -1,14 +1,14 @@
 // The ante screen: the ante's three boards, each with its target before it starts, the boss rule
-// once it shows, and the board in turn ready to play or to skip for a tag.
+// from the start of the ante, and the board in turn ready to play or to skip for a tag.
 import { useState } from 'react';
-import { anteOf, KINDS, SLOT_SPECS, slotOf } from '../boards';
+import { anteOf, KINDS, slotOf, specFor } from '../boards';
 import { BOSS_NAMES, bossText, clockMs } from '../bosses';
 import type { Prepared } from '../board';
 import type { BoardResult, RunState } from '../model';
-import { bossShown, canSkip, formatScore, KIND_NAMES, resultOf, ruleOf } from '../state';
+import { canSkip, difficultyOf, formatScore, KIND_NAMES, resultOf, ruleOf } from '../state';
 import { COINS } from '../tuning';
 import { CheckIcon, SkipIcon, TargetIcon } from './icons';
-import { BossTag, Coins, hasLoadout, Loadout, LoadoutActions, Page, RunHearts, RunScore, Track, whereLabel } from './parts';
+import { BossTag, Coins, hasLoadout, LevelPill, Loadout, LoadoutActions, Page, RunHearts, RunScore, Track, whereLabel } from './parts';
 
 export interface SelectProps {
   run: RunState;
@@ -35,10 +35,17 @@ function ResultLine({ r }: { r: BoardResult }) {
 
 export function Select({ run, ready, onPlay, onSkip, onRetry, onHome, onMove, onUse }: SelectProps) {
   const ante = anteOf(run.slot);
-  const shown = bossShown(run);
   const [ruleOn, setRuleOn] = useState(false);
   return (
-    <Page title={`Ante ${ante}`} onBack={onHome}>
+    <Page
+      heading={
+        <h1 className="cb-run-title">
+          Ante {ante}
+          <LevelPill run={run} />
+        </h1>
+      }
+      onBack={onHome}
+    >
       <div className="cb-run-head">
         <Track run={run} label={whereLabel(run)} />
         <div className="cb-run-row">
@@ -61,7 +68,7 @@ export function Select({ run, ready, onPlay, onSkip, onRetry, onHome, onMove, on
           const target = run.targets[slot] ?? (prep && prep !== 'failed' ? prep.target : null);
           const rule = ruleOf(run, slot);
           const coinTimes = now ? (run.next.coinTimes ?? 1) : 1;
-          const minutes = Math.round(clockMs(SLOT_SPECS[slot].minutes) / 60_000);
+          const minutes = Math.round(clockMs(specFor(slot, difficultyOf(run)).minutes) / 60_000);
           const mods = now ? [run.next.fog && 'Fog', run.next.clock && 'Clock', run.pending && 'Double or nothing'].filter(Boolean) : [];
           return (
             <li key={kind} className={`cb-run-board is-${kind}${now ? ' is-now' : ''}${r ? ' is-done' : ''}`} aria-current={now ? 'step' : undefined}>
@@ -79,18 +86,18 @@ export function Select({ run, ready, onPlay, onSkip, onRetry, onHome, onMove, on
               )}
               {rule &&
                 !r &&
-                (shown && !now ? (
-                  <button type="button" className="cb-run-board-rule" aria-pressed={ruleOn} aria-label={`Boss rule: ${BOSS_NAMES[rule]}`} onClick={() => setRuleOn((v) => !v)}>
-                    <BossTag rule={rule} shown />
-                  </button>
-                ) : (
-                  <span className="cb-run-board-rule" role="img" aria-label={shown ? `Boss rule: ${BOSS_NAMES[rule]}` : 'Boss rule not shown yet'}>
-                    <BossTag rule={rule} shown={shown} />
+                (now ? (
+                  <span className="cb-run-board-rule" role="img" aria-label={`Boss rule: ${BOSS_NAMES[rule]}`}>
+                    <BossTag rule={rule} />
                   </span>
+                ) : (
+                  <button type="button" className="cb-run-board-rule" aria-pressed={ruleOn} aria-label={`Boss rule: ${BOSS_NAMES[rule]}`} onClick={() => setRuleOn((v) => !v)}>
+                    <BossTag rule={rule} />
+                  </button>
                 ))}
-              {(mods.length > 0 || (rule && shown && (now || ruleOn))) && (
+              {(mods.length > 0 || (rule && (now || ruleOn))) && (
                 <p className="cb-run-board-text">
-                  {rule && shown && (now || ruleOn) ? bossText(rule, rule === 'clock' ? minutes : undefined) : null}
+                  {rule && (now || ruleOn) ? bossText(rule, rule === 'clock' ? minutes : undefined) : null}
                   {mods.length > 0 && (
                     <span className="cb-run-mods">
                       {mods.map((m) => (

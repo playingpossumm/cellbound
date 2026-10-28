@@ -8,7 +8,6 @@ import { canOffer, REWARDS, rewardById, rewardPool } from './rewards';
 import { stockFor } from './shop';
 import {
   advance,
-  bossShown,
   canSkip,
   cashOut,
   emptiestBox,
@@ -299,13 +298,6 @@ describe('a board as it starts', () => {
     expect(r.next).toEqual({});
     expect(r.live!.coinTimes).toBe(2);
     expect(r.targets[0]).toBe(10);
-  });
-
-  it('shows the boss rule on the boss, or from the start of the ante with Scout', () => {
-    const run = newRun('t:scout', null, 1);
-    expect(bossShown(run)).toBe(false);
-    expect(bossShown({ ...run, slot: 2 })).toBe(true);
-    expect(bossShown({ ...run, perks: { scout: 1 } })).toBe(true);
   });
 
   it('finds the emptiest box', () => {

@@ -1,9 +1,11 @@
 // The shop after every board played (a skipped board skips it): two lenses and two consumables, a
 // reroll that costs a coin more each time, and lenses sold back for half their price. Stock is
 // seeded by the run seed, the board and the reroll count, so a daily run's shop holds the same
-// stock for everyone in the same state.
+// stock for everyone in the same state. Before a boss, what answers its rule turns up more often,
+// and with Scout the shop opens with it.
 import { makeRng } from '../../engine';
 import { anteOf } from './boards';
+import { bossAhead, COUNTERS, SCOUT_STOCK } from './bosses';
 import { ITEMS, type ItemDef } from './items';
 import { lensById, maxHeartsOf, sellPrice, type LensDef } from './lenses';
 import type { ItemId, LensId, RunState, ShopState } from './model';
@@ -38,15 +40,31 @@ function drawDistinct<T>(rng: () => number, list: readonly T[], weight: (x: T) =
 
 /**
  * The stock for the shop after a board, at a reroll count. Lenses already held are never on sale,
- * and what reads a technique the run has never placed turns up less often (placed.ts).
+ * what reads a technique the run has never placed turns up less often (placed.ts), and before a
+ * boss what answers its rule turns up more often (COUNTERS). With Scout, the first stock before a
+ * boss always holds its answer (SCOUT_STOCK).
  */
 export function stockFor(run: RunState, slot: number, rerolls: number, pool: readonly LensDef[]): Pick<ShopState, 'lenses' | 'items'> {
   const rng = makeRng(`${run.seed}:shop:${slot}:${rerolls}`);
   const held = new Set(run.lenses.map((l) => l.id));
   const lenses = pool.filter((l) => !held.has(l.id)).sort((a, b) => (a.id < b.id ? -1 : 1));
   const placed = placedTiers(run);
-  const pickedLenses = drawDistinct(rng, lenses, (l) => OFFERS.rarity[l.rarity] * relevance(l.tiers, placed), SHOP.lenses).map((l) => l.id);
-  const items = drawDistinct(rng, ITEMS, (i) => itemWeight(i) * relevance(i.tier ? [i.tier] : undefined, placed), SHOP.items).map((i) => i.id);
+  const ahead = bossAhead(run, slot);
+  const lean = (answers: boolean) => (answers ? OFFERS.counter : 1);
+  const pickedLenses = drawDistinct(
+    rng,
+    lenses,
+    (l) => OFFERS.rarity[l.rarity] * relevance(l.tiers, placed) * lean(!!ahead && COUNTERS[ahead].lenses.includes(l.id)),
+    SHOP.lenses,
+  ).map((l) => l.id);
+  let items = drawDistinct(
+    rng,
+    ITEMS,
+    (i) => itemWeight(i) * relevance(i.tier ? [i.tier] : undefined, placed) * lean(!!ahead && COUNTERS[ahead].items.includes(i.id)),
+    SHOP.items,
+  ).map((i) => i.id);
+  const sure = ahead && run.perks.scout && rerolls === 0 ? SCOUT_STOCK[ahead] : null;
+  if (sure && !items.includes(sure)) items = [...items.slice(0, SHOP.items - 1), sure];
   return { lenses: pickedLenses, items };
 }
 

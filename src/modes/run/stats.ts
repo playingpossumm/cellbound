@@ -16,10 +16,15 @@ export interface DailyRecord {
 export interface RunStats {
   started: number;
   won: number;
+  /** Of the runs won, those on Easy. A win on Normal opens Hard (hardOpen). */
+  wonEasy: number;
   lost: number;
   abandoned: number;
-  /** Highest score of any free run. */
+  /** Highest score of any free run on Normal, which every free run was before there was a choice. */
   bestFree: { score: number; date: string } | null;
+  /** Highest score of any free run on Easy, and on Hard. */
+  bestEasy: { score: number; date: string } | null;
+  bestHard: { score: number; date: string } | null;
   /** The first attempt of each date, and only the first. */
   dailyBest: Record<string, DailyRecord>;
   /** Furthest ante reached in any run, 0 to 3. */
@@ -38,9 +43,12 @@ export function emptyStats(): RunStats {
   return {
     started: 0,
     won: 0,
+    wonEasy: 0,
     lost: 0,
     abandoned: 0,
     bestFree: null,
+    bestEasy: null,
+    bestHard: null,
     dailyBest: {},
     topAnte: 0,
     bosses: 0,
@@ -82,8 +90,11 @@ export function onBoardEnd(s: RunStats, r: BoardResult, boxesAllClean: boolean):
 export function onRunEnd(s: RunStats, run: RunState, today: string): RunStats {
   if (!run.outcome) return s;
   const next: RunStats = { ...s, dailyBest: { ...s.dailyBest } };
-  if (run.outcome === 'won') next.won += 1;
-  else if (run.outcome === 'lost') next.lost += 1;
+  const level = run.daily ? 'normal' : (run.difficulty ?? 'normal');
+  if (run.outcome === 'won') {
+    next.won += 1;
+    if (level === 'easy') next.wonEasy += 1;
+  } else if (run.outcome === 'lost') next.lost += 1;
   else next.abandoned += 1;
   if (run.daily) {
     // Only the first attempt of a date sets the daily best; replays never change it.
@@ -94,11 +105,16 @@ export function onRunEnd(s: RunStats, run: RunState, today: string): RunStats {
         outcome: run.outcome,
       };
     }
-  } else if (run.score > 0 && (!next.bestFree || run.score > next.bestFree.score)) {
-    next.bestFree = { score: run.score, date: today };
+  } else if (run.score > 0) {
+    const key = level === 'easy' ? 'bestEasy' : level === 'hard' ? 'bestHard' : 'bestFree';
+    const was = next[key];
+    if (!was || run.score > was.score) next[key] = { score: run.score, date: today };
   }
   return next;
 }
+
+/** Hard opens once a run is won on Normal or Hard; a daily run counts, as it is always Normal. */
+export const hardOpen = (s: RunStats): boolean => s.won > s.wonEasy;
 
 export function bestDaily(s: RunStats): { date: string; score: number } | null {
   let best: { date: string; score: number } | null = null;

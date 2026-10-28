@@ -8,13 +8,14 @@ import { generate } from '../../engine';
 import { tierProfile } from '../../engine/techniques';
 import { optionsFor, slotOf } from './boards';
 import { playAs, type Style } from './calibrate';
+import type { RunDifficulty } from './model';
 import { targetFor } from './targets';
 
 const SEED = 'free:cal-a';
 
-function ratio(slot: number, style: Style): number {
-  const p = generate(optionsFor(SEED, slot));
-  return playAs(p, style, SEED).score / targetFor(slot, tierProfile(p));
+function ratio(slot: number, style: Style, level: RunDifficulty = 'normal'): number {
+  const p = generate(optionsFor(SEED, slot, level));
+  return playAs(p, style, SEED).score / targetFor(slot, tierProfile(p), level);
 }
 
 describe('the targets against play (recalibrate with npm run calibrate:run)', () => {
@@ -35,6 +36,11 @@ describe('the targets against play (recalibrate with npm run calibrate:run)', ()
   it('ask for a build by the last boss, even from a player who writes no notes', () => {
     expect(ratio(slotOf(3, 'boss'), 'typical')).toBeLessThan(0.75);
     expect(ratio(slotOf(3, 'boss'), 'clean')).toBeLessThan(0.95);
+  });
+
+  it('keep the first board on Hard clear for a typical player, and the last boss on Easy closer to reach than on Normal', () => {
+    expect(ratio(slotOf(1, 'small'), 'typical', 'hard')).toBeGreaterThan(1.2);
+    expect(ratio(slotOf(3, 'boss'), 'typical', 'easy')).toBeGreaterThan(ratio(slotOf(3, 'boss'), 'typical'));
   });
 
   it('pay clean play more than noted play', () => {

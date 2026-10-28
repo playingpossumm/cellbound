@@ -54,7 +54,7 @@ test('works offline after the first visit', async ({ page, context }) => {
   // Run and Learn load their code on first use, from the cache.
   await page.getByRole('button', { name: 'Menu' }).first().click();
   await page.locator('dialog.cb-menu').getByRole('button', { name: /^Run/ }).click();
-  await page.getByRole('button', { name: 'Start free run' }).click();
+  await page.getByRole('button', { name: 'Start Run' }).click();
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeEnabled({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await expect(page.locator('.cb-board[data-size="9"]')).toBeVisible();

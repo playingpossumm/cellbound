@@ -9,7 +9,7 @@ import type { FogSpec, GeneratedPuzzle, GenerateOptions, Puzzle, PuzzleShape } f
 import { optionsFor } from './boards';
 import { pickFishBoard, pickThiefCells } from './bosses';
 import type { RunState } from './model';
-import { ruleOf } from './state';
+import { difficultyOf, ruleOf } from './state';
 import { targetFor } from './targets';
 
 type Generator = (o: GenerateOptions) => Promise<GeneratedPuzzle>;
@@ -71,13 +71,14 @@ export interface PrepareDeps {
 
 const prepared = new Map<string, Promise<Prepared>>();
 
-/** Builds a slot's board and works out its target. Same run seed and slot, same board, same target. */
-export function prepareBoard(run: Pick<RunState, 'seed' | 'bosses'>, slot: number, deps: PrepareDeps = {}): Promise<Prepared> {
-  const key = `${run.seed}|${slot}|${run.bosses.join(',')}`;
+/** Builds a slot's board and works out its target. Same run seed, slot and difficulty, same board, same target. */
+export function prepareBoard(run: Pick<RunState, 'seed' | 'bosses' | 'difficulty'>, slot: number, deps: PrepareDeps = {}): Promise<Prepared> {
+  const difficulty = difficultyOf(run);
+  const key = `${run.seed}|${slot}|${run.bosses.join(',')}|${difficulty}`;
   const ready = deps.gen || deps.profileOf || deps.isUnique ? undefined : prepared.get(key);
   if (ready) return ready;
   const job = (async (): Promise<Prepared> => {
-    const options = optionsFor(run.seed, slot);
+    const options = optionsFor(run.seed, slot, difficulty);
     const rule = ruleOf(run, slot);
     const load = (o: GenerateOptions) => loadBoard(o, deps.gen);
     // The profile runs on the engine's worker, so the screen never waits for it.
@@ -90,7 +91,7 @@ export function prepareBoard(run: Pick<RunState, 'seed' | 'bosses'>, slot: numbe
       profile = await profileOf(puzzle);
     }
     const stolen = rule === 'thief' ? await pickThiefCells(puzzle, profileOf, deps.isUnique) : [];
-    return { slot, puzzle, profile, target: targetFor(slot, profile), stolen };
+    return { slot, puzzle, profile, target: targetFor(slot, profile, difficulty), stolen };
   })();
   if (!deps.gen && !deps.profileOf && !deps.isUnique) {
     prepared.set(key, job);

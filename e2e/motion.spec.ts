@@ -70,7 +70,7 @@ test('a Run board with motion: the points land on the score, the tally plays out
   test.slow();
   await openFresh(page);
   await openScreen(page, 'Run');
-  await page.getByRole('button', { name: 'Start free run' }).click();
+  await page.getByRole('button', { name: 'Start Run' }).click();
   const go = page.getByRole('button', { name: 'Play', exact: true });
   await expect(go).toBeEnabled({ timeout: 30_000 });
   await go.click();
@@ -93,6 +93,15 @@ test('a Run board with motion: the points land on the score, the tally plays out
   const cleared = (await title.textContent()) === 'Cleared';
   await page.locator('.cb-run-panel').getByRole('button', { name: cleared ? 'Pick a card' : 'Shop' }).click();
   if (cleared) {
+    // The cards deal in first: a click while one is still rising lands on whatever is under it.
+    await page.locator('.cb-run-offers').evaluate((list) =>
+      Promise.all(
+        list
+          .getAnimations({ subtree: true })
+          .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+          .map((a) => a.finished.catch(() => undefined)),
+      ),
+    );
     // The cards sway while the player decides, so they never hold still for a plain click.
     await page.locator('.cb-run-offers .cb-run-card').first().click({ force: true });
     await page.getByRole('button', { name: /^Take / }).click();

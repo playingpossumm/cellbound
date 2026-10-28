@@ -3,7 +3,7 @@
 // saves under cellbound:run:v1. That key is read for its run count only and never written: its
 // run in progress is not resumed, and its runs still count.
 import { BOSS_RULES } from './bosses';
-import type { RunState } from './model';
+import type { RunDifficulty, RunState } from './model';
 import { emptyStats, type RunStats } from './stats';
 
 export const RUN_KEY = 'cellbound:run:v2';
@@ -16,6 +16,8 @@ export interface RunStorage {
   /** The run that ended most recently, for the summary on the Run home. */
   last: RunState | null;
   stats: RunStats;
+  /** The difficulty last picked for a free run on this device; Normal when absent. */
+  pick?: RunDifficulty;
 }
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
@@ -35,6 +37,7 @@ function browserStorage(): StorageLike | null {
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 const isNum = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
 const PHASES = ['select', 'board', 'tally', 'reward', 'shop', 'done'];
+const LEVELS: readonly unknown[] = ['easy', 'normal', 'hard'] satisfies RunDifficulty[];
 const numbers = (x: unknown, length: number) => Array.isArray(x) && x.length === length && x.every((v) => v === null || isNum(v));
 
 /** A shape check deep enough that a damaged save cannot crash a screen. */
@@ -60,6 +63,7 @@ export function isRunState(x: unknown): x is RunState {
     liveOk &&
     typeof x.seed === 'string' &&
     (x.daily === null || typeof x.daily === 'string') &&
+    (x.difficulty === undefined || LEVELS.includes(x.difficulty)) &&
     isNum(x.slot) &&
     x.slot >= 0 &&
     x.slot < 9 &&
@@ -94,7 +98,7 @@ function sanitizeStats(x: unknown): RunStats {
   const base = emptyStats();
   if (!isObj(x)) return base;
   const num = (v: unknown, d: number) => (isNum(v) ? v : d);
-  const bestFree = isObj(x.bestFree) && isNum(x.bestFree.score) ? { score: x.bestFree.score, date: String(x.bestFree.date ?? '') } : null;
+  const bestOf = (v: unknown) => (isObj(v) && isNum(v.score) ? { score: v.score, date: String(v.date ?? '') } : null);
   const dailyBest: RunStats['dailyBest'] = {};
   if (isObj(x.dailyBest)) {
     for (const [date, r] of Object.entries(x.dailyBest)) {
@@ -117,9 +121,12 @@ function sanitizeStats(x: unknown): RunStats {
   return {
     started: num(x.started, 0),
     won: num(x.won, 0),
+    wonEasy: num(x.wonEasy, 0),
     lost: num(x.lost, 0),
     abandoned: num(x.abandoned, 0),
-    bestFree,
+    bestFree: bestOf(x.bestFree),
+    bestEasy: bestOf(x.bestEasy),
+    bestHard: bestOf(x.bestHard),
     dailyBest,
     topAnte: num(x.topAnte, 0),
     bosses: num(x.bosses, 0),
@@ -141,6 +148,7 @@ export function loadRunStorage(storage: StorageLike | null = browserStorage()): 
       current: isRunState(parsed.current) ? parsed.current : null,
       last: isRunState(parsed.last) ? parsed.last : null,
       stats: sanitizeStats(parsed.stats),
+      ...(LEVELS.includes(parsed.pick) ? { pick: parsed.pick as RunDifficulty } : {}),
     };
   } catch {
     return emptyStorage();

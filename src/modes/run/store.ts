@@ -16,7 +16,7 @@ import { withStolen } from './bosses';
 import { itemById } from './items';
 import { lensPool } from './lenses';
 import { addHint, applyPlaced, hintsAllowed, markFilled, voidRule, type Placed, type Popup, type TallyFx } from './live';
-import type { RewardId, RunState, UnlockId } from './model';
+import type { RewardId, RunDifficulty, RunState, UnlockId } from './model';
 import { rewardPool } from './rewards';
 import { buyItem, buyLens, moveLens, reroll, sellLens } from './shop';
 import {
@@ -29,6 +29,7 @@ import {
   modsFor,
   newRun,
   passReward,
+  pencilCells,
   playBoard,
   ruleOf,
   skip,
@@ -37,8 +38,9 @@ import {
   withTarget,
   type BoardEnd,
 } from './state';
-import { onBoardEnd, onBoardStart, onRunEnd, onRunStart, unlockedSet, type RunStats } from './stats';
+import { hardOpen, onBoardEnd, onBoardStart, onRunEnd, onRunStart, unlockedSet, type RunStats } from './stats';
 import { legacyRuns, loadRunStorage, saveRunStorage, type RunStorage } from './storage';
+import { INK } from './tuning';
 
 /** What the board shows for a moment: popups over the cells and the last marks times mult. */
 export interface RunFx {
@@ -118,6 +120,12 @@ function commit(data: RunStorage, run: RunState | null, fresh?: UnlockId[]) {
 function commitRun(run: RunState, stats?: RunStats) {
   const { data } = get();
   commit({ ...data, current: run, ...(stats ? { stats } : {}) }, run);
+}
+
+/** The difficulty a free run starts on: the last one picked, while it is open. */
+export function pickOf(data: RunStorage, all: RunStats): RunDifficulty {
+  const pick = data.pick ?? 'normal';
+  return pick === 'hard' && !hardOpen(all) ? 'normal' : pick;
 }
 
 /** A random run seed from the browser's secure generator. */
@@ -327,12 +335,19 @@ export const runActions = {
     const daily = kind === 'daily' ? today : null;
     // A daily run played first on another device makes this one a replay.
     const all = allRunStats(data.stats);
-    const fresh = newRun(daily ? dailyRunSeed(daily) : randomSeed(), daily, now, daily !== null && hasDailyBest(all, daily));
+    const fresh = newRun(daily ? dailyRunSeed(daily) : randomSeed(), daily, now, daily !== null && hasDailyBest(all, daily), pickOf(data, all));
     const run: RunState = { ...fresh, unlockedAtStart: [...unlockedSet(all)] };
     const stats = onRunStart(data.stats);
     useRunStore.setState({ fx: noFx() });
     commit({ ...data, current: run, stats }, run, []);
     void prepareAhead(run);
+  },
+
+  /** Picks the difficulty of the next free run. Hard waits for a win on Normal. */
+  pickLevel(level: RunDifficulty): void {
+    const { data, run } = get();
+    if (level === 'hard' && !hardOpen(allRunStats(data.stats))) return;
+    commit({ ...data, pick: level }, run);
   },
 
   resume(): void {
@@ -470,7 +485,7 @@ export const runActions = {
   /**
    * Uses the item in slot k. A Spectra works anywhere; an ink works on the board in play: Reveal
    * fills a cell, Clear lifts the fog around the selected cell, Hint adds a charge, Void lifts the
-   * boss rule.
+   * boss rule, Pencil fills one box's notes (Mute or not) and Time adds to the clock.
    */
   useItem(k: number): boolean {
     const run = get().run;
@@ -491,6 +506,10 @@ export const runActions = {
       if (actions.reveal() === null) return false;
     } else if (id === 'inkClear') {
       actions.clearFog(game.selected!);
+    } else if (id === 'inkPencil') {
+      if (!actions.pencilIn(pencilCells(game.puzzle, game.values, game.selected))) return false;
+    } else if (id === 'inkTime') {
+      actions.updateMods({ timeLimitMs: game.mods!.timeLimitMs! + INK.timeMs });
     } else if (id === 'inkHint') {
       const next = addHint(run);
       commitRun(dropItem(next, k));
@@ -560,6 +579,10 @@ export function inkUsable(run: RunState, game: GameState, k: number): boolean {
       return true;
     case 'inkVoid':
       return live.rule !== null && live.rule !== 'fish';
+    case 'inkPencil':
+      return pencilCells(game.puzzle, game.values, game.selected).length > 0;
+    case 'inkTime':
+      return game.mods?.timeLimitMs !== undefined;
     default:
       return false;
   }

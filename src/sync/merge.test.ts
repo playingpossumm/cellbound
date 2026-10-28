@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DailyEntry, StatsData } from '../game/stats';
 import { emptyStats } from '../modes/run/stats';
 import { betterDaily, mergeRunStats, mergeStats } from './merge';
+import { standingOf } from './rules';
 
 const day = (over: Partial<DailyEntry> = {}): DailyEntry => ({ status: 'solved', ms: 300_000, mistakes: 0, hints: 0, solvedOn: '2026-10-28', ...over });
 const stats = (over: Partial<StatsData> = {}): StatsData => ({ solves: {}, fails: {}, times: {}, daily: {}, recorded: [], ...over });
@@ -44,5 +45,17 @@ describe("a player's devices, together", () => {
     expect(mergeStats(mine, stats())).toEqual(mine);
     const runs = { ...emptyStats(), started: 1 };
     expect(mergeRunStats(runs, emptyStats())).toEqual(runs);
+  });
+});
+
+describe('runs at each difficulty, together', () => {
+  it('adds the wins on Easy, keeps the best of each level, and leaves Easy off the best run', () => {
+    const phone = { ...emptyStats(), won: 2, wonEasy: 1, bestEasy: { score: 9000, date: '2026-10-27' }, bestHard: { score: 500, date: '2026-10-27' } };
+    const laptop = { ...emptyStats(), won: 1, wonEasy: 1, bestHard: { score: 700, date: '2026-10-28' }, bestFree: { score: 600, date: '2026-10-28' } };
+    const both = mergeRunStats(phone, laptop);
+    expect([both.won, both.wonEasy]).toEqual([3, 2]);
+    expect(both.bestEasy!.score).toBe(9000);
+    expect(both.bestHard!.score).toBe(700);
+    expect(standingOf(stats(), both, []).best).toBe(700);
   });
 });

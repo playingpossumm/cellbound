@@ -13,7 +13,7 @@ import type { RunState, UnlockId } from '../model';
 import { formatScore, KIND_NAMES, resultOf, shareText } from '../state';
 import { unlockedNames } from '../stats';
 import { runActions, runId, useRunStore } from '../store';
-import { Letters, Page, RunHearts, TierDot, Track } from './parts';
+import { Letters, LevelPill, Page, RunHearts, TierDot, Track } from './parts';
 
 function title(run: RunState): string {
   if (run.outcome === 'won') return 'Run won';
@@ -215,6 +215,7 @@ export function Summary({ run, dailyBest, fresh, onFree, onHome }: SummaryProps)
           <div className="cb-run-head">
             <Track run={run} at={-1} label={how} />
             <RunHearts run={run} />
+            <LevelPill run={run} />
           </div>
           <p className="cb-run-bigscore" aria-label={`Score ${formatScore(run.score)}`}>
             {formatScore(run.score)}
@@ -254,7 +255,7 @@ export function Summary({ run, dailyBest, fresh, onFree, onHome }: SummaryProps)
               Share result
             </button>
             <button type="button" className="cb-run-btn" onClick={onFree}>
-              New free run
+              New Run
             </button>
             <button type="button" className="cb-run-btn" onClick={onHome}>
               Run home

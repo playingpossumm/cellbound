@@ -2,7 +2,7 @@
 // the run, Inks are one-shot effects used on a board.
 import type { TechniqueTier } from '../../engine/techniques';
 import type { InkId, ItemId, SpectraId } from './model';
-import { PRICES, SPECTRA_MARKS } from './tuning';
+import { INK, PRICES, SPECTRA_MARKS } from './tuning';
 
 /** Each tier's name, as the codex and the Spectra use it. Tier 0 is a guess. */
 export const TIER_NAMES: readonly string[] = ['Guesses', 'Singles', 'Hidden singles', 'Clues', 'Pointing', 'Pairs', 'X-Wings', 'Wings', 'Chains'];
@@ -34,6 +34,8 @@ export const ITEMS: readonly ItemDef[] = [
   ink('inkClear', 'Clear Ink', 'Clears the fog around the selected cell.', PRICES.ink.clear),
   ink('inkHint', 'Hint Ink', '+1 hint on this board.', PRICES.ink.hint),
   ink('inkVoid', 'Void Ink', "Lifts this board's boss rule.", PRICES.ink.void),
+  ink('inkPencil', 'Pencil Ink', "Fills in the notes of the selected cell's box, even on a Mute board.", PRICES.ink.pencil),
+  ink('inkTime', 'Time Ink', `+${INK.timeMs / 60_000} minutes on this board's clock.`, PRICES.ink.time),
 ];
 
 const byId = new Map(ITEMS.map((i) => [i.id, i]));

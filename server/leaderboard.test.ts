@@ -147,3 +147,12 @@ describe('the boards', () => {
     expect((await handle(new Request('http://x/api/join', { method: 'POST', body: 'not json' }), store)).status).toBe(400);
   });
 });
+
+describe('a snapshot of runs at each difficulty', () => {
+  it('keeps the bests on Easy and Hard and the wins on Easy, never more of those than wins', () => {
+    const s = cleanSnapshot({ run: { won: 2, wonEasy: 5, bestHard: { score: 1200, date: '2026-10-28T09:00' }, bestEasy: { score: 'x' } } });
+    expect(s.run.wonEasy).toBe(2);
+    expect(s.run.bestHard).toEqual({ score: 1200, date: '2026-10-28' });
+    expect(s.run.bestEasy).toBeNull();
+  });
+});

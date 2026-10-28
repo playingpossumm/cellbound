@@ -126,7 +126,7 @@ export const REWARDS: readonly RewardDef[] = [
   {
     id: 'scout',
     name: 'Scout',
-    text: 'See each boss rule from the start of its ante.',
+    text: 'Every shop before a boss opens with what answers its rule.',
     category: 'hints',
     rarity: 'common',
     stack: 1,

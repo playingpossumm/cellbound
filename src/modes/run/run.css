@@ -232,13 +232,72 @@
     background: linear-gradient(to bottom, transparent, var(--cb-ground) 14px);
   }
 }
+/* The start buttons sit side by side where each gets 200 px; on a phone they stack, so the free
+   run's difficulty fits under its button. */
 .cb-run-start {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  align-items: start;
   gap: 10px;
 }
 .cb-run-start.is-one {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.cb-run-free {
+  display: grid;
+  gap: 8px;
+}
+.cb-run-free > .cb-run-btn {
+  width: 100%;
+}
+/* Easy, Normal and Hard share the width under the free run's button. */
+.cb-run-tabs.cb-run-levels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-self: stretch;
+}
+.cb-run-levels .cb-run-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px;
+}
+.cb-run-levels .cb-run-tab.is-locked {
+  color: color-mix(in srgb, var(--cb-text-dim) 70%, transparent);
+}
+.cb-run-levels-lock {
+  width: 14px;
+  height: 14px;
+}
+.cb-run-levels-note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--cb-text-dim);
+}
+/* Easy or Hard by a run's title. */
+.cb-run-level {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--rn-edge);
+  color: var(--cb-text-dim);
+  font-family: var(--cb-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  vertical-align: middle;
+}
+.cb-run-level.is-hard {
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--rn-mult) 70%, transparent);
+  color: var(--rn-mult);
+}
+.cb-run-title .cb-run-level {
+  margin-left: 12px;
 }
 
 /* ---- boxes, rows and figures ------------------------------------------------------------ */
@@ -815,18 +874,16 @@ button.cb-run-board-rule {
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-.cb-run-boss.is-hidden {
-  min-width: 44px;
-  justify-content: center;
-  box-shadow: inset 0 0 0 1px var(--rn-edge);
-  color: var(--cb-text-dim);
-}
-.cb-run-scout {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
+/* The boss rule ahead, on the card pick and the shop before the boss. */
+.cb-run-ahead {
   font-size: 15px;
+  line-height: 1.6;
+}
+/* The text runs on beside the pill, so the line costs no extra row on a phone. */
+.cb-run-ahead .cb-run-boss {
+  min-height: 24px;
+  margin-right: 8px;
+  vertical-align: 1px;
 }
 .cb-run-wait {
   display: inline-block;

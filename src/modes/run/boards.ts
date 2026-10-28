@@ -4,6 +4,8 @@
 // (pace.test.ts holds the ladder to its windows).
 import { makeRng } from '../../engine';
 import type { ClueKind, Difficulty, GenerateOptions } from '../../engine/types';
+import type { RunDifficulty } from './model';
+import { DIFFICULTY } from './tuning';
 
 export type BoardKind = 'small' | 'big' | 'boss';
 export const KINDS: readonly BoardKind[] = ['small', 'big', 'boss'];
@@ -41,6 +43,15 @@ export const SLOT_SPECS: readonly SlotSpec[] = [
 ];
 
 export const anteOf = (slot: number): number => Math.floor(slot / KINDS.length) + 1;
+
+/**
+ * The spec a slot's board is cut to at a difficulty: Normal's own, Easy's a step back along the
+ * ladder and Hard's a step on (DIFFICULTY.ladder). The slot keeps its own ante and kind.
+ */
+export function specFor(slot: number, difficulty: RunDifficulty = 'normal'): SlotSpec {
+  const spec = SLOT_SPECS[DIFFICULTY.ladder[difficulty][slot] ?? slot];
+  return { ...spec, ante: anteOf(slot), kind: KINDS[slot % KINDS.length] };
+}
 export const kindOf = (slot: number): BoardKind => KINDS[slot % KINDS.length];
 export const slotOf = (ante: number, kind: BoardKind): number => (ante - 1) * KINDS.length + KINDS.indexOf(kind);
 export const isBoss = (slot: number): boolean => kindOf(slot) === 'boss';
@@ -52,9 +63,9 @@ export function boardSeed(runSeed: string, slot: number): string {
   return `${runSeed}:b${slot}`;
 }
 
-/** The rule mix of a board. Same seed and slot always give the same list. */
-export function rulesFor(runSeed: string, slot: number): ClueKind[] {
-  const spec = SLOT_SPECS[slot];
+/** The rule mix of a board. Same seed, slot and difficulty always give the same list. */
+export function rulesFor(runSeed: string, slot: number, difficulty: RunDifficulty = 'normal'): ClueKind[] {
+  const spec = specFor(slot, difficulty);
   const rng = makeRng(`${runSeed}:rules:${slot}`);
   const picked: ClueKind[] = [];
   const takeFrom = (list: ClueKind[]) => {
@@ -67,12 +78,12 @@ export function rulesFor(runSeed: string, slot: number): ClueKind[] {
 }
 
 /** What to generate for a board. A board's own cards (fog, a clock) never change it, so neither does its target. */
-export function optionsFor(runSeed: string, slot: number): GenerateOptions & { minutes: Window } {
-  const spec = SLOT_SPECS[slot];
+export function optionsFor(runSeed: string, slot: number, difficulty: RunDifficulty = 'normal'): GenerateOptions & { minutes: Window } {
+  const spec = specFor(slot, difficulty);
   return {
     size: 9,
     seed: boardSeed(runSeed, slot),
-    rules: rulesFor(runSeed, slot),
+    rules: rulesFor(runSeed, slot, difficulty),
     difficulty: spec.difficulty,
     minKinds: spec.kinds,
     maxKinds: spec.kinds,
