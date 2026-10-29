@@ -42,12 +42,13 @@ describe('difficulty', () => {
     }
   });
 
-  it('scales the targets: Easy to three quarters of Normal, Hard to 1.3 times', () => {
+  it('scales the targets: Easy to three quarters of Normal in ante 1 and less in each ante after, Hard to 1.3 times', () => {
     const profile: TierProfile = { typical: [0, 40, 12, 6, 0, 0, 0, 0, 0], expert: [0, 30, 12, 6, 2, 1, 0, 0, 0] };
     for (let slot = 0; slot < SLOT_COUNT; slot++) {
       const normal = targetFor(slot, profile);
       expect(targetFor(slot, profile, 'normal')).toBe(normal);
-      expect(targetFor(slot, profile, 'easy') / normal).toBeCloseTo(DIFFICULTY.target.easy, 1);
+      const fewer = (DIFFICULTY.growth.easy / DIFFICULTY.growth.normal) ** (anteOf(slot) - 1);
+      expect(targetFor(slot, profile, 'easy') / normal).toBeCloseTo(DIFFICULTY.target.easy * fewer, 1);
       expect(targetFor(slot, profile, 'hard') / normal).toBeCloseTo(DIFFICULTY.target.hard, 1);
     }
   });

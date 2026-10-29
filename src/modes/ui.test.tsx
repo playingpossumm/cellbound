@@ -190,10 +190,10 @@ describe('Run screen', () => {
     expect(button('Start daily run')).toBeDefined();
     expect(button('Start Run')).toBeDefined();
     expect(text()).toContain('Not played');
-    // Three antes of three boards, every boss drawn larger, and a new player's four hearts on Easy.
+    // Three antes of three boards, every boss drawn larger, and a new player's five hearts on Easy.
     expect(host.querySelectorAll('.cb-run-shape .cb-run-pip')).toHaveLength(9);
     expect(host.querySelectorAll('.cb-run-shape .cb-run-pip.is-boss')).toHaveLength(3);
-    expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('4 hearts');
+    expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('5 hearts');
     expect(text()).not.toMatch(/How a run works|Everyone gets the same boards/);
   });
 
@@ -203,7 +203,7 @@ describe('Run screen', () => {
     expect(level('Easy').getAttribute('aria-pressed')).toBe('true');
     expect(level('Normal').getAttribute('aria-disabled')).toBe('true');
     expect(level('Hard').getAttribute('aria-disabled')).toBe('true');
-    expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('4 hearts');
+    expect(host.querySelector('.cb-run-shape .cb-run-hearts')?.getAttribute('aria-label')).toBe('5 hearts');
     await click(level('Normal'));
     expect(text()).toContain('Win a run on Easy to open Normal.');
     await click(level('Hard'));

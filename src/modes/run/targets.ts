@@ -11,9 +11,9 @@ export function marksOfTiers(counts: readonly number[], cap: number = TARGET.tie
   return counts.reduce((sum, k, t) => sum + Math.max(0, k) * (MARKS[Math.min(t, cap)] ?? 0), 0);
 }
 
-/** The factor a slot puts on the typical marks: its kind, then the growth of every ante past the first. */
-export function slotFactor(slot: number): number {
-  return TARGET.scale * TARGET.kind[kindOf(slot)] * TARGET.anteGrowth ** (anteOf(slot) - 1);
+/** The factor a slot puts on the typical marks: its kind, then the level's growth for every ante past the first. */
+export function slotFactor(slot: number, difficulty: RunDifficulty = 'normal'): number {
+  return TARGET.scale * TARGET.kind[kindOf(slot)] * DIFFICULTY.growth[difficulty] ** (anteOf(slot) - 1);
 }
 
 /** A round number to aim at: to the 10 under 1,000, the 50 under 10,000, then the 100. */
@@ -24,5 +24,5 @@ export function roundTarget(x: number): number {
 
 /** A board's target: its typical marks times the slot's factor and the run's difficulty. */
 export function targetFor(slot: number, profile: TierProfile, difficulty: RunDifficulty = 'normal'): number {
-  return roundTarget(marksOfTiers(profile.typical) * slotFactor(slot) * DIFFICULTY.target[difficulty]);
+  return roundTarget(marksOfTiers(profile.typical) * slotFactor(slot, difficulty) * DIFFICULTY.target[difficulty]);
 }

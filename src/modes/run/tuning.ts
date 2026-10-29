@@ -41,7 +41,8 @@ export const CLEAN = { mult: 1.5, sweep: 2 } as const;
 
 /**
  * A board's target: the marks a typical player's tier mix earns (tierProfile.typical times MARKS),
- * times `scale`, times the board's kind, times `anteGrowth` for every ante after the first.
+ * times `scale`, times the board's kind, times `anteGrowth` for every ante after the first (on
+ * Normal and Hard; Easy grows more slowly, DIFFICULTY.growth).
  *
  * Calibrated on the engine's technique detector (npm run calibrate:run, 8 seeds). Since full
  * houses earn half a single's marks and finishing a unit adds 0.5 mult, a typical player scores
@@ -134,8 +135,18 @@ export const DIFFICULTY = {
   },
   /** On every target. */
   target: { easy: 0.75, normal: 1, hard: 1.3 },
+  /**
+   * Each ante's targets ask this many times the ante before. Easy once grew at Normal's rate with
+   * its targets cut by a quarter, which took a typical player from 2.9 times the first target to
+   * 0.92 and 0.76 of ante 3's Big and Boss, so the level meant to need no build needed one. At
+   * 1.25 the same player scores 1.5 times the second boss's target and 1.25 times the last
+   * (npm run calibrate:run -- 8 easy). The Small, Big and Boss of an ante keep their steps, so the
+   * Ante screen shows them in order as often as before; the Small after a boss asks a little less
+   * than the boss did, a breather before the ante climbs again.
+   */
+  growth: { easy: 1.25, normal: TARGET.anteGrowth, hard: TARGET.anteGrowth },
   /** Hearts a run starts with. */
-  hearts: { easy: 4, normal: 3, hard: 2 },
+  hearts: { easy: 5, normal: 3, hard: 2 },
 } as const;
 
 /** What the inks do, beyond what their names say. */

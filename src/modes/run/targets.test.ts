@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { TierProfile } from '../../engine/techniques';
 import { KINDS, SLOT_COUNT, slotOf } from './boards';
 import { marksOfTiers, roundTarget, slotFactor, targetFor } from './targets';
-import { TARGET } from './tuning';
+import { DIFFICULTY, TARGET } from './tuning';
 
 const profile: TierProfile = { typical: [0, 30, 15, 5, 0, 0, 0, 0, 0], expert: [0, 20, 15, 10, 3, 2, 0, 0, 0] };
 
@@ -34,10 +34,24 @@ describe('score targets', () => {
     expect(targetFor(8, profile)).toBe(roundTarget(750 * TARGET.scale * 1.5 * TARGET.anteGrowth ** 2));
   });
 
-  it('never fall through the run on the same profile, and rise within each ante', () => {
-    const all = Array.from({ length: SLOT_COUNT }, (_, s) => targetFor(s, profile));
-    for (let s = 1; s < SLOT_COUNT; s++) expect(all[s], `slot ${s}`).toBeGreaterThanOrEqual(all[s - 1]);
-    for (let a = 0; a < 3; a++) expect(all[3 * a + 2]).toBeGreaterThan(all[3 * a + 1]);
-    for (let a = 0; a < 3; a++) expect(all[3 * a + 1]).toBeGreaterThan(all[3 * a]);
+  it('grow more slowly on Easy, with the same steps within an ante', () => {
+    expect(DIFFICULTY.growth.easy).toBeLessThan(TARGET.anteGrowth);
+    expect([DIFFICULTY.growth.normal, DIFFICULTY.growth.hard]).toEqual([TARGET.anteGrowth, TARGET.anteGrowth]);
+    for (const k of KINDS) {
+      expect(slotFactor(slotOf(1, k), 'easy')).toBeCloseTo(slotFactor(slotOf(1, k)), 9);
+      expect(slotFactor(slotOf(2, k), 'easy') / slotFactor(slotOf(1, k), 'easy')).toBeCloseTo(DIFFICULTY.growth.easy, 9);
+      expect(slotFactor(slotOf(3, k), 'easy') / slotFactor(slotOf(2, k), 'easy')).toBeCloseTo(DIFFICULTY.growth.easy, 9);
+    }
+  });
+
+  it('rise within each ante and from ante to ante on the same profile, and through the whole run on Normal and Hard', () => {
+    for (const level of ['easy', 'normal', 'hard'] as const) {
+      const all = Array.from({ length: SLOT_COUNT }, (_, s) => targetFor(s, profile, level));
+      for (let s = 1; s < SLOT_COUNT; s++) {
+        if (s % KINDS.length) expect(all[s], `${level} slot ${s}`).toBeGreaterThan(all[s - 1]);
+        else if (level !== 'easy') expect(all[s], `${level} slot ${s}`).toBeGreaterThanOrEqual(all[s - 1]);
+      }
+      for (let s = KINDS.length; s < SLOT_COUNT; s++) expect(all[s], `${level} slot ${s}`).toBeGreaterThan(all[s - KINDS.length]);
+    }
   });
 });

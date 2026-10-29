@@ -112,6 +112,11 @@ test('a run shows each target before its board, scores the board and moves on', 
   await shot(page, 'run-ante');
   await playWhenReady(page);
   await expect(page.locator('.cb-top-title')).toHaveText('Ante 1, Small');
+  // Easy starts with five hearts, and the coins beside them stay on screen.
+  await expect(page.locator('.cb-run-band .cb-run-hearts')).toHaveAttribute('aria-label', '5 hearts');
+  const coins = (await page.locator('.cb-run-band .cb-run-coins').boundingBox())!;
+  expect(coins.x + coins.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+  await shot(page, 'run-board');
   await expect(page.locator('.cb-key')).toHaveCount(9);
   await expect(page.getByRole('button', { name: 'Hint, 1 left' })).toBeVisible();
   await solve(page);

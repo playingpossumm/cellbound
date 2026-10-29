@@ -19,7 +19,7 @@ const pad = (s: string | number, w: number) => String(s).padStart(w);
 const t0 = performance.now();
 
 console.log(`${level}: boards ${JSON.stringify(DIFFICULTY.ladder[level])}, targets x ${DIFFICULTY.target[level]}, ${DIFFICULTY.hearts[level]} hearts.`);
-console.log(`Targets: typical marks x scale ${TARGET.scale} x kind ${JSON.stringify(TARGET.kind)} x ${TARGET.anteGrowth} per ante. ${count} seeds, medians.`);
+console.log(`Targets: typical marks x scale ${TARGET.scale} x kind ${JSON.stringify(TARGET.kind)} x ${DIFFICULTY.growth[level]} per ante. ${count} seeds, medians.`);
 console.log(['slot', 'board', 'empty', 'marks', 'target', 'typical', 'clean', 'expert', 'typ/tgt', 'cln/tgt', 'exp/tgt', 'expert tiers 1-8'].map((h, i) => pad(h, i === 11 ? 18 : i === 1 ? 7 : 8)).join(' '));
 for (let slot = 0; slot < SLOT_COUNT; slot++) {
   const rows = seeds.map((seed) => {

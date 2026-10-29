@@ -1,8 +1,9 @@
 // The curve the targets are tuned to, on real boards scored through the real scoring. A typical
 // player (notes, the easiest deduction first, no mistakes) clears ante 1 without help but not
 // idly, needs the first shop's buys for the ante 2 boss, and needs a build of lenses and Spectra
-// for the last boss, as does a player who writes no notes. When a change to the engine's technique
-// detector breaks this, run `npm run calibrate:run` and retune TARGET in tuning.ts.
+// for the last boss, as does a player who writes no notes. On Easy the same player clears every
+// board unaided. When a change to the engine's technique detector breaks this, run
+// `npm run calibrate:run` and retune TARGET in tuning.ts.
 import { describe, expect, it } from 'vitest';
 import { generate } from '../../engine';
 import { tierProfile } from '../../engine/techniques';
@@ -38,9 +39,14 @@ describe('the targets against play (recalibrate with npm run calibrate:run)', ()
     expect(ratio(slotOf(3, 'boss'), 'clean')).toBeLessThan(0.95);
   });
 
-  it('keep the first board on Hard clear for a typical player, and the last boss on Easy closer to reach than on Normal', () => {
+  it('keep the first board on Hard clear for a typical player', () => {
     expect(ratio(slotOf(1, 'small'), 'typical', 'hard')).toBeGreaterThan(1.2);
-    expect(ratio(slotOf(3, 'boss'), 'typical', 'easy')).toBeGreaterThan(ratio(slotOf(3, 'boss'), 'typical'));
+  });
+
+  it('let a typical player clear every board on Easy unaided, without making the last boss idle', () => {
+    expect(ratio(slotOf(3, 'big'), 'typical', 'easy')).toBeGreaterThan(1.15);
+    expect(ratio(slotOf(3, 'boss'), 'typical', 'easy')).toBeGreaterThan(1);
+    expect(ratio(slotOf(3, 'boss'), 'typical', 'easy')).toBeLessThan(2);
   });
 
   it('pay clean play more than noted play', () => {
