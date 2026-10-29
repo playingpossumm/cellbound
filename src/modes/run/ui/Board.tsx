@@ -10,9 +10,8 @@ import { TECHNIQUES, type TechniqueId } from '../../../engine/techniques';
 import { getGame, startGame, useGame } from '../../../game/store';
 import { formatDateLong } from '../../../game/logic';
 import type { GameState } from '../../../game/types';
-import { specFor } from '../boards';
 import { gameKey, prepareBoard, type Prepared } from '../board';
-import { BOSS_NAMES, bossText, clockMs } from '../bosses';
+import { BOSS_NAMES, bossText } from '../bosses';
 import { itemById, TIER_NAMES } from '../items';
 import { lensById, maxHeartsOf } from '../lenses';
 import type { TallyFx } from '../live';
@@ -20,7 +19,7 @@ import { planOf, SHOW_TIER, type Beat } from '../show';
 import type { BoardResult, RunState } from '../model';
 import { flowCap, flowOf } from '../scoring';
 import { placePopup, popupSize, WEIGHT, type Box, type Ground } from '../popups';
-import { difficultyOf, formatMult, formatScore, slotName } from '../state';
+import { clockFor, formatMult, formatScore, slotName } from '../state';
 import { inkUsable, landPoints, playedBoard, runActions, useRunStore } from '../store';
 import { CheckIcon, CoinIcon, TargetIcon } from './icons';
 import { Coins, Hearts, ItemTile, Letters, LensTile, Meter, Page, TierDot, useCountUp } from './parts';
@@ -707,7 +706,7 @@ function noteFor(run: RunState, game: GameState | null, pick: Pick, done: () => 
     const rule = run.live?.rule;
     if (!rule) return null;
     // The clock as it stands, Time Ink included.
-    const minutes = Math.round((game?.mods?.timeLimitMs ?? clockMs(specFor(run.slot, difficultyOf(run)).minutes)) / 60_000);
+    const minutes = Math.round((game?.mods?.timeLimitMs ?? clockFor(run, run.slot)) / 60_000);
     return { text: `${BOSS_NAMES[rule]}. ${bossText(rule, rule === 'clock' ? minutes : undefined)}` };
   }
   if (pick.kind === 'lens') {

@@ -149,9 +149,11 @@ describe('Thief never forces a guess', () => {
 });
 
 describe('the other rules', () => {
-  it('gives the clock a quarter more than the high end of the window, to the minute', () => {
+  it('gives the clock a quarter more than the high end of the window, to the minute, and twice it on Easy', () => {
     expect(clockMs([7, 8.5])).toBe(11 * 60_000);
     expect(clockMs([13, 15])).toBe(19 * 60_000);
+    expect(clockMs([13, 15], 'hard')).toBe(19 * 60_000);
+    expect(clockMs([7, 8.5], 'easy')).toBe(17 * 60_000);
   });
 
   it('words every rule plainly', () => {

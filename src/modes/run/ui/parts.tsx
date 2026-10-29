@@ -6,14 +6,14 @@ import { soundLand } from '../../../app/sound';
 import { TopBar } from '../../../app/TopBar';
 import { useReducedMotion } from '../../../app/theme';
 import { useScreenEntry } from '../../screenEntry';
-import { anteOf, ANTES, isBoss, KINDS, slotOf, specFor } from '../boards';
-import { bossAhead, BOSS_NAMES, bossText, clockMs, type BossRule } from '../bosses';
+import { anteOf, ANTES, isBoss, KINDS, slotOf } from '../boards';
+import { bossAhead, BOSS_NAMES, bossText, type BossRule } from '../bosses';
 import { itemById, TIER_NAMES } from '../items';
 import { lensById, maxHeartsOf, type LensDef } from '../lenses';
 import type { BoardResult, ItemId, LensSlot, RewardId, RunState } from '../model';
 import { isBargain, REWARDS, rewardById } from '../rewards';
 import { sellValue } from '../shop';
-import { difficultyOf, formatScore, KIND_NAMES, LEVEL_NAMES, resultOf } from '../state';
+import { clockFor, difficultyOf, formatScore, KIND_NAMES, LEVEL_NAMES, resultOf } from '../state';
 import { SLOTS } from '../tuning';
 import { CategoryIcon, CheckIcon, CoinIcon, HeartIcon, InkIcon, ShieldIcon, SpectrumIcon } from './icons';
 
@@ -588,7 +588,7 @@ export function BossTag({ rule }: { rule: BossRule }) {
 export function BossAhead({ run }: { run: RunState }) {
   const rule = bossAhead(run, run.slot);
   if (!rule) return null;
-  const minutes = Math.round(clockMs(specFor(slotOf(anteOf(run.slot), 'boss'), difficultyOf(run)).minutes) / 60_000);
+  const minutes = Math.round(clockFor(run, slotOf(anteOf(run.slot), 'boss')) / 60_000);
   return (
     <p className="cb-run-ahead">
       <span className="cb-run-boss">{BOSS_NAMES[rule]} boss</span>

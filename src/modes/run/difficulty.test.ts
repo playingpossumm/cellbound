@@ -1,7 +1,7 @@
-// Difficulty and the boss counters. Easy and Hard cut each board to a step along the Normal ladder
-// and scale the targets and the hearts, and a daily run is always Normal. Every boss rule shows
-// from the start of its ante, the offers and shops before a boss lean toward what answers it, and
-// with Scout the shop opens with its answer.
+// Difficulty and the boss counters. Easy and Hard cut each board to a spec on the Normal ladder and
+// scale the targets and the hearts, Easy gives its bosses longer clocks, and a daily run is always
+// Normal. Every boss rule shows from the start of its ante, the offers and shops before a boss lean
+// toward what answers it, and with Scout the shop opens with its answer.
 import { describe, expect, it } from 'vitest';
 import { LYRA } from '../../engine/fixtures';
 import type { TierProfile } from '../../engine/techniques';
@@ -81,6 +81,26 @@ describe('difficulty', () => {
     const hard: RunState = { ...newRun('t:clock', null, 1, false, 'hard'), bosses: ['clock', 'fog', 'mute'] };
     const normal: RunState = { ...hard, difficulty: 'normal' };
     expect(modsFor(hard, 2, LYRA).timeLimitMs).toBeGreaterThan(modsFor(normal, 2, LYRA).timeLimitMs!);
+  });
+
+  it('keeps Easy to gentle and easy boards of one or two rules, one rule through ante 1, none easier than the ante before', () => {
+    const easy = Array.from({ length: SLOT_COUNT }, (_, slot) => specFor(slot, 'easy'));
+    for (const s of easy) {
+      expect(s.difficulty).toBeLessThanOrEqual(2);
+      expect(s.kinds).toBe(s.ante === 1 ? 1 : 2);
+    }
+    for (let slot = 3; slot < SLOT_COUNT; slot++) {
+      expect(easy[slot].difficulty).toBeGreaterThanOrEqual(easy[slot - 3].difficulty);
+      expect(easy[slot].minutes[1]).toBeGreaterThan(easy[slot - 3].minutes[1]);
+    }
+  });
+
+  it('gives a Clock boss on Easy twice its board window, which leaves its gentler boards longer clocks than before', () => {
+    const run: RunState = { ...newRun('t:clock', null, 1, false, 'easy'), bosses: ['fog', 'mute', 'clock'] };
+    const last = SLOT_COUNT - 1;
+    expect(modsFor(run, last, LYRA).timeLimitMs).toBe(Math.ceil(specFor(last, 'easy').minutes[1] * 2) * 60_000);
+    // At Normal's quarter more, the last boss of Easy's old ladder had 16 minutes.
+    expect(modsFor(run, last, LYRA).timeLimitMs).toBeGreaterThan(16 * 60_000);
   });
 
   it('names Easy and Hard in the share text, and leaves Normal as it was', () => {

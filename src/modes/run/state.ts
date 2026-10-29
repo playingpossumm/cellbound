@@ -66,6 +66,11 @@ export function ruleOf(run: Pick<RunState, 'bosses'>, slot: number): BossRule | 
 /** How hard the run is. Runs from before there was a choice were Normal. */
 export const difficultyOf = (run: Pick<RunState, 'difficulty'>): RunDifficulty => run.difficulty ?? 'normal';
 
+/** A slot's clock in a run, for a Clock boss or an Overtime card: its board's window at the run's difficulty. */
+export function clockFor(run: Pick<RunState, 'difficulty'>, slot: number): number {
+  const level = difficultyOf(run);
+  return clockMs(specFor(slot, level).minutes, level);
+}
 
 export function resultOf(run: RunState, slot: number): BoardResult | undefined {
   return run.results.find((r) => r.slot === slot);
@@ -99,7 +104,7 @@ export function modsFor(run: RunState, slot: number, puzzle: Puzzle): GameMods {
   const rule = ruleOf(run, slot);
   const mods: GameMods = {};
   if (rule === 'mute') mods.noNotes = true;
-  if (rule === 'clock' || run.next.clock) mods.timeLimitMs = clockMs(specFor(slot, difficultyOf(run)).minutes);
+  if (rule === 'clock' || run.next.clock) mods.timeLimitMs = clockFor(run, slot);
   if (run.perks.peek) mods.reveal = run.perks.peek;
   mods.hints = HINTS_PER_BOARD + run.hintPool + (run.perks.sharpEye ? 1 : 0);
   if (run.perks.sharpEye) mods.quickHints = 1;

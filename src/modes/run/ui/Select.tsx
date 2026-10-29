@@ -1,11 +1,11 @@
 // The ante screen: the ante's three boards, each with its target before it starts, the boss rule
 // from the start of the ante, and the board in turn ready to play or to skip for a tag.
 import { useState } from 'react';
-import { anteOf, KINDS, slotOf, specFor } from '../boards';
-import { BOSS_NAMES, bossText, clockMs } from '../bosses';
+import { anteOf, KINDS, slotOf } from '../boards';
+import { BOSS_NAMES, bossText } from '../bosses';
 import type { Prepared } from '../board';
 import type { BoardResult, RunState } from '../model';
-import { canSkip, difficultyOf, formatScore, KIND_NAMES, resultOf, ruleOf } from '../state';
+import { canSkip, clockFor, formatScore, KIND_NAMES, resultOf, ruleOf } from '../state';
 import { COINS } from '../tuning';
 import { CheckIcon, SkipIcon, TargetIcon } from './icons';
 import { BossTag, Coins, hasLoadout, LevelPill, Loadout, LoadoutActions, Page, RunHearts, RunScore, Track, whereLabel } from './parts';
@@ -68,7 +68,7 @@ export function Select({ run, ready, onPlay, onSkip, onRetry, onHome, onMove, on
           const target = run.targets[slot] ?? (prep && prep !== 'failed' ? prep.target : null);
           const rule = ruleOf(run, slot);
           const coinTimes = now ? (run.next.coinTimes ?? 1) : 1;
-          const minutes = Math.round(clockMs(specFor(slot, difficultyOf(run)).minutes) / 60_000);
+          const minutes = Math.round(clockFor(run, slot) / 60_000);
           const mods = now ? [run.next.fog && 'Fog', run.next.clock && 'Clock', run.pending && 'Double or nothing'].filter(Boolean) : [];
           return (
             <li key={kind} className={`cb-run-board is-${kind}${now ? ' is-now' : ''}${r ? ' is-done' : ''}`} aria-current={now ? 'step' : undefined}>

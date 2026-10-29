@@ -45,8 +45,8 @@ export const SLOT_SPECS: readonly SlotSpec[] = [
 export const anteOf = (slot: number): number => Math.floor(slot / KINDS.length) + 1;
 
 /**
- * The spec a slot's board is cut to at a difficulty: Normal's own, Easy's a step back along the
- * ladder and Hard's a step on (DIFFICULTY.ladder). The slot keeps its own ante and kind.
+ * The spec a slot's board is cut to at a difficulty: Normal's own, Easy's gentler and Hard's a
+ * step on along the same ladder (DIFFICULTY.ladder). The slot keeps its own ante and kind.
  */
 export function specFor(slot: number, difficulty: RunDifficulty = 'normal'): SlotSpec {
   const spec = SLOT_SPECS[DIFFICULTY.ladder[difficulty][slot] ?? slot];

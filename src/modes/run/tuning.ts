@@ -124,12 +124,14 @@ export const OFFERS = {
 
 /**
  * What a free run's difficulty changes; a daily run is always Normal, so everyone plays the same
- * boards. Each slot's board is cut to one of the Normal ladder's specs (SLOT_SPECS): Easy's a step
- * back and Hard's a step on, so every board is one the generator is known to make in time.
+ * boards. Each slot's board is cut to one of the Normal ladder's specs (SLOT_SPECS), so every board
+ * is one the generator is known to make in time. Hard's are a step on. Easy's stay gentle and easy
+ * with one or two rules: one rule through ante 1, two from ante 2 and the easy level from the
+ * second boss on, where Easy once reached a Big board with three rules and a medium last boss.
  */
 export const DIFFICULTY = {
   ladder: {
-    easy: [0, 0, 1, 1, 2, 3, 3, 4, 5],
+    easy: [0, 0, 0, 1, 1, 2, 2, 3, 3],
     normal: [0, 1, 2, 3, 4, 5, 6, 7, 8],
     hard: [2, 3, 5, 5, 6, 8, 7, 8, 8],
   },
@@ -139,7 +141,7 @@ export const DIFFICULTY = {
    * Each ante's targets ask this many times the ante before. Easy once grew at Normal's rate with
    * its targets cut by a quarter, which took a typical player from 2.9 times the first target to
    * 0.92 and 0.76 of ante 3's Big and Boss, so the level meant to need no build needed one. At
-   * 1.25 the same player scores 1.5 times the second boss's target and 1.25 times the last
+   * 1.25 the same player scores 1.6 times the second boss's target and 1.2 times the last
    * (npm run calibrate:run -- 8 easy). The Small, Big and Boss of an ante keep their steps, so the
    * Ante screen shows them in order as often as before; the Small after a boss asks a little less
    * than the boss did, a breather before the ante climbs again.
@@ -147,6 +149,14 @@ export const DIFFICULTY = {
   growth: { easy: 1.25, normal: TARGET.anteGrowth, hard: TARGET.anteGrowth },
   /** Hearts a run starts with. */
   hearts: { easy: 5, normal: 3, hard: 2 },
+  /**
+   * A Clock boss's clock, and an Overtime card's: the high end of the board's time window times
+   * this, to the whole minute. The window is an experienced player's time, and Easy's gentler
+   * boards have shorter windows, so at Normal's 1.25 its clocks would have shrunk for the players
+   * Easy is for (16 minutes to 12 on the last boss). Twice the window gives its three bosses 13,
+   * 17 and 18 minutes.
+   */
+  clock: { easy: 2, normal: 1.25, hard: 1.25 },
 } as const;
 
 /** What the inks do, beyond what their names say. */
@@ -156,8 +166,6 @@ export const INK = {
 } as const;
 
 export const BOSS = {
-  /** The clock: the high end of the board's time window times this, to the whole minute. */
-  clock: 1.25,
   /** Fish Market tries this many boards for one whose expert profile reaches `fishTier`. */
   fishTries: 6,
   fishTier: 6,

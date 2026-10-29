@@ -7,7 +7,7 @@ import type { CellIndex, GeneratedPuzzle, GenerateOptions, Puzzle, PuzzleShape }
 import { hashString } from '../../game/logic';
 import { anteOf, ANTES, isBoss, type Window } from './boards';
 import type { ItemId, LensId, RewardId, RunDifficulty } from './model';
-import { BOSS, HEARTS } from './tuning';
+import { BOSS, DIFFICULTY, HEARTS } from './tuning';
 
 export type BossRule = 'fog' | 'mute' | 'thief' | 'glass' | 'clock' | 'fish';
 export const BOSS_RULES: readonly BossRule[] = ['fog', 'mute', 'thief', 'glass', 'clock', 'fish'];
@@ -89,9 +89,9 @@ export const SCOUT_STOCK: Record<BossRule, ItemId> = {
   fish: 'spectra6',
 };
 
-/** The clock of a board: the high end of its time window times BOSS.clock, to the whole minute. */
-export function clockMs(minutes: Window): number {
-  return Math.ceil(minutes[1] * BOSS.clock) * 60_000;
+/** The clock of a board: the high end of its time window times the level's DIFFICULTY.clock, to the whole minute. */
+export function clockMs(minutes: Window, difficulty: RunDifficulty = 'normal'): number {
+  return Math.ceil(minutes[1] * DIFFICULTY.clock[difficulty]) * 60_000;
 }
 
 /** Placements of tier BOSS.fishTier or harder a strong player makes on the board. */
