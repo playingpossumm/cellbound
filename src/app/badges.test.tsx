@@ -55,14 +55,14 @@ describe('the Stats screen’s badges', () => {
     primeBadges();
     useStats.setState({ daily: Object.fromEntries([solved('2026-10-27', 9 * 60_000), solved('2026-10-28', 10 * 60_000)]) });
     await render(<BadgesCard />);
-    // Quick II and Clean I.
+    // Quick II, for 10 minutes of Wednesday's par of 14, and Clean I.
     expect(host.querySelector('.cb-badges-head span')?.textContent).toBe('3 of 63');
     expect(host.querySelectorAll('.cb-gem-btn.is-new')).toHaveLength(2);
     expect(host.querySelector('.cb-badge-card h3')?.textContent).toBe('Quick II');
-    expect(host.querySelector('.cb-badge-next')?.textContent).toBe('Best 9:00, level III at 8 min');
+    expect(host.querySelector('.cb-badge-next')?.textContent).toBe('Best 72% of par, level III at ½ par');
     await act(async () => (host.querySelector('button[aria-label^="Streak"]') as HTMLButtonElement).click());
     expect(host.querySelector('.cb-badge-card h3')?.textContent).toBe('Streak');
-    expect(host.querySelector('.cb-badge-next')?.textContent).toBe('2 of 3 days');
+    expect(host.querySelector('.cb-badge-next')?.textContent).toBe('2 of 7 days');
     await remount(<BadgesCard />);
     expect(host.querySelectorAll('.cb-gem-btn.is-new')).toHaveLength(0);
   });
@@ -71,7 +71,7 @@ describe('the Stats screen’s badges', () => {
 describe('badges just earned', () => {
   it('show on the card that follows a game, once', async () => {
     primeBadges();
-    useStats.setState({ daily: Object.fromEntries([solved('2026-10-28', 7 * 60_000)]) });
+    useStats.setState({ daily: Object.fromEntries([solved('2026-10-28', 6 * 60_000)]) });
     await render(<NewBadges />);
     expect(host.querySelector('.cb-newbadges h3')?.textContent).toBe('New badges');
     expect([...host.querySelectorAll('.cb-newbadges li')].map((li) => li.textContent)).toEqual(['Quick III', 'Clean I']);
@@ -80,7 +80,7 @@ describe('badges just earned', () => {
   });
 
   it('leave unannounced what was earned before badges arrived', async () => {
-    useStats.setState({ daily: Object.fromEntries([solved('2026-10-28', 7 * 60_000)]) });
+    useStats.setState({ daily: Object.fromEntries([solved('2026-10-28', 6 * 60_000)]) });
     primeBadges();
     await render(<NewBadges />);
     expect(host.querySelector('.cb-newbadges')).toBeNull();

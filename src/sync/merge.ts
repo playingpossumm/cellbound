@@ -3,7 +3,7 @@
 // added in. Counts add up, bests keep the better one, and a Daily played on two devices counts
 // once, as its better result. Pure, so the server and the app merge the same way.
 import type { DailyEntry, StatsData } from '../game/stats';
-import type { DailyRecord, RunStats } from '../modes/run/stats';
+import type { DailyRecord, RankedStats, RunStats } from '../modes/run/stats';
 
 const add = <K extends string>(a: Partial<Record<K, number>>, b: Partial<Record<K, number>>): Partial<Record<K, number>> => {
   const out: Partial<Record<K, number>> = { ...a };
@@ -34,6 +34,17 @@ export function mergeStats(a: StatsData, b: StatsData): StatsData {
 
 const higher = <T extends { score: number }>(a: T | null, b: T | null): T | null => (!a ? b : !b ? a : b.score > a.score ? b : a);
 
+/** The badges' counts of two devices; a device last synced before 2026-10-31 sent none. */
+function mergeRanked(a: RankedStats | undefined, b: RankedStats | undefined): RankedStats {
+  return {
+    bosses: (a?.bosses ?? 0) + (b?.bosses ?? 0),
+    bossRules: add(a?.bossRules ?? {}, b?.bossRules ?? {}),
+    cleanBoards: (a?.cleanBoards ?? 0) + (b?.cleanBoards ?? 0),
+    tiers: Array.from({ length: 9 }, (_, t) => (a?.tiers?.[t] ?? 0) + (b?.tiers?.[t] ?? 0)),
+    best: Math.max(a?.best ?? 0, b?.best ?? 0),
+  };
+}
+
 export function mergeRunStats(a: RunStats, b: RunStats): RunStats {
   const dailyBest: Record<string, DailyRecord> = { ...a.dailyBest };
   for (const [date, r] of Object.entries(b.dailyBest)) dailyBest[date] = higher(dailyBest[date] ?? null, r)!;
@@ -55,9 +66,9 @@ export function mergeRunStats(a: RunStats, b: RunStats): RunStats {
     dailyBest,
     topAnte: Math.max(a.topAnte, b.topAnte),
     bosses: a.bosses + b.bosses,
-    bossRules: add(a.bossRules ?? {}, b.bossRules ?? {}),
     cleanBoards: a.cleanBoards + b.cleanBoards,
     codex,
     best: !a.best ? b.best : !b.best ? a.best : b.best.points > a.best.points ? b.best : a.best,
+    ranked: mergeRanked(a.ranked, b.ranked),
   };
 }

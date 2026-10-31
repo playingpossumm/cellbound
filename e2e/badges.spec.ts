@@ -48,12 +48,13 @@ test('a solved Daily shows the badges it earned, and Stats holds every level', a
 
 test('a badge earned out of sight marks Stats in the menu and on its screen, once', async ({ page }) => {
   await openFresh(page);
-  // A Daily solved in 10 minutes with no mistakes, counted after this device last showed its badges.
+  // Monday's Daily solved in 5½ minutes of its par of 8 with no mistakes, counted after this device
+  // last showed its badges.
   await page.evaluate(() => {
-    const day = '2026-10-20';
-    const daily = { [day]: { status: 'solved', ms: 600_000, mistakes: 0, hints: 0, solvedOn: day } };
+    const day = '2026-10-26';
+    const daily = { [day]: { status: 'solved', ms: 330_000, mistakes: 0, hints: 0, solvedOn: day } };
     localStorage.setItem('cellbound:v1:stats', JSON.stringify({ state: { solves: { daily: 1 }, fails: {}, times: {}, daily, recorded: [] }, version: 1 }));
-    localStorage.setItem('cellbound:v1:badges', JSON.stringify({ v: 1, seen: {} }));
+    localStorage.setItem('cellbound:v1:badges', JSON.stringify({ v: 2, seen: {} }));
   });
   await page.reload();
   await expect(page.locator('.cb-board')).toBeVisible();
@@ -66,4 +67,24 @@ test('a badge earned out of sight marks Stats in the menu and on its screen, onc
   await openScreen(page, 'Daily');
   await page.getByRole('button', { name: 'Menu' }).first().click();
   await expect(menu.locator('.cb-menu-dot')).toHaveCount(0);
+});
+
+test('levels shown under the steps before 31 October are read again from the new ones, with nothing announced', async ({ page }) => {
+  await openFresh(page);
+  // Under the old steps this device showed nothing; the new ones give Quick II and Clean I, earned before it updated.
+  await page.evaluate(() => {
+    const day = '2026-10-26';
+    const daily = { [day]: { status: 'solved', ms: 330_000, mistakes: 0, hints: 0, solvedOn: day } };
+    localStorage.setItem('cellbound:v1:stats', JSON.stringify({ state: { solves: { daily: 1 }, fails: {}, times: {}, daily, recorded: [] }, version: 1 }));
+    localStorage.setItem('cellbound:v1:badges', JSON.stringify({ v: 1, seen: {} }));
+  });
+  await page.reload();
+  await expect(page.locator('.cb-board')).toBeVisible();
+  await page.getByRole('button', { name: 'Menu' }).first().click();
+  const menu = page.locator('dialog.cb-menu');
+  await expect(menu.getByRole('button', { name: 'Stats' })).toBeVisible();
+  await expect(menu.locator('.cb-menu-dot')).toHaveCount(0);
+  await menu.getByRole('button', { name: 'Stats' }).click();
+  await expect(page.locator('.cb-badges-head span')).toHaveText('3 of 63');
+  await expect(page.locator('.cb-gem-btn.is-new')).toHaveCount(0);
 });

@@ -1,5 +1,6 @@
 // Run statistics, the technique codex and the unlock milestones. Unlocks are read off the
 // counters, so there is no separate list to keep in step.
+import { TECHNIQUES } from '../../engine/techniqueNames';
 import type { TechniqueId } from '../../engine/techniques';
 import { anteOf } from './boards';
 import type { BossRule } from './bosses';
@@ -31,16 +32,39 @@ export interface RunStats {
   dailyBest: Record<string, DailyRecord>;
   /** Furthest ante reached in any run, 0 to 3. */
   topAnte: number;
-  /** Boss boards cleared, and how many of each rule. */
+  /** Boss boards cleared, and boards finished with every box clean, on any difficulty, for the unlocks. */
   bosses: number;
-  bossRules: Partial<Record<BossRule, number>>;
-  /** Boards finished with every box clean. */
   cleanBoards: number;
   /** Placements and best single placement per technique, over every run. */
   codex: Partial<Record<TechniqueId, { n: number; best: number }>>;
   /** The best single placement of any run. */
   best: BestPlacement | null;
+  /** What the badges count. */
+  ranked: RankedStats;
 }
+
+/**
+ * The boards of runs on Normal or Hard, and of daily runs, as the badges count them (isRanked).
+ * Easy is for practice: its boards add to the codex and the unlocks, and its wins to Victor's
+ * first level, but to no other badge. Counted from 2026-10-31, since the counts before then kept
+ * no difficulty.
+ */
+export interface RankedStats {
+  /** Boss boards cleared, and how many of each rule. */
+  bosses: number;
+  bossRules: Partial<Record<BossRule, number>>;
+  /** Boards finished with every box clean. */
+  cleanBoards: number;
+  /** Placements by the tier of the technique that proved them, 0 to 8. */
+  tiers: number[];
+  /** The most one placement has scored. */
+  best: number;
+}
+
+export const emptyRanked = (): RankedStats => ({ bosses: 0, bossRules: {}, cleanBoards: 0, tiers: new Array<number>(9).fill(0), best: 0 });
+
+/** Whether a run's boards count toward the badges: every run but a free one on Easy. */
+export const isRanked = (run: Pick<RunState, 'daily' | 'difficulty'>): boolean => !!run.daily || run.difficulty !== 'easy';
 
 export function emptyStats(): RunStats {
   return {
@@ -56,10 +80,10 @@ export function emptyStats(): RunStats {
     dailyBest: {},
     topAnte: 0,
     bosses: 0,
-    bossRules: {},
     cleanBoards: 0,
     codex: {},
     best: null,
+    ranked: emptyRanked(),
   };
 }
 
@@ -84,11 +108,30 @@ export function addToCodex(s: RunStats, tech: TechTally, best: BestPlacement | n
   return { ...s, codex, best: top };
 }
 
-export function onBoardEnd(s: RunStats, r: BoardResult, boxesAllClean: boolean): RunStats {
+/** A board has ended; `ranked` says whether its run counts toward the badges (isRanked). */
+export function onBoardEnd(s: RunStats, r: BoardResult, boxesAllClean: boolean, ranked: boolean): RunStats {
   let next = addToCodex(s, r.tech, r.best);
-  if (r.status === 'cleared' && r.rule !== null) next = { ...next, bosses: next.bosses + 1, bossRules: { ...next.bossRules, [r.rule]: (next.bossRules[r.rule] ?? 0) + 1 } };
-  if (boxesAllClean && (r.status === 'cleared' || r.status === 'missed')) next = { ...next, cleanBoards: next.cleanBoards + 1 };
+  const beaten = r.status === 'cleared' ? r.rule : null;
+  const clean = boxesAllClean && (r.status === 'cleared' || r.status === 'missed');
+  if (beaten) next = { ...next, bosses: next.bosses + 1 };
+  if (clean) next = { ...next, cleanBoards: next.cleanBoards + 1 };
+  if (ranked) next = { ...next, ranked: addRanked(next.ranked, r, beaten, clean) };
   return next;
+}
+
+function addRanked(k: RankedStats, r: BoardResult, beaten: BossRule | null, clean: boolean): RankedStats {
+  const tiers = k.tiers.slice();
+  for (const [id, t] of Object.entries(r.tech) as [TechniqueId, { n: number }][]) {
+    const tier = TECHNIQUES[id]?.tier;
+    if (tier !== undefined) tiers[tier] = (tiers[tier] ?? 0) + t.n;
+  }
+  return {
+    bosses: k.bosses + (beaten ? 1 : 0),
+    bossRules: beaten ? { ...k.bossRules, [beaten]: (k.bossRules[beaten] ?? 0) + 1 } : k.bossRules,
+    cleanBoards: k.cleanBoards + (clean ? 1 : 0),
+    tiers,
+    best: Math.max(k.best, r.best?.points ?? 0),
+  };
 }
 
 /** Folds a run that has just ended into the stats. today is YYYY-MM-DD. */

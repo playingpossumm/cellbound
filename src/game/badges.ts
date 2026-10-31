@@ -1,11 +1,12 @@
 // Badges: twenty-one of them with three levels each, read from the stats the app already keeps
-// (every device's, for a player who is logged in), so whatever was played before badges counts.
-// Pure, for tests; src/app/badges.tsx draws them as gems on the Stats screen, the result card and
-// the Run's summary.
-import { TECHNIQUES, type TechniqueId, type TechniqueTier } from '../engine/techniqueNames';
+// (every device's, for a player who is logged in). Games outside the Run count from the first one
+// played; runs count on Normal and Hard only (RankedStats, kept from 2026-10-31), and Easy earns
+// nothing but Victor's first level. Pure, for tests; src/app/badges.tsx draws them as gems on the
+// Stats screen, the result card and the Run's summary.
+import { dailySpec } from '../engine/daily';
+import type { TechniqueTier } from '../engine/techniqueNames';
 import type { RunStats } from '../modes/run/stats';
 import { bestRunScore } from '../sync/rules';
-import { formatTime } from './logic';
 import type { DailyEntry, StatsData } from './stats';
 import { bestStreak } from './streaks';
 
@@ -69,30 +70,45 @@ export const thousands = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{
 
 const solved = (s: StatsData): DailyEntry[] => Object.values(s.daily).filter((e) => e.status === 'solved');
 
-/** Run placements proved by a technique of these tiers, from the codex. */
-function placed(run: RunStats, ...tiers: TechniqueTier[]): number {
-  let n = 0;
-  for (const [id, c] of Object.entries(run.codex)) if (c && tiers.includes(TECHNIQUES[id as TechniqueId]?.tier)) n += c.n;
-  return n;
+/** Placements on Normal and Hard proved by a technique of these tiers. */
+const placed = (run: RunStats, ...tiers: TechniqueTier[]) => tiers.reduce<number>((n, t) => n + (run.ranked.tiers[t] ?? 0), 0);
+
+/**
+ * A solved Daily's time as a share of its par, the top of the time its board was cut to (Monday's
+ * 5 to 8 minutes has a par of 8). The 6x6 Dailies before the 9x9s had none, and nor does a key that
+ * is not a date, which dailySpec could not read.
+ */
+function parShare(date: string, e: DailyEntry): number | null {
+  if (e.status !== 'solved' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const par = dailySpec(date).minutes?.[1];
+  return par ? e.ms / (par * MINUTE) : null;
 }
+
+const PAR_STEPS: Readonly<Record<number, string>> = { 1: 'par', 0.75: '¾ par', 0.5: '½ par' };
 
 /** How many of a tally's keys have counted at least once. */
 const kinds = (tally: Partial<Record<string, number>> | undefined) => Object.values(tally ?? {}).filter((n) => (n ?? 0) > 0).length;
 
 export const BADGES: readonly BadgeDef[] = [
-  { id: 'streak', group: 'Time', name: 'Streak', counts: 'Dailies solved on their own day, in a row.', steps: [3, 7, 30], unit: 'days', value: (i) => bestStreak(i.stats.daily) },
+  { id: 'streak', group: 'Time', name: 'Streak', counts: 'Dailies solved on their own day, in a row.', steps: [7, 30, 100], unit: 'days', value: (i) => bestStreak(i.stats.daily) },
   { id: 'regular', group: 'Time', name: 'Regular', counts: 'Dailies solved.', steps: [7, 30, 100], unit: 'Dailies', value: (i) => solved(i.stats).length },
   {
     id: 'quick',
     group: 'Time',
     name: 'Quick',
-    counts: 'A Daily solved within the time.',
-    steps: [20 * MINUTE, 12 * MINUTE, 8 * MINUTE],
+    counts: 'A Daily solved within its par: 8 minutes on a Monday, up to 29 on a Saturday.',
+    steps: [1, 0.75, 0.5],
     lower: true,
-    show: (ms) => `${Math.round(ms / MINUTE)} min`,
+    // The steps by name, short enough to sit on one line on a small phone; a best between them as
+    // a percentage, rounded up so a time just over a step never reads as on it.
+    show: (share) => PAR_STEPS[share] ?? `${Math.ceil(share * 100 - 1e-9)}% of par`,
     value: (i) => {
-      const times = solved(i.stats).map((e) => e.ms);
-      return times.length ? Math.min(...times) : null;
+      let best: number | null = null;
+      for (const [date, e] of Object.entries(i.stats.daily)) {
+        const share = parShare(date, e);
+        if (share !== null && (best === null || share < best)) best = share;
+      }
+      return best;
     },
   },
   {
@@ -104,17 +120,22 @@ export const BADGES: readonly BadgeDef[] = [
     unit: 'clean Dailies',
     value: (i) => solved(i.stats).filter((e) => !e.mistakes && !e.hints).length,
   },
-  { id: 'hidden', group: 'Method', name: 'Hidden singles', counts: 'Hidden singles placed in runs.', steps: [50, 250, 1000], unit: 'placed', value: (i) => placed(i.run, 2) },
-  { id: 'clues', group: 'Method', name: 'Clues', counts: 'Digits a clue proves, placed in runs.', steps: [25, 100, 500], unit: 'placed', value: (i) => placed(i.run, 3) },
-  { id: 'pointing', group: 'Method', name: 'Pointing', counts: 'Digits proved by pointing or a cage rule, placed in runs.', steps: [10, 50, 200], unit: 'placed', value: (i) => placed(i.run, 4) },
-  { id: 'pairs', group: 'Method', name: 'Pairs', counts: 'Digits proved by a pair or a triple, placed in runs.', steps: [5, 25, 100], unit: 'placed', value: (i) => placed(i.run, 5) },
-  { id: 'xwing', group: 'Method', name: 'X-Wings', counts: 'Digits proved by an X-Wing or its kin, placed in runs.', steps: [1, 10, 50], unit: 'placed', value: (i) => placed(i.run, 6) },
-  { id: 'wings', group: 'Method', name: 'Wings', counts: 'Digits proved by a wing or a Swordfish, placed in runs.', steps: [1, 5, 25], unit: 'placed', value: (i) => placed(i.run, 7) },
-  { id: 'chains', group: 'Method', name: 'Chains', counts: 'Digits proved by a chain, placed in runs.', steps: [1, 5, 25], unit: 'placed', value: (i) => placed(i.run, 8) },
+  // A Normal run of nine boards places about 140 hidden singles, 70 clue digits and 6 by pointing,
+  // a chain one run in two (about two a run on Hard), and almost no pairs, X-Wings or wings: those
+  // come from Microscope, which scores each digit as the hardest technique that could find it, at
+  // about 40, 17 and 20 a run (npm run calibrate:badges). So level III is about 35 runs for the
+  // first three, and 8 to 10 runs holding Microscope for the next three.
+  { id: 'hidden', group: 'Method', name: 'Hidden singles', counts: 'Hidden singles placed in runs on Normal or Hard.', steps: [100, 1000, 5000], unit: 'placed', value: (i) => placed(i.run, 2) },
+  { id: 'clues', group: 'Method', name: 'Clues', counts: 'Digits a clue proves, placed in runs on Normal or Hard.', steps: [50, 500, 2500], unit: 'placed', value: (i) => placed(i.run, 3) },
+  { id: 'pointing', group: 'Method', name: 'Pointing', counts: 'Digits proved by pointing or a cage rule, placed in runs on Normal or Hard.', steps: [10, 50, 200], unit: 'placed', value: (i) => placed(i.run, 4) },
+  { id: 'pairs', group: 'Method', name: 'Pairs', counts: 'Digits proved by a pair or a triple, placed in runs on Normal or Hard.', steps: [10, 100, 400], unit: 'placed', value: (i) => placed(i.run, 5) },
+  { id: 'xwing', group: 'Method', name: 'X-Wings', counts: 'Digits proved by an X-Wing or its kin, placed in runs on Normal or Hard.', steps: [3, 40, 150], unit: 'placed', value: (i) => placed(i.run, 6) },
+  { id: 'wings', group: 'Method', name: 'Wings', counts: 'Digits proved by a wing or a Swordfish, placed in runs on Normal or Hard.', steps: [3, 40, 150], unit: 'placed', value: (i) => placed(i.run, 7) },
+  { id: 'chains', group: 'Method', name: 'Chains', counts: 'Digits proved by a chain, placed in runs on Normal or Hard.', steps: [1, 5, 25], unit: 'placed', value: (i) => placed(i.run, 8) },
   { id: 'score', group: 'Score', name: 'High score', counts: 'The best score of a run on Normal or Hard, or a daily run.', steps: [20_000, 50_000, 100_000], unit: 'points', value: (i) => bestRunScore(i.run) },
-  { id: 'hit', group: 'Score', name: 'Big hit', counts: 'The most one placement has scored.', steps: [500, 2000, 8000], unit: 'points', value: (i) => i.run.best?.points ?? 0 },
-  { id: 'boss', group: 'Run', name: 'Boss', counts: 'Boss boards beaten.', steps: [1, 10, 50], unit: 'bosses', value: (i) => i.run.bosses },
-  { id: 'rules', group: 'Run', name: 'Rulebreaker', counts: 'Different boss rules beaten.', steps: [2, 4, 6], unit: 'rules', value: (i) => kinds(i.run.bossRules) },
+  { id: 'hit', group: 'Score', name: 'Big hit', counts: 'The most one placement has scored on Normal or Hard.', steps: [500, 2000, 8000], unit: 'points', value: (i) => i.run.ranked.best },
+  { id: 'boss', group: 'Run', name: 'Boss', counts: 'Boss boards beaten on Normal or Hard.', steps: [1, 10, 50], unit: 'bosses', value: (i) => i.run.ranked.bosses },
+  { id: 'rules', group: 'Run', name: 'Rulebreaker', counts: 'Different boss rules beaten on Normal or Hard.', steps: [2, 4, 6], unit: 'rules', value: (i) => kinds(i.run.ranked.bossRules) },
   {
     id: 'victor',
     group: 'Run',
@@ -125,7 +146,7 @@ export const BADGES: readonly BadgeDef[] = [
     // The hardest difficulty won: a daily run is played on Normal.
     value: (i) => (i.run.wonHard > 0 ? 3 : i.run.won > i.run.wonEasy ? 2 : i.run.wonEasy > 0 ? 1 : 0),
   },
-  { id: 'sweep', group: 'Run', name: 'Clean sweep', counts: 'Run boards finished with every box clean.', steps: [1, 5, 20], unit: 'boards', value: (i) => i.run.cleanBoards },
+  { id: 'sweep', group: 'Run', name: 'Clean sweep', counts: 'Run boards on Normal or Hard finished with every box clean.', steps: [1, 5, 20], unit: 'boards', value: (i) => i.run.ranked.cleanBoards },
   {
     id: 'fiendish',
     group: 'Other',
@@ -180,7 +201,7 @@ export function progressOf(b: BadgeState): { share: number; text: string } {
   if (def.id === 'victor') return { share: level / 3, text: level ? `Won on ${SKILLS[level]}, ${SKILLS[level + 1]} next` : 'Win a run on Easy' };
   if (def.lower) {
     if (value === null) return { share: 0, text: `Level I at ${showOf(def, next)}` };
-    return { share: Math.min(1, next / value), text: `Best ${formatTime(value)}, level ${NUMERALS[level + 1]} at ${showOf(def, next)}` };
+    return { share: Math.min(1, next / value), text: `Best ${showOf(def, value)}, level ${NUMERALS[level + 1]} at ${showOf(def, next)}` };
   }
   const now = value ?? 0;
   return { share: Math.min(1, now / next), text: `${thousands(now)} of ${showOf(def, next)} ${def.unit ?? ''}`.trim() };

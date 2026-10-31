@@ -38,7 +38,7 @@ import {
   withTarget,
   type BoardEnd,
 } from './state';
-import { levelOpen, onBoardEnd, onBoardStart, onRunEnd, onRunStart, unlockedSet, type RunStats } from './stats';
+import { isRanked, levelOpen, onBoardEnd, onBoardStart, onRunEnd, onRunStart, unlockedSet, type RunStats } from './stats';
 import { legacyRuns, loadRunStorage, saveRunStorage, type RunStorage } from './storage';
 import { INK } from './tuning';
 
@@ -310,7 +310,7 @@ function finish(end: BoardEnd, today: string = dailyDate()) {
   const live = run.live;
   const next = endBoard(run, end);
   const result = next.results[next.results.length - 1];
-  let stats = onBoardEnd(data.stats, result, live.cleanBoxes >= 9);
+  let stats = onBoardEnd(data.stats, result, live.cleanBoxes >= 9, isRanked(run));
   if (next.outcome) {
     const ended = { ...next, recorded: true };
     stats = onRunEnd(stats, ended, today);
@@ -541,7 +541,7 @@ export const runActions = {
     const ended = { ...abandon(target), recorded: true };
     let stats = data.stats;
     // Placements on the board in play still go into the codex.
-    if (target.live) stats = onBoardEnd(stats, { ...endedBoard(target), status: 'missed' }, false);
+    if (target.live) stats = onBoardEnd(stats, { ...endedBoard(target), status: 'missed' }, false, isRanked(target));
     stats = onRunEnd(stats, ended, today);
     commit({ ...data, current: null, last: ended, stats }, ended, unlockedByRun(ended, stats));
   },

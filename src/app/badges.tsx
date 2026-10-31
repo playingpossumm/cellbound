@@ -115,13 +115,18 @@ export function Gem({ id, level, fresh }: { id: BadgeId; level: number; fresh?: 
 // ---- what is new ---------------------------------------------------------------------------------
 
 const SEEN_KEY = 'cellbound:v1:badges';
+/**
+ * Version 2 came with the steps of 2026-10-31, which took some levels away. What version 1 showed
+ * is set aside and the new levels primed in its place, so a level earned again is announced again.
+ */
+const SEEN_VERSION = 2;
 type Levels = Partial<Record<BadgeId, number>>;
 
 function loadSeen(): Levels | null {
   try {
     const raw = localStorage.getItem(SEEN_KEY);
     const v = raw ? (JSON.parse(raw) as { v?: unknown; seen?: unknown }) : null;
-    if (!v || v.v !== 1 || !v.seen || typeof v.seen !== 'object') return null;
+    if (!v || v.v !== SEEN_VERSION || !v.seen || typeof v.seen !== 'object') return null;
     const out: Levels = {};
     for (const [k, n] of Object.entries(v.seen)) if (typeof n === 'number') out[k as BadgeId] = n;
     return out;
@@ -144,7 +149,7 @@ export function markSeen(states: readonly BadgeState[]): void {
   for (const b of states) seen[b.def.id] = Math.max(seen[b.def.id] ?? 0, b.level);
   useSeen.setState({ seen });
   try {
-    localStorage.setItem(SEEN_KEY, JSON.stringify({ v: 1, seen }));
+    localStorage.setItem(SEEN_KEY, JSON.stringify({ v: SEEN_VERSION, seen }));
   } catch {
     /* a private window keeps them for this visit */
   }

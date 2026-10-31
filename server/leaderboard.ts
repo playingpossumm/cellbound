@@ -103,6 +103,7 @@ export function cleanSnapshot(raw: unknown): Snapshot {
     return typeof b.score === 'number' ? { score: num(b.score), date: String(b.date ?? '').slice(0, 10) } : null;
   };
   const best = obj(u.best);
+  const ranked = obj(u.ranked);
   return {
     stats: { solves: counts(s.solves), fails: counts(s.fails), times, daily, fog: num(s.fog), rules: counts(s.rules) },
     run: {
@@ -119,10 +120,16 @@ export function cleanSnapshot(raw: unknown): Snapshot {
       dailyBest,
       topAnte: Math.min(3, num(u.topAnte)),
       bosses: num(u.bosses),
-      bossRules: counts(u.bossRules),
       cleanBoards: num(u.cleanBoards),
       codex,
       best: typeof best.points === 'number' && typeof best.technique === 'string' ? { technique: best.technique as NonNullable<Snapshot['run']['best']>['technique'], points: num(best.points) } : null,
+      ranked: {
+        bosses: num(ranked.bosses),
+        bossRules: counts(ranked.bossRules),
+        cleanBoards: num(ranked.cleanBoards),
+        tiers: Array.from({ length: 9 }, (_, t) => num(Array.isArray(ranked.tiers) ? ranked.tiers[t] : 0)),
+        best: num(ranked.best),
+      },
     },
   };
 }

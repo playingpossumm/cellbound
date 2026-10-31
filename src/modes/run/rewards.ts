@@ -252,7 +252,7 @@ export const REWARDS: readonly RewardDef[] = [
   {
     id: 'microscope',
     name: 'Microscope',
-    text: 'A placement more than one technique proves scores as the hardest.',
+    text: 'Each digit scores as the hardest technique that could find it, not the easiest.',
     cost: 'One heart slot fewer.',
     category: 'score',
     rarity: 'rare',

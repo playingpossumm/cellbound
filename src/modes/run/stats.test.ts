@@ -58,9 +58,18 @@ describe('run stats', () => {
   });
 
   it('count a cleared boss and a board finished with every box clean', () => {
-    const s = onBoardEnd(emptyStats(), result({ rule: 'fog' }), true);
+    const s = onBoardEnd(emptyStats(), result({ rule: 'fog' }), true, true);
     expect(s).toMatchObject({ bosses: 1, cleanBoards: 1 });
-    expect(onBoardEnd(emptyStats(), result({ rule: 'fog', status: 'missed' }), false).bosses).toBe(0);
+    expect(onBoardEnd(emptyStats(), result({ rule: 'fog', status: 'missed' }), false, true).bosses).toBe(0);
+  });
+
+  it('count a board of a run on Normal or Hard toward the badges, by tier, and one on Easy toward the codex and the unlocks only', () => {
+    const board = result({ rule: 'fog', tech: { nakedSingle: { n: 30, points: 300, top: 20 }, hiddenSingle: { n: 12, points: 240, top: 30 }, xWing: { n: 1, points: 900, top: 900 } }, best: { technique: 'xWing', points: 900 } });
+    const ranked = onBoardEnd(emptyStats(), board, true, true);
+    expect(ranked.ranked).toEqual({ bosses: 1, bossRules: { fog: 1 }, cleanBoards: 1, tiers: [0, 30, 12, 0, 0, 0, 1, 0, 0], best: 900 });
+    const easy = onBoardEnd(emptyStats(), board, true, false);
+    expect(easy.ranked).toEqual(emptyStats().ranked);
+    expect(easy).toMatchObject({ bosses: 1, cleanBoards: 1, codex: { xWing: { n: 1, best: 900 } }, best: { points: 900 } });
   });
 });
 
@@ -126,5 +135,13 @@ describe('saves', () => {
     expect(loaded.stats).toMatchObject({ started: 0, won: 2, codex: { xWing: { n: 1, best: 0 } } });
     expect(loadRunStorage(memory({ [RUN_KEY]: 'not json' }))).toEqual(emptyStorage());
     expect(loadRunStorage(null)).toEqual(emptyStorage());
+  });
+
+  it('keep the badges’ counts of a save to their shapes, and start a save from before them at nothing', () => {
+    const ranked = { bosses: 2, bossRules: { fog: 1, dancing: 4 }, cleanBoards: 'x', tiers: [0, 40, 'y', 3], best: 650 };
+    const back = loadRunStorage(memory({ [RUN_KEY]: JSON.stringify({ v: 2, current: null, last: null, stats: { won: 1, ranked } }) }));
+    expect(back.stats.ranked).toEqual({ bosses: 2, bossRules: { fog: 1 }, cleanBoards: 0, tiers: [0, 40, 0, 3, 0, 0, 0, 0, 0], best: 650 });
+    const before = loadRunStorage(memory({ [RUN_KEY]: JSON.stringify({ v: 2, current: null, last: null, stats: { won: 1, bosses: 4, bossRules: { fog: 4 } } }) }));
+    expect(before.stats).toMatchObject({ bosses: 4, ranked: emptyStats().ranked });
   });
 });

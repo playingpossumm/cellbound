@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DailyEntry, StatsData } from '../game/stats';
-import { emptyStats } from '../modes/run/stats';
+import { emptyRanked, emptyStats, type RankedStats, type RunStats } from '../modes/run/stats';
 import { betterDaily, mergeRunStats, mergeStats } from './merge';
 import { standingOf } from './rules';
 
@@ -65,8 +65,21 @@ describe('what the badges count, together', () => {
     const both = mergeStats(stats({ fog: 2, rules: { thermo: 1 } }), stats({ fog: 1, rules: { thermo: 2, xv: 1 } }));
     expect(both.fog).toBe(3);
     expect(both.rules).toEqual({ thermo: 3, xv: 1 });
-    const runs = mergeRunStats({ ...emptyStats(), wonHard: 1, bossRules: { fog: 1 } }, { ...emptyStats(), wonHard: 2, bossRules: { fog: 2, mute: 1 } });
+    const ranked = (over: Partial<RankedStats>): RankedStats => ({ ...emptyRanked(), ...over });
+    const runs = mergeRunStats(
+      { ...emptyStats(), wonHard: 1, ranked: ranked({ bosses: 1, bossRules: { fog: 1 }, tiers: [0, 30, 10, 2, 0, 0, 0, 0, 0], best: 700 }) },
+      { ...emptyStats(), wonHard: 2, ranked: ranked({ bosses: 3, bossRules: { fog: 2, mute: 1 }, cleanBoards: 1, tiers: [1, 20, 5, 0, 0, 0, 1, 0, 0], best: 400 }) },
+    );
     expect(runs.wonHard).toBe(3);
-    expect(runs.bossRules).toEqual({ fog: 3, mute: 1 });
+    expect(runs.ranked).toEqual({ bosses: 4, bossRules: { fog: 3, mute: 1 }, cleanBoards: 1, tiers: [1, 50, 15, 2, 0, 0, 1, 0, 0], best: 700 });
+  });
+
+  it('takes a device that synced before the counts of runs on Normal and Hard as having none', () => {
+    const before = { ...emptyStats(), bosses: 5 } as Partial<RunStats>;
+    delete before.ranked;
+    const runs = mergeRunStats(before as RunStats, { ...emptyStats(), ranked: { ...emptyRanked(), bosses: 2 } });
+    expect(runs.bosses).toBe(5);
+    expect(runs.ranked.bosses).toBe(2);
+    expect(runs.ranked.tiers).toHaveLength(9);
   });
 });

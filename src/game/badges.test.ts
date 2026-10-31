@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { dailySpec } from '../engine/daily';
 import { LYRA } from '../engine/fixtures';
 import { LESSONS } from '../modes/learn/lessons';
-import { emptyStats } from '../modes/run/stats';
-import type { RunStats } from '../modes/run/stats';
+import { emptyRanked, emptyStats, type RankedStats, type RunStats } from '../modes/run/stats';
 import { BLANK_STATS } from '../sync/rules';
-import { BADGE_LEVELS, BADGES, badgeStates, levelOf, progressOf, type BadgeId, type BadgeInput } from './badges';
+import { BADGE_LEVELS, BADGES, badgeStates, levelOf, progressOf, showOf, type BadgeId, type BadgeInput } from './badges';
 import { addResult, type DailyEntry, type StatsData } from './stats';
 import { getGame, resetStoreForTesting, solveForTesting, startGame } from './store';
 
@@ -16,6 +16,7 @@ const input = (stats: Partial<StatsData> = {}, run: Partial<RunStats> = {}, less
 });
 const levels = (i: BadgeInput) => Object.fromEntries(badgeStates(i).map((b) => [b.def.id, b.level])) as Record<BadgeId, number>;
 const byId = (id: BadgeId) => BADGES.find((b) => b.id === id)!;
+const ranked = (over: Partial<RankedStats>): RankedStats => ({ ...emptyRanked(), ...over });
 
 describe('badges', () => {
   it('are twenty-one, each with three steps that get harder', () => {
@@ -40,29 +41,40 @@ describe('badges', () => {
       day('2026-10-05', { status: 'failed', ms: 3 * 60_000, mistakes: 0 }),
     ]);
     const l = levels(input({ daily }));
-    expect(l.streak).toBe(2);
+    expect(l.streak).toBe(1);
     expect(l.regular).toBe(1);
-    // 11 minutes is within 20 and 12; the failed one is not a solve, however fast.
+    // Saturday's 15 minutes is 52 percent of its par of 29. The 6x6 Dailies before 24 October have
+    // no par, and the failed one is not a solve, however fast.
     expect(l.quick).toBe(2);
     expect(l.clean).toBe(1);
   });
 
-  it('read the Run: techniques by tier, the best score and placement, bosses, rules beaten and wins by difficulty', () => {
+  it('time Quick against each Daily’s par, as its sentence says', () => {
+    const par = (date: string) => dailySpec(date).minutes?.[1];
+    // Monday 26 October to Sunday 1 November.
+    expect(['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01'].map(par)).toEqual([8, 11, 14, 17, 20, 29, 25]);
+    expect(byId('quick').counts).toContain('8 minutes on a Monday, up to 29 on a Saturday');
+    const quick = (date: string, minutes: number, over: Partial<DailyEntry> = {}) => levels(input({ daily: Object.fromEntries([day(date, { ms: minutes * 60_000, ...over })]) })).quick;
+    // Eight minutes is par on a Monday, and under half of Thursday's.
+    expect([quick('2026-10-26', 8.1), quick('2026-10-26', 8), quick('2026-10-26', 6), quick('2026-10-26', 4)]).toEqual([0, 1, 2, 3]);
+    expect(quick('2026-10-29', 8)).toBe(3);
+    // The 6x6 Dailies before the 9x9s have no par, and a failed Daily is no solve.
+    expect(quick('2026-10-10', 2)).toBe(0);
+    expect(quick('2026-10-29', 2, { status: 'failed' })).toBe(0);
+  });
+
+  it('read the Run’s counts on Normal and Hard: techniques by tier, the best score and placement, bosses, rules beaten and wins by difficulty', () => {
     const run: Partial<RunStats> = {
-      codex: { hiddenSingle: { n: 260, best: 40 }, clueSingle: { n: 30, best: 50 }, xWing: { n: 1, best: 900 }, kite: { n: 9, best: 700 }, chain: { n: 0, best: 0 } },
+      ranked: ranked({ tiers: [0, 900, 1200, 60, 0, 0, 3, 0, 0], best: 2_480, bosses: 12, bossRules: { fog: 2, glass: 1, clock: 0 } }),
       bestFree: { score: 18_000, date: '2026-10-27' },
       bestHard: { score: 52_000, date: '2026-10-28' },
       bestEasy: { score: 300_000, date: '2026-10-28' },
-      best: { technique: 'xWing', points: 2_480 },
-      bosses: 12,
-      bossRules: { fog: 2, glass: 1, clock: 0 },
       won: 3,
       wonEasy: 2,
       wonHard: 0,
-      cleanBoards: 0,
     };
     const l = levels(input({}, run));
-    expect([l.hidden, l.clues, l.xwing, l.chains]).toEqual([2, 1, 2, 0]);
+    expect([l.hidden, l.clues, l.xwing, l.chains]).toEqual([2, 1, 1, 0]);
     // Easy runs never count toward the best score, as on the leaderboard.
     expect(l.score).toBe(2);
     expect(l.hit).toBe(2);
@@ -71,6 +83,21 @@ describe('badges', () => {
     expect(l.victor).toBe(2);
     expect(levels(input({}, { ...run, wonHard: 1 })).victor).toBe(3);
     expect(levels(input({}, { won: 1, wonEasy: 1 })).victor).toBe(1);
+  });
+
+  it('give Easy nothing but Victor’s first level, however much the codex and the unlocks count', () => {
+    const run: Partial<RunStats> = {
+      codex: { hiddenSingle: { n: 5000, best: 40 }, xWing: { n: 200, best: 900 }, chain: { n: 30, best: 1200 } },
+      bosses: 60,
+      cleanBoards: 30,
+      best: { technique: 'chain', points: 9_000 },
+      bestEasy: { score: 300_000, date: '2026-10-28' },
+      won: 1,
+      wonEasy: 1,
+    };
+    const l = levels(input({}, run));
+    expect([l.hidden, l.xwing, l.chains, l.boss, l.rules, l.sweep, l.hit, l.score]).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(l.victor).toBe(1);
   });
 
   it('count Fiendish boards, fog boards (the old Fog mode too), rules solved and lessons', () => {
@@ -92,19 +119,22 @@ describe('badges', () => {
     expect(byId('scholar').steps[2]).toBe(LESSONS.length);
   });
 
-  it('take a time at or under its step, and count at or over it', () => {
+  it('take a share of par at or under its step, and count at or over it', () => {
     expect(levelOf(byId('quick'), null)).toBe(0);
-    expect(levelOf(byId('quick'), 12 * 60_000)).toBe(2);
-    expect(levelOf(byId('quick'), 20 * 60_000 + 1)).toBe(0);
+    expect(levelOf(byId('quick'), 0.75)).toBe(2);
+    expect(levelOf(byId('quick'), 1.001)).toBe(0);
     expect(levelOf(byId('boss'), 9)).toBe(1);
     expect(levelOf(byId('boss'), 10)).toBe(2);
   });
 
   it('say how far the next level is', () => {
-    const states = badgeStates(input({ daily: Object.fromEntries([day('2026-10-28', { ms: 11 * 60_000 })]) }, { best: { technique: 'xWing', points: 2_480 }, won: 1, wonEasy: 1 }));
+    const states = badgeStates(input({ daily: Object.fromEntries([day('2026-10-28', { ms: 11 * 60_000 })]) }, { ranked: ranked({ best: 2_480 }), won: 1, wonEasy: 1 }));
     const of = (id: BadgeId) => progressOf(states.find((b) => b.def.id === id)!);
     expect(of('hit')).toEqual({ share: 2_480 / 8_000, text: '2,480 of 8,000 points' });
-    expect(of('quick').text).toBe('Best 11:00, level III at 8 min');
+    // 11 minutes of Wednesday's par of 14 is 78.6 percent, shown up to the next whole one.
+    expect(of('quick').text).toBe('Best 79% of par, level II at ¾ par');
+    expect(progressOf(badgeStates(input()).find((b) => b.def.id === 'quick')!).text).toBe('Level I at par');
+    expect(byId('quick').steps.map((s) => showOf(byId('quick'), s))).toEqual(['par', '¾ par', '½ par']);
     expect(of('victor').text).toBe('Won on Easy, Normal next');
     expect(of('chains')).toEqual({ share: 0, text: '0 of 1 placed' });
     expect(progressOf({ def: byId('boss'), value: 80, level: 3 })).toEqual({ share: 1, text: 'Every level earned' });

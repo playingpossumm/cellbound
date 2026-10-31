@@ -14,7 +14,7 @@ import { makeOffer } from './offers';
 import { REWARDS, rewardPool } from './rewards';
 import { stockFor } from './shop';
 import { modsFor, newRun, shareText } from './state';
-import { emptyStats, levelOpen, onBoardEnd, onRunEnd } from './stats';
+import { emptyStats, isRanked, levelOpen, onBoardEnd, onRunEnd } from './stats';
 import { emptyStorage, isRunState, loadRunStorage, saveRunStorage, type StorageLike } from './storage';
 import { targetFor } from './targets';
 import { DIFFICULTY, SHOP } from './tuning';
@@ -132,7 +132,7 @@ describe('difficulty', () => {
     expect(LEVELS.map((level) => levelOpen(onRunEnd(emptyStats(), daily, '2026-10-28'), level))).toEqual([true, true, true]);
   });
 
-  it('counts the boss rules beaten and the runs won on Hard, for the badges', () => {
+  it('counts the boss rules beaten and the runs won on Hard, for the badges, and Easy for none but the wins', () => {
     const board = (rule: BoardResult['rule'], status: BoardResult['status'] = 'cleared'): BoardResult => ({
       slot: 2,
       status,
@@ -149,13 +149,21 @@ describe('difficulty', () => {
       clean: 0,
       rule,
     });
-    let s = onBoardEnd(emptyStats(), board('fog'), false);
-    s = onBoardEnd(s, board('fog'), false);
-    s = onBoardEnd(s, board('glass', 'missed'), false);
-    expect(s.bossRules).toEqual({ fog: 2 });
-    expect(s.bosses).toBe(2);
-    s = onRunEnd(s, { ...newRun('t:hardwin', null, 1, false, 'hard'), outcome: 'won', score: 9 }, '2026-10-28');
-    expect([s.won, s.wonHard, s.wonEasy]).toEqual([1, 1, 0]);
+    const hard = newRun('t:hardwin', null, 1, false, 'hard');
+    const easy = newRun('t:easywin', null, 1, false, 'easy');
+    // A daily run is played on Normal, and a run saved before there was a choice was Normal too.
+    expect([isRanked(hard), isRanked(easy), isRanked(newRun('t:day', '2026-10-28', 1)), isRanked({ daily: null })]).toEqual([true, false, true, true]);
+    let s = onBoardEnd(emptyStats(), board('fog'), false, isRanked(hard));
+    s = onBoardEnd(s, board('fog'), false, isRanked(hard));
+    s = onBoardEnd(s, board('glass', 'missed'), false, isRanked(hard));
+    s = onBoardEnd(s, board('mute'), false, isRanked(easy));
+    expect(s.ranked.bossRules).toEqual({ fog: 2 });
+    expect(s.ranked.bosses).toBe(2);
+    // The unlocks still count Easy's bosses.
+    expect(s.bosses).toBe(3);
+    s = onRunEnd(s, { ...hard, outcome: 'won', score: 9 }, '2026-10-28');
+    s = onRunEnd(s, { ...easy, outcome: 'won', score: 9 }, '2026-10-28');
+    expect([s.won, s.wonHard, s.wonEasy]).toEqual([2, 1, 1]);
   });
 
   it('saves the pick and the new stats, and drops a run of a difficulty it does not know', () => {

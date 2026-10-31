@@ -53,10 +53,10 @@ export const BLANK_RUN: RunStats = {
   dailyBest: {},
   topAnte: 0,
   bosses: 0,
-  bossRules: {},
   cleanBoards: 0,
   codex: {},
   best: null,
+  ranked: { bosses: 0, bossRules: {}, cleanBoards: 0, tiers: [0, 0, 0, 0, 0, 0, 0, 0, 0], best: 0 },
 };
 
 /** Where a player's stats place them, for the boards of the given dates. */

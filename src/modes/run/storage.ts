@@ -118,6 +118,7 @@ function sanitizeStats(x: unknown): RunStats {
     }
   }
   const best = isObj(x.best) && typeof x.best.technique === 'string' && isNum(x.best.points) ? (x.best as unknown as RunStats['best']) : null;
+  const ranked: Record<string, unknown> = isObj(x.ranked) ? x.ranked : {};
   return {
     started: num(x.started, 0),
     won: num(x.won, 0),
@@ -131,10 +132,16 @@ function sanitizeStats(x: unknown): RunStats {
     dailyBest,
     topAnte: num(x.topAnte, 0),
     bosses: num(x.bosses, 0),
-    bossRules: isObj(x.bossRules) ? (Object.fromEntries(Object.entries(x.bossRules).filter(([k, n]) => BOSS_RULES.includes(k as never) && isNum(n))) as RunStats['bossRules']) : {},
     cleanBoards: num(x.cleanBoards, 0),
     codex,
     best,
+    ranked: {
+      bosses: num(ranked.bosses, 0),
+      bossRules: isObj(ranked.bossRules) ? (Object.fromEntries(Object.entries(ranked.bossRules).filter(([k, n]) => BOSS_RULES.includes(k as never) && isNum(n))) as RunStats['ranked']['bossRules']) : {},
+      cleanBoards: num(ranked.cleanBoards, 0),
+      tiers: Array.from({ length: 9 }, (_, t) => (Array.isArray(ranked.tiers) ? num(ranked.tiers[t], 0) : 0)),
+      best: num(ranked.best, 0),
+    },
   };
 }
 
